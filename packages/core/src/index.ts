@@ -37,6 +37,16 @@ export { relationshipDecaySubscriber } from './relationships/graph.js';
 
 // Event bus
 export { emitEvent } from './events/eventBus.js';
+
+// Quest system
+export {
+  computeQuestProbability,
+  questBoardSeedingSubscriber,
+  questExpirySubscriber,
+  partySelectionSubscriber,
+  resolveQuest,
+} from './quests/questSystem.js';
+export type { QuestOutcomeResult } from './quests/questSystem.js';
 export type { SimulationEventInput, SocialEventInput, CombatEventInput, QuestEventInput,
   LifecycleEventInput, WorldEventInput, DecisionMomentEventInput, DivineInterventionEventInput,
 } from './events/eventBus.js';

@@ -26,12 +26,18 @@ type SimulationContext = {
   rng: SeededRNG;
   adventurers: Map<AdventurerId, Adventurer>;
   relationships: RelationshipGraph;
+  lastSharedActivity: LastSharedActivity; // updated by quest + social event systems (Phase 2)
   questBoard: QuestBoard;
   eventLog: SimulationEvent[];
   pendingDecisions: DecisionMoment[];
   divineInfluence: number;          // 0–100
   activeRegions: Map<RegionId, Region>;
   scenario: ScenarioState | null;   // null in sandbox mode
+};
+
+type QuestBoard = {
+  available: Quest[];
+  active: Quest[];
 };
 ```
 
@@ -48,6 +54,7 @@ type Adventurer = {
   moodFactors: MoodFactor[];
   state: AdventurerState;
   history: HistoryEvent[];
+  despairStreak: number;           // consecutive day-ticks with mood < 10; resets to 0 when mood ≥ 10
   personalGoalProgress: GoalProgress;
   currentQuestId: QuestId | null;
 };
@@ -100,17 +107,32 @@ type MoodFactor = {
 ```
 
 - Mood recalculated each day tick: `sum(factors.map(f => f.value))`, clamped to [0, 100].
-- `mood < 25` → `UNSATISFIED` status (affects quest volunteer probability).
-- `mood < 10` for 3+ consecutive days → departure roll.
+- Mood thresholds:
+
+| Label | Range | Effect |
+|---|---|---|
+| `CONTENT` | 50–100 | No modifier |
+| `NEUTRAL` | 25–49 | Quest volunteer weight reduced by 20% |
+| `UNSATISFIED` | 10–24 | Quest volunteer weight reduced by 50% |
+| `DESPAIRING` | 0–9 | Cannot volunteer for quests |
+
+- `mood < 10` for 3+ consecutive days → departure roll (tracked via `despairStreak`).
+
+```typescript
+type MoodLabel = 'CONTENT' | 'NEUTRAL' | 'UNSATISFIED' | 'DESPAIRING';
+```
 
 ## Relationship graph
 
 ```typescript
 type RelationshipGraph = Map<AdventurerId, Map<AdventurerId, RelationshipEdge>>;
 
+/** Keyed by sorted pair id "idA-idB"; value is the tick of last shared activity. */
+type LastSharedActivity = Record<string, number>;
+
 type RelationshipEdge = {
   strength: number;          // –100 to +100
-  type: RelationshipType;
+  type: RelationshipType;    // stored and re-derived on every write via strengthToType()
   history: RelationshipEvent[];
 };
 
@@ -124,12 +146,28 @@ type RelationshipType =
 
 type RelationshipEvent = {
   tick: number;
-  kind: string;      // e.g. 'CO_QUEST_SUCCESS', 'ARGUMENT', 'SAVED_ALLY'
+  kind: string;      // e.g. 'CO_QUEST_SUCCESS', 'ARGUMENT', 'SAVED_ALLY', 'SEPARATION_DECAY'
   delta: number;     // strength change from this event
+};
+
+type ThresholdEventType =
+  | 'FRIENDSHIP_FORMED'
+  | 'TRUSTED_COMPANION_BOND_FORMED'
+  | 'BOND_BROKEN'
+  | 'RIVALRY_DEEPENED'
+  | 'RECONCILIATION';
+
+type ThresholdEvent = {
+  type: ThresholdEventType;
+  adventurerId1: AdventurerId;
+  adventurerId2: AdventurerId;
+  newType: RelationshipType;
+  priorType: RelationshipType;
+  strength: number;
 };
 ```
 
-Relationship type is derived from strength thresholds (see `behaviors/relationship-graph.md`).
+Relationship type thresholds and threshold event rules: see `behaviors/relationship-graph.md`.
 
 ## Quest
 

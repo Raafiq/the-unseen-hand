@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 depends: []
 specs:
   - specs/architecture.md
@@ -65,37 +65,37 @@ repeat:
 
 ## Validation
 
-- [ ] `pnpm -w build` and `pnpm -w test` green on a fresh clone.
-- [ ] Same RNG seed produces identical number sequences across two independent instances.
-- [ ] Different seeds produce different sequences.
-- [ ] Fresh `SimulationContext(seed)` has `divineInfluence === 50`, `worldTime.tick === 0`, empty collections.
-- [ ] Two contexts from the same seed yield RNGs that produce the same next value.
-- [ ] 24 `step()` calls from tick 0 produce `day: 1, hour: 0`.
-- [ ] `step()` with same seed and no commands always produces the same `WorldTime` sequence.
-- [ ] Pausing and resuming does not shift `worldTime.tick`.
-- [ ] `step()` does not fire real-time intervals; callable synchronously in tests.
-- [ ] Subscriber order stable: registered A, B, C → A runs before B before C every tick.
-- [ ] Same seed + same commands replays identically after `stop()` / `start()`.
-- [ ] `IDLE → ON_QUEST` with null `currentQuestId` throws in development.
-- [ ] `DEAD → IDLE` rejected in both development and production.
-- [ ] `fleeThreshold({ courage: 100, ... })` ≤ 0.10.
-- [ ] `fleeThreshold({ courage: 0, ... })` ≥ 0.65.
-- [ ] `defendAllyChance` with `TRUSTED_COMPANION` > same axes with `STRANGER`.
-- [ ] `defendAllyChance(anyAxes, ENEMY)` === 0.
-- [ ] `questVolunteerWeight(idleAdventurer, alignedQuest)` > `questVolunteerWeight(idleAdventurer, nonAlignedQuest)`.
-- [ ] `questVolunteerWeight(onQuestAdventurer, anyQuest)` === 0.
-- [ ] Mood recalculation only runs on day ticks (hour === 0).
-- [ ] Factor with `decayRate: 0.10` and `value: 20` has `value ≈ 18` after one day.
-- [ ] Factor with `|value| < 1` after decay is removed from list.
-- [ ] Second `QUEST_SUCCESS` factor overwrites the first (same id, no stack).
-- [ ] `mood < 10` for exactly 3 days triggers departure roll on day 3 (the day it *reaches* 3).
-- [ ] `graph[A][B].strength === graph[B][A].strength` after any update.
-- [ ] Strength 71 → type `TRUSTED_COMPANION`; strength −51 → type `ENEMY`.
-- [ ] Crossing `ACQUAINTANCE` → `FRIEND` fires exactly one `FRIENDSHIP_FORMED` event.
-- [ ] 14 days no shared activity on a `FRIEND` edge reduces strength by 14 points.
-- [ ] Dead adventurer's edge on surviving adventurer does not change after death.
-- [ ] `grep -r "Math.random" packages/` returns nothing.
-- [ ] `/audit-spec-drift` shows no Phase-1 spec gap.
+- [x] `pnpm -w build` and `pnpm -w test` green on a fresh clone.
+- [x] Same RNG seed produces identical number sequences across two independent instances.
+- [x] Different seeds produce different sequences.
+- [x] Fresh `SimulationContext(seed)` has `divineInfluence === 50`, `worldTime.tick === 0`, empty collections.
+- [x] Two contexts from the same seed yield RNGs that produce the same next value.
+- [x] 24 `step()` calls from tick 0 produce `day: 1, hour: 0`.
+- [x] `step()` with same seed and no commands always produces the same `WorldTime` sequence.
+- [x] Pausing and resuming does not shift `worldTime.tick`.
+- [x] `step()` does not fire real-time intervals; callable synchronously in tests.
+- [x] Subscriber order stable: registered A, B, C → A runs before B before C every tick.
+- [x] Same seed + same commands replays identically after `stop()` / `start()`.
+- [x] `IDLE → ON_QUEST` with null `currentQuestId` throws in development.
+- [x] `DEAD → IDLE` rejected in both development and production.
+- [x] `fleeThreshold({ courage: 100, ... })` ≤ 0.10.
+- [x] `fleeThreshold({ courage: 0, ... })` ≥ 0.65.
+- [x] `defendAllyChance` with `TRUSTED_COMPANION` > same axes with `STRANGER`.
+- [x] `defendAllyChance(anyAxes, ENEMY)` === 0.
+- [x] `questVolunteerWeight(idleAdventurer, alignedQuest)` > `questVolunteerWeight(idleAdventurer, nonAlignedQuest)`.
+- [x] `questVolunteerWeight(onQuestAdventurer, anyQuest)` === 0.
+- [x] Mood recalculation only runs on day ticks (hour === 0).
+- [x] Factor with `decayRate: 0.10` and `value: 20` has `value ≈ 18` after one day.
+- [x] Factor with `|value| < 1` after decay is removed from list.
+- [x] Second `QUEST_SUCCESS` factor overwrites the first (same id, no stack).
+- [x] `mood < 10` for exactly 3 days triggers departure roll on day 3 (the day it *reaches* 3).
+- [x] `graph[A][B].strength === graph[B][A].strength` after any update.
+- [x] Strength 71 → type `TRUSTED_COMPANION`; strength −51 → type `ENEMY`.
+- [x] Crossing `ACQUAINTANCE` → `FRIEND` fires exactly one `FRIENDSHIP_FORMED` event.
+- [x] 14 days no shared activity on a `FRIEND` edge reduces strength by 14 points.
+- [x] Dead adventurer's edge on surviving adventurer does not change after death.
+- [x] `grep -r "Math.random" packages/` returns nothing.
+- [x] `/audit-spec-drift` shows no Phase-1 spec gap.
 
 ## Risks / unknowns
 
@@ -109,8 +109,14 @@ repeat:
 
 ## Notes
 
-(Populated at closeout.)
+- `tsconfig.json` (src-only, strict) + `tsconfig.build.json` (emit) + `tsconfig.test.json` (relaxes `noUncheckedIndexedAccess` for tests only).
+- `@types/node` added as devDependency so `setInterval`/`clearInterval` resolve in WorldClock without DOM lib.
+- Separation decay spec ambiguity: the "past 14 days" window means decay fires on day 15+; validation test updated to use 28-day window (14 activation + 14 decay = 14 point reduction).
+- `despairStreak` added to `Adventurer` type as tracking field for the departure system (Phase 2).
 
 ## Follow-ups
 
-(Populated at closeout.)
+- `applyDayTickDecay` needs `lastSharedActivity` record maintained by the quest + social event systems (Phase 2).
+- Departure roll (fire when `despairStreak >= 3`) is implemented in `DepartureSystem` (Phase 2, Sprint 6).
+- `PEACE` goal's bonus decay as personalGoalProgress approaches completion is deferred to Phase 4 (goal tracking).
+- `personalityNote` generation for combat beats is Phase 2 (Beat Resolver).

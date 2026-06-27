@@ -34,10 +34,14 @@ The clock interval is driven by `setSpeed(multiplier)`. Speed changes take effec
 
 ### Tick emission
 
-- `WorldClock` emits a typed `TICK` event each interval.
-- The tick carries the updated `WorldTime`.
-- Events are emitted synchronously before the interval schedules the next tick.
+- `WorldClock` emits a tick on each interval by calling registered listeners.
+- API: `onTick(listener: () => void)` — registers a callback invoked on each tick.
+- Listeners are called synchronously before the next interval is scheduled.
 - In paused state: no ticks fire. The clock resumes from the same world time.
+
+### Observable state
+
+- `currentSpeed: SpeedMultiplier` — readable property reflecting the active speed multiplier.
 
 ### Day boundary
 

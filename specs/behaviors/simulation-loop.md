@@ -25,12 +25,11 @@ type TickSubscriber = (ctx: SimulationContext, delta: number) => SimulationConte
 
 ### Subscriber execution order
 
-Subscribers run in registration order, which is:
+`WorldTime` is advanced as an implicit **pre-step** before any subscribers run — it cannot be deregistered or reordered. After that, subscribers execute in registration order:
 
-1. World state updaters (time, regions, active world events)
-2. Adventurer state machine transitions
-3. Mood recalculation (day ticks only)
-4. Relationship tick
+1. Adventurer state machine transitions
+2. Mood recalculation (day ticks only)
+3. Relationship tick
 5. Quest board seeding and expiry
 6. Autonomous party selection
 7. Quest outcome resolution (for quests that complete this tick)
@@ -38,7 +37,7 @@ Subscribers run in registration order, which is:
 9. Decision moment detector
 10. Departure system
 
-This order is stable across ticks. Reordering subscribers is a spec change.
+Slots 2–3 (mood, relationship) are registered automatically by `SimulationLoop` at construction time. Later phases register their subscribers via `loop.register()`. This order is stable across ticks — reordering is a spec change.
 
 ### `SimulationLoop` interface
 
@@ -58,8 +57,9 @@ A fresh `SimulationContext` is built from:
 
 ### Error handling
 
-- In development (`NODE_ENV !== 'production'`): illegal state transitions throw.
-- In production: illegal transitions are caught, logged to `eventLog` as a `WorldEvent` with `kind: 'INTERNAL_ERROR'`, and the prior context is returned unchanged.
+State machine callers pass an explicit `isDev: boolean` flag (typically `process.env.NODE_ENV !== 'production'`):
+- When `isDev === true`: illegal state transitions throw `IllegalStateTransitionError`.
+- When `isDev === false`: illegal transitions are caught, logged to `eventLog` as a `WorldEvent` with `kind: 'INTERNAL_ERROR'`, and the prior context is returned unchanged.
 
 ## Validation
 

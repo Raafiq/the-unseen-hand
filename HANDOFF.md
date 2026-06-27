@@ -1,63 +1,111 @@
-# Handoff — Begin Implementation (Phase 0 + Phase 1)
+# Handoff — Close out P1 + start P2
 
-**Project:** "The Unseen Hand" — a spec-driven (specops) god-game simulation.
+**Project:** "The Unseen Hand" — spec-driven god-game sim  
+**Repo:** `C:\Users\mdraa\projects\guild-sim`
 
 ## Read first
 
-The 31 specs in `specs/` are complete and are the **source of truth** — read the relevant spec before writing any code. The full rollout plan is at `C:\Users\mdraa\.claude\plans\lazy-squishing-umbrella.md` — read it before starting.
-
-- **Granularity:** one plan file per roadmap phase (6 plans), built strictly linearly.
-- **Method:** each phase is implemented spec-first and test-first (TDD: one red test from a spec's Validation bullet → minimum code to pass → repeat).
-- **Environment:** Windows + PowerShell. Not yet a git repo (offer `git init` at some point).
-
-## Do P0 first, then start P1.
+- Full rollout plan: `C:\Users\mdraa\.claude\plans\lazy-squishing-umbrella.md`
+- Active plan: `plans/phase-1-foundation.md` (status: in-progress)
+- Source of truth for any behavior: `specs/` (never deviate from spec without changing it first)
 
 ---
 
-## P0 — Tooling setup
+## Current state
 
-1. Create `plans/` + `plans/README.md` (motion-vs-state blurb + pointer to the specops skill's `references/plans-protocol.md`; **no** hand-drawn DAG or status table).
-2. Create root `CLAUDE.md` with the specops hook block (skill path `C:\Users\mdraa\.claude\skills\specops`) plus the project guardrails from the roadmap appendix:
-   - TS verification: `tsc --noEmit` + `svelte-check` must both pass before any Svelte edit is verified.
-   - Svelte 5 store rule (`export const store = $state({...})`, never `export let x = $state(...)`).
-   - Tests assert probability **shifts**, never fixed outcomes.
-3. Install the drift auditor:
-   - Copy `C:\Users\mdraa\.claude\skills\specops\references\spec-drift-auditor.md` → `.claude/agents/spec-drift-auditor.md` (set its Phase 3 inventory to `packages/core/src/` + `apps/game-client/src/`).
-   - Copy `C:\Users\mdraa\.claude\skills\specops\references\audit-spec-drift.md` → `.claude/commands/audit-spec-drift.md`.
-4. Write all 6 phase-plan files as `status: planned` stubs with frontmatter (`depends`, `specs:`) so the DAG is queryable. Plan→spec mapping is in the rollout plan.
-5. **Verify:** `C:\Users\mdraa\.claude\skills\specops\scripts\specops` shows P1 as the next ready plan; `/audit-spec-drift` command exists.
+**P0** is complete. **P1 steps 1–5 are all implemented** but not yet committed or closed out.
 
----
+`git status` shows:
+- Modified: `packages/core/package.json`, `src/index.ts`, `src/world/types.ts`, `tsconfig*.json`, `plans/phase-1-foundation.md`
+- Untracked: `WorldClock.ts`, `SimulationLoop.ts`, `src/adventurers/`, `src/relationships/`, all new test files, `pnpm-lock.yaml`
 
-## P1 — Phase 1: World Simulation Foundation
+**Test run: 100 tests, 9 files, all passing.** Nothing is staged yet.
 
-**Implements:** `specs/architecture.md`, `specs/data-model.md`, and `specs/behaviors/{world-clock, simulation-loop, adventurer-entity, personality-system, mood-system, relationship-graph}.md`
+### What was implemented (all P1 steps)
 
-Set the P1 plan to `status: in-progress` when you begin. Build in this order, TDD throughout:
+| Step | Files | Tests |
+|---|---|---|
+| Scaffold + SeededRNG + SimulationContext | committed at `cc1a9ef` | 14 tests |
+| WorldClock | `src/world/WorldClock.ts` | `tests/world-clock.test.ts` (7) |
+| SimulationLoop | `src/world/SimulationLoop.ts` | `tests/simulation-loop.test.ts` (6) |
+| Personality (pure functions) | `src/adventurers/personality.ts` | `tests/personality.test.ts` (14) |
+| State machine | `src/adventurers/stateMachine.ts` | `tests/state-machine.test.ts` (12) |
+| Mood system | `src/adventurers/mood.ts` | `tests/mood.test.ts` (22) |
+| Relationship graph | `src/relationships/graph.ts` | `tests/relationship-graph.test.ts` (25) |
 
-1. **Monorepo scaffold** — pnpm workspaces + Turborepo (`build`/`test`/`dev` pipelines), `packages/core` as `@ugs/core` (strict TS, `lib:["ES2022"]`, no DOM lib, Vitest), `apps/game-client` Svelte 5 + Vite linked `"@ugs/core": "workspace:*"`. Verify `pnpm -w build` and `pnpm -w test` run green on an empty suite.
-2. **Seeded RNG + `SimulationContext`** — the determinism backbone everything threads through. **No `Math.random()` anywhere.**
-3. **`WorldClock` + `SimulationLoop`** — tick/day/hour, `step()`, `setSpeed`, ordered immutable subscriber registry (each returns a new context).
-4. **Adventurer + personality + mood + state machine** — pure derived-probability functions (`fleeThreshold`, `defendAllyChance`, `questVolunteerWeight`), decaying mood factors, guarded state transitions.
-5. **Relationship graph** — symmetric edges, strength→type thresholds, threshold events.
-
-**Done when:** every Validation bullet in those six specs has a passing Vitest test, and `/audit-spec-drift` shows no Phase-1 gap. Then fill the P1 plan's Notes/Follow-ups and flip it to `status: done`.
+Types updated: `Adventurer` now has `despairStreak: number` field (added to track consecutive despairing days).
 
 ---
 
-## Per-phase loop (P1–P6)
+## What to do this session
 
-1. Set the phase plan `status: in-progress`.
-2. For each behavior/screen: read its spec, then `/tdd` — one failing test from a Validation bullet, minimum code to pass, repeat.
-3. When all the phase's Validation bullets pass, run `/audit-spec-drift` to confirm no spec↔code gap.
-4. Fill the plan's Notes + Follow-ups, flip to `status: done` in the closeout commit.
-5. `scripts/specops next` surfaces the following phase.
+### 1. Verify the build is clean
 
-## Phase dependency order
-
-```
-P0 tooling → P1 foundation → P2 autonomous-world → P3 divine
-          → P4 scenario → P5 ui → P6 narrator
+```powershell
+cd C:\Users\mdraa\projects\guild-sim
+node_modules/.bin/turbo run build test
+grep -r "Math.random" packages/src   # should return nothing (doc comments in dist are fine)
 ```
 
-Phases 1–4 are pure `@ugs/core`, proven entirely in Vitest (headless correctness first). P5 is the first UI. P6 is additive polish (LLM narrator + PixiJS), each degrading gracefully.
+### 2. Tick all earned Validation boxes in `plans/phase-1-foundation.md`
+
+All boxes except the last two (`/audit-spec-drift` and `pnpm -w build on fresh clone`) should be `[x]`. Check them manually against the 100 passing tests.
+
+### 3. Run the drift audit
+
+```
+/audit-spec-drift
+```
+
+Fix any Phase-1 gaps it surfaces before closing the plan.
+
+### 4. Commit all the uncommitted work
+
+Stage and commit everything:
+- New source files (WorldClock, SimulationLoop, adventurers/, relationships/)
+- Updated tsconfig files, package.json, pnpm-lock.yaml
+- Updated index.ts and types.ts
+
+Use a descriptive commit message covering steps 3–5.
+
+### 5. Closeout commit for P1
+
+In the final commit before declaring done:
+- Flip `plans/phase-1-foundation.md` to `status: done`
+- Tick the remaining Validation boxes (`[x]`)
+- Populate the **Notes** and **Follow-ups** sections
+- Commit message: `chore(plans): mark phase-1-foundation done`
+
+### 6. Verify specops shows P2 as next
+
+```powershell
+node C:\Users\mdraa\.claude\skills\specops\scripts\specops.mjs next --dir plans
+```
+
+Should show `phase-2-autonomous-world` as the only ready plan.
+
+### 7. Begin P2 — The Autonomous World
+
+Specs to implement (read each before coding):
+- `specs/behaviors/event-bus.md` — build first; everything else emits through it
+- `specs/behaviors/quest-system.md`
+- `specs/behaviors/combat-resolution.md`
+- `specs/behaviors/social-events.md`
+- `specs/behaviors/departure-system.md`
+
+Mark `plans/phase-2-autonomous-world.md` `status: in-progress` before starting.
+Use `/tdd` for each behavior: one red test → minimum code to pass → repeat.
+
+---
+
+## Guardrails (enforced in CLAUDE.md)
+
+- No `Math.random()` anywhere in `packages/core`. All randomness through `SimulationContext.rng`.
+- Tests assert **probability shifts**, not rolled outcomes.
+- `tsc --noEmit` + `svelte-check` both pass before any Svelte edit is verified.
+- Svelte 5: `export const store = $state({...})` — never `export let x = $state(...)`.
+
+## Suggested skills
+
+- `/specops` — before any spec or plan work; use `specops next` / `dag` to query the DAG
+- `/tdd` — for each P2 behavior (one red test, minimum code, green, repeat)

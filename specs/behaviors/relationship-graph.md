@@ -33,7 +33,7 @@ An edge is created with `strength: 0, type: STRANGER` the first time two adventu
 | `FRIEND` | +40 to +69 |
 | `TRUSTED_COMPANION` | +70 to +100 |
 
-Type is derived from strength on read — it is not stored independently. Computing type from strength is idempotent.
+`type` is stored on the edge and re-derived on every write via `strengthToType(strength)`. This keeps it immediately readable without a separate lookup. `strengthToType` is idempotent — re-deriving from the same strength always yields the same type.
 
 ### Strength shifts
 
@@ -71,6 +71,8 @@ Threshold events carry: `{ adventurerId1, adventurerId2, newType, priorType, str
 They are consumed by the event bus (see `behaviors/event-bus.md`) and rendered to the event feed.
 
 ### Long-separation decay
+
+The simulation context carries `lastSharedActivity: LastSharedActivity` (keyed by sorted pair id `"A-B"`), updated by the quest and social event systems when two adventurers share an activity.
 
 Applies at each day tick to edges where neither adventurer has been on a shared quest, social event, or interaction in the past 14 days:
 - Decay: −1 per day until strength reaches 0 (no decay below 0 from separation alone — enemies do not become friends through distance).

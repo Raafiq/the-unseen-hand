@@ -1,5 +1,5 @@
 ---
-status: planned
+status: in-progress
 depends: [phase-1-foundation]
 specs:
   - specs/behaviors/event-bus.md

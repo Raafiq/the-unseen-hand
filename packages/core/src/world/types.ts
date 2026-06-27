@@ -211,8 +211,80 @@ export type EventBase = {
   renderedText: string;
 };
 
-// Minimal discriminated union for now; each subtype is expanded in Phase 2.
-export type SimulationEvent = EventBase & { kind: string };
+export type SocialEvent = EventBase & {
+  kind: 'SOCIAL';
+  subtype: 'POSITIVE_CHAT' | 'ARGUMENT' | 'BREAKTHROUGH' | 'SILENT_DISTANCE';
+  participantIds: [AdventurerId, AdventurerId];
+  relationshipDelta: number;
+};
+
+export type CombatEvent = EventBase & {
+  kind: 'COMBAT';
+  subtype: 'BEAT_LOG' | 'QUEST_RESOLVED';
+  questId: QuestId;
+  involvedIds: AdventurerId[];
+};
+
+export type QuestEvent = EventBase & {
+  kind: 'QUEST';
+  subtype: 'STARTED' | 'COMPLETED' | 'FAILED' | 'EXPIRED' | 'DROUGHT';
+  questId: QuestId;
+  partyIds: AdventurerId[];
+};
+
+export type LifecycleEvent = EventBase & {
+  kind: 'LIFECYCLE';
+  subtype:
+    | 'ADVENTURER_DIED'
+    | 'ADVENTURER_DEPARTED'
+    | 'FRIENDSHIP_FORMED'
+    | 'TRUSTED_COMPANION_BOND_FORMED'
+    | 'BOND_BROKEN'
+    | 'RIVALRY_DEEPENED'
+    | 'RECONCILIATION'
+    | 'GOAL_MILESTONE'
+    | 'GOAL_ACHIEVED';
+  involvedIds: AdventurerId[];
+};
+
+export type WorldEvent = EventBase & {
+  kind: 'WORLD';
+  subtype:
+    | 'STORM'
+    | 'PLAGUE'
+    | 'WINDFALL'
+    | 'MONSTER_SURGE'
+    | 'TRAVELLING_MERCHANT'
+    | 'RUMOUR'
+    | 'QUEST_DROUGHT'
+    | 'REGION_UNLOCKED'
+    | 'INTERNAL_ERROR';
+  regionId?: RegionId;
+};
+
+export type DecisionMomentEvent = EventBase & {
+  kind: 'DECISION_MOMENT';
+  decisionId: string;
+  situationText: string;
+  options: DecisionOption[];
+  expiresAt: number;
+};
+
+export type DivineInterventionEvent = EventBase & {
+  kind: 'DIVINE';
+  subtype: 'TOUCH' | 'SEED_EVENT' | 'SHIFT_DIFFICULTY' | 'OPTION_CHOSEN' | 'DI_GAINED' | 'DI_SPENT';
+  diDelta: number;
+  targetId?: string;
+};
+
+export type SimulationEvent =
+  | SocialEvent
+  | CombatEvent
+  | QuestEvent
+  | LifecycleEvent
+  | WorldEvent
+  | DecisionMomentEvent
+  | DivineInterventionEvent;
 
 // ---------------------------------------------------------------------------
 // Decision moments

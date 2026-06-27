@@ -34,3 +34,9 @@ export {
 export type { ThresholdEvent, ThresholdEventType } from './relationships/graph.js';
 export { moodSubscriber } from './adventurers/mood.js';
 export { relationshipDecaySubscriber } from './relationships/graph.js';
+
+// Event bus
+export { emitEvent } from './events/eventBus.js';
+export type { SimulationEventInput, SocialEventInput, CombatEventInput, QuestEventInput,
+  LifecycleEventInput, WorldEventInput, DecisionMomentEventInput, DivineInterventionEventInput,
+} from './events/eventBus.js';

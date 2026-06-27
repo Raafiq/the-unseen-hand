@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 depends: [phase-1-foundation]
 specs:
   - specs/behaviors/event-bus.md
@@ -49,18 +49,18 @@ Build in TDD order:
 
 ## Validation
 
-- [ ] Every `SimulationEvent` has a non-empty `renderedText`.
-- [ ] Template engine produces ≥3 distinct variants per `BeatAction`.
-- [ ] Quest board seeded each week with the correct number of quests per spec.
-- [ ] Autonomous party selection uses `questVolunteerWeight` from personality system.
-- [ ] `resolveQuest` probability composition tests assert the shifted probability value, not the rolled outcome.
-- [ ] Beat sequence is consistent with the pre-rolled quest outcome (success beats differ from failure beats).
-- [ ] `personalityNote` attached when dominant axis < 35 or > 65 caused the action.
-- [ ] Daily social interaction roll fires and updates relationship edges.
-- [ ] Social outcome effects applied to adventurer mood and relationship graph.
-- [ ] Adventurer with `mood < 10` for 3+ days enters departure roll.
-- [ ] Running the headless sim for 30 days produces a non-empty typed event stream with zero empty `renderedText` entries.
-- [ ] `/audit-spec-drift` shows no Phase-2 spec gap.
+- [x] Every `SimulationEvent` has a non-empty `renderedText`.
+- [x] Template engine produces ≥3 distinct variants per `BeatAction`.
+- [x] Quest board seeded each week with the correct number of quests per spec.
+- [x] Autonomous party selection uses `questVolunteerWeight` from personality system.
+- [x] `resolveQuest` probability composition tests assert the shifted probability value, not the rolled outcome.
+- [x] Beat sequence is consistent with the pre-rolled quest outcome (success beats differ from failure beats).
+- [x] `personalityNote` attached when dominant axis < 35 or > 65 caused the action.
+- [x] Daily social interaction roll fires and updates relationship edges.
+- [x] Social outcome effects applied to adventurer mood and relationship graph.
+- [x] Adventurer with `mood < 10` for 3+ days enters departure roll.
+- [x] Running the headless sim for 30 days produces a non-empty typed event stream with zero empty `renderedText` entries.
+- [ ] `/audit-spec-drift` shows no Phase-2 spec gap. (deferred — run post-P2)
 
 ## Risks / unknowns
 
@@ -72,8 +72,22 @@ Build in TDD order:
 
 ## Notes
 
-(Populated at closeout.)
+All five P2 systems implemented via TDD. 208 tests, 14 test files, tsc --noEmit clean.
+Key decisions:
+- `socialEventSubscriber` requires an existing relationship edge (prior shared quest) before
+  interaction can fire — prevents total strangers from having BREAKTHROUGH moments.
+- `computeDepartureProbability` returns 0 for despairStreak < 3 (explicit guard) so the
+  subscriber check and the probability function stay in sync.
+- `socialResolver` overrides `emitEvent`-generated `renderedText` with richer templates;
+  departure system does the same with contextual reason text.
+- `SimulationLoop` auto-registers all four core subscribers in order:
+  mood → relationshipDecay → socialEvent → departure.
 
 ## Follow-ups
 
-(Populated at closeout.)
+- Run `/audit-spec-drift` to find any P2 gaps before starting P3.
+- Quest board currently has no UI integration; P3 will expose it via game-client.
+- `despairStreak` incremented by `moodSubscriber` but the spec also mentions a DI-rescue
+  moment (DecisionMomentEvent) that can interrupt departure — not yet implemented.
+- Social outcome SILENT_DISTANCE currently does not update `lastSharedActivity`;
+  consider whether avoidance should reset or simply not update it.

@@ -38,6 +38,17 @@ export { relationshipDecaySubscriber } from './relationships/graph.js';
 // Event bus
 export { emitEvent } from './events/eventBus.js';
 
+// Social events + departure
+export {
+  computeInteractionProbability,
+  computeOutcomeWeights,
+  socialEventSubscriber,
+} from './events/socialResolver.js';
+export {
+  computeDepartureProbability,
+  departureSubscriber,
+} from './adventurers/departureSystem.js';
+
 // Combat resolution
 export { generateBeats, selectBeatActionWeights, renderBeat } from './combat/beatGenerator.js';
 

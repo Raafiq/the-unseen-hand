@@ -10,6 +10,8 @@ import type { SimulationContext } from './types.js';
 import { WorldClock, type SpeedMultiplier } from './WorldClock.js';
 import { moodSubscriber } from '../adventurers/mood.js';
 import { relationshipDecaySubscriber } from '../relationships/graph.js';
+import { socialEventSubscriber } from '../events/socialResolver.js';
+import { departureSubscriber } from '../adventurers/departureSystem.js';
 
 export type TickSubscriber = (ctx: SimulationContext, delta: number) => SimulationContext;
 
@@ -34,8 +36,13 @@ export class SimulationLoop {
     this._ctx = initialCtx;
     this._clock = new WorldClock();
     this._clock.onTick(() => this._tick());
-    // Core Phase 1 subscribers in spec-mandated order
-    this._subscribers.push(moodSubscriber, relationshipDecaySubscriber);
+    // Core subscribers in spec-mandated order
+    this._subscribers.push(
+      moodSubscriber,
+      relationshipDecaySubscriber,
+      socialEventSubscriber,
+      departureSubscriber,
+    );
   }
 
   get context(): SimulationContext {

@@ -38,6 +38,9 @@ export { relationshipDecaySubscriber } from './relationships/graph.js';
 // Event bus
 export { emitEvent } from './events/eventBus.js';
 
+// Combat resolution
+export { generateBeats, selectBeatActionWeights, renderBeat } from './combat/beatGenerator.js';
+
 // Quest system
 export {
   computeQuestProbability,

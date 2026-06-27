@@ -100,6 +100,7 @@ export type Adventurer = {
   moodFactors: MoodFactor[];
   state: AdventurerState;
   history: HistoryEvent[];
+  despairStreak: number; // consecutive day-ticks with mood < 10; resets to 0 when mood ≥ 10
   personalGoalProgress: GoalProgress;
   currentQuestId: QuestId | null;
 };
@@ -129,6 +130,9 @@ export type RelationshipEdge = {
 };
 
 export type RelationshipGraph = Map<AdventurerId, Map<AdventurerId, RelationshipEdge>>;
+
+/** Keyed by sorted pair id "A-B"; value is the tick of last shared activity. */
+export type LastSharedActivity = Record<string, number>;
 
 // ---------------------------------------------------------------------------
 // Quests
@@ -294,6 +298,7 @@ export type SimulationContext = {
   rng: SeededRNG;
   adventurers: Map<AdventurerId, Adventurer>;
   relationships: RelationshipGraph;
+  lastSharedActivity: LastSharedActivity; // updated by Phase 2 quest + social event systems
   questBoard: QuestBoard;
   eventLog: SimulationEvent[];
   pendingDecisions: DecisionMoment[];

@@ -28,6 +28,7 @@ export function createSimulationContext(seed: string): SimulationContext {
     rng: new SeededRNG(seed),
     adventurers: new Map(),
     relationships: new Map(),
+    lastSharedActivity: {},
     questBoard: { available: [], active: [] },
     eventLog: [],
     pendingDecisions: [],

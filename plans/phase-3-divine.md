@@ -1,5 +1,5 @@
 ---
-status: planned
+status: done
 depends: [phase-2-autonomous-world]
 specs:
   - specs/behaviors/divine-influence.md
@@ -42,17 +42,17 @@ Build in TDD order:
 
 ## Validation
 
-- [ ] `applyDivineShift` returns a clamped float; the simulation still rolls against it (never returns a guaranteed outcome).
-- [ ] Tests assert the shifted probability value, not the rolled result.
-- [ ] At most 3 `DecisionMoment` entries active in `pendingDecisions` at any time.
-- [ ] An expired decision moment auto-resolves to option 0 and grants the specified DI reward.
-- [ ] `Simulation.dispatch('CHOOSE_OPTION', ...)` with insufficient DI returns `{ok: false, error}`.
-- [ ] `Simulation.dispatch('DIVINE_TOUCH', ...)` deducts DI before applying effect.
-- [ ] Passive DI trickle increments `divineInfluence` each tick per spec rate.
-- [ ] DI cannot exceed 100 (clamped on trickle and burst).
-- [ ] All DI changes recorded as `DivineInterventionEvent` on the event log.
-- [ ] Letting a decision moment expire grants the correct DI reward per spec.
-- [ ] `/audit-spec-drift` shows no Phase-3 spec gap.
+- [x] `applyDivineShift` returns a clamped float; the simulation still rolls against it (never returns a guaranteed outcome).
+- [x] Tests assert the shifted probability value, not the rolled result.
+- [x] At most 3 `DecisionMoment` entries active in `pendingDecisions` at any time.
+- [x] An expired decision moment auto-resolves to option 0 and grants the specified DI reward.
+- [x] `dispatch('CHOOSE_OPTION', ...)` with insufficient DI returns `{ok: false, error: 'INSUFFICIENT_DI'}`.
+- [x] `dispatch('DIVINE_TOUCH', ...)` deducts DI before applying effect.
+- [x] Passive DI trickle increments `divineInfluence` each tick per spec rate.
+- [x] DI cannot exceed 100 (clamped on trickle and burst).
+- [x] All DI changes recorded as `DivineInterventionEvent` on the event log.
+- [x] Letting a decision moment expire grants the correct DI reward per spec.
+- [ ] `/audit-spec-drift` shows no Phase-3 spec gap. (run post-merge)
 
 ## Risks / unknowns
 
@@ -64,8 +64,14 @@ Build in TDD order:
 
 ## Notes
 
-(Populated at closeout.)
+Built TDD via `/tdd` skill, one failing test per behavior. Added `kind: DecisionMomentKind` to the
+`DecisionMoment` type (required for priority ordering and DI rewards on expiry — spec type definition
+was missing this field). Added `LUCK_CURSE` and `MARK_FOR_DEATH` to `HistoryEventKind` to track divine
+touch cooldowns. 244 tests, 17 test files, `tsc --noEmit` clean.
 
 ## Follow-ups
 
-(Populated at closeout.)
+- **Issue:** `DecisionMoment.kind` field was missing from spec type definition — update `specs/behaviors/decision-moments.md` to include it.
+- **Deferred to phase-4-scenario:** Detection of scenario-critical and scenario-goal decision moments (requires scenario engine from P4).
+- **Deferred to phase-4-scenario:** PersonalGoal imminent detection.
+- **Tracked as:** `/audit-spec-drift` to be run after P3 merge to confirm no remaining gap.

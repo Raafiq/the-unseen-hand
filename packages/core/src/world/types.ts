@@ -73,7 +73,9 @@ export type HistoryEventKind =
   | 'FIRST_KILL'
   | 'NEAR_DEATH'
   | 'QUEST_TRIUMPH'
-  | 'GOAL_ACHIEVED';
+  | 'GOAL_ACHIEVED'
+  | 'LUCK_CURSE'
+  | 'MARK_FOR_DEATH';
 
 export type HistoryEvent = {
   tick: number;
@@ -298,8 +300,18 @@ export type DecisionOption = {
   narrativeDistanceLabel: 'LOW' | 'MODERATE' | 'EXTREME';
 };
 
+export type DecisionMomentKind =
+  | 'DEATH_IMMINENT'
+  | 'RELATIONSHIP_COLLAPSE'
+  | 'DEPARTURE'
+  | 'SCENARIO_CRITICAL'
+  | 'SCENARIO_GOAL'
+  | 'PARTY_SELECTION'
+  | 'OTHER';
+
 export type DecisionMoment = {
   id: string;
+  kind: DecisionMomentKind;
   tick: number;
   situationText: string;
   options: DecisionOption[];

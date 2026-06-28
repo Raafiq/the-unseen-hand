@@ -12,6 +12,8 @@ import { moodSubscriber } from '../adventurers/mood.js';
 import { relationshipDecaySubscriber } from '../relationships/graph.js';
 import { socialEventSubscriber } from '../events/socialResolver.js';
 import { departureSubscriber } from '../adventurers/departureSystem.js';
+import { diTrickleSubscriber } from '../divine/DivineInfluence.js';
+import { decisionMomentSubscriber } from '../events/DecisionMomentDetector.js';
 
 export type TickSubscriber = (ctx: SimulationContext, delta: number) => SimulationContext;
 
@@ -42,6 +44,8 @@ export class SimulationLoop {
       relationshipDecaySubscriber,
       socialEventSubscriber,
       departureSubscriber,
+      diTrickleSubscriber,
+      decisionMomentSubscriber,
     );
   }
 

@@ -52,6 +52,17 @@ export {
 // Combat resolution
 export { generateBeats, selectBeatActionWeights, renderBeat } from './combat/beatGenerator.js';
 
+// Divine Tools (dispatch)
+export { dispatch } from './divine/DivineTools.js';
+export type { DispatchCommand, DispatchResult } from './divine/DivineTools.js';
+
+// Decision Moment Detector
+export { decisionMomentSubscriber } from './events/DecisionMomentDetector.js';
+
+// Divine Influence
+export { diTrickleSubscriber, grantDI } from './divine/DivineInfluence.js';
+export { narrativeDistance, applyDivineShift } from './divine/ProbabilityShifter.js';
+
 // Quest system
 export {
   computeQuestProbability,

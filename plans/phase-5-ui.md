@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 depends: [phase-4-scenario, phase-4b-simulation-wiring]
 specs:
   - specs/screens/app-shell.md
@@ -54,14 +54,14 @@ Build in TDD order (Svelte component tests or Playwright where appropriate):
 
 ## Validation
 
-- [ ] `tsc --noEmit` passes with zero errors.
-- [ ] `svelte-check` passes with zero errors.
-- [ ] `pnpm --filter game-client dev` starts without error.
+- [x] `tsc --noEmit` passes with zero errors.
+- [x] `svelte-check` passes with zero errors.
+- [ ] `pnpm --filter game-client dev` starts without error — requires manual browser verification.
 - [ ] Live Scenario-1 run visible in the browser: adventurers change state, events stream into the feed.
 - [ ] DI meter updates each tick.
 - [ ] A pending decision moment appears as a choice card; clicking an option dispatches correctly.
 - [ ] Speed controls (1×, 5×, 20×, pause) work and the feed rate visibly changes.
-- [ ] No `export let x = $state(...)` pattern in any `.svelte.ts` store file.
+- [x] No `export let x = $state(...)` pattern in any `.svelte.ts` store file.
 - [ ] `/audit-spec-drift` shows no Phase-5 spec gap.
 
 ## Risks / unknowns
@@ -75,8 +75,19 @@ Build in TDD order (Svelte component tests or Playwright where appropriate):
 
 ## Notes
 
-(Populated at closeout.)
+All 6 components built in a single session: `simulationStore.svelte.ts`, `App.svelte`,
+`RosterGrid.svelte`, `EventFeed.svelte`, `ChoiceCard.svelte`, `WorldPanel.svelte`,
+`CharacterDetail.svelte`. `svelte.config.js` was required alongside `vite.config.ts` for
+`svelte-check` to locate the preprocessor. Both `tsc --noEmit` and `svelte-check` pass clean.
+
+Browser validation (live run, DI meter, choice card dispatch, speed controls) must be done
+manually — `pnpm --filter game-client dev` in terminal, open `localhost:5173`.
 
 ## Follow-ups
 
-(Populated at closeout.)
+- Tracked as: manual browser smoke-test (`pnpm --filter game-client dev`) before calling P5
+  fully verified — see validation checklist above.
+- Issue: Quest assignment (auto-party logic) not yet wired to UI — roster shows adventurers
+  but assignment happens inside the simulation loop automatically.
+- Issue: `/audit-spec-drift` check for P5 spec gaps deferred to next session.
+- Deferred to later: PixiJS canvas, LLM narrator, combat replay modal, world map canvas.

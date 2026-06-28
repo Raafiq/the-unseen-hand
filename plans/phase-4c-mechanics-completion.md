@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 depends: [phase-4b-simulation-wiring]
 specs:
   - specs/behaviors/divine-influence.md
@@ -165,16 +165,16 @@ occurrences of `despairingDayCount` with `despairStreak`.
 
 ## Validation
 
-- [ ] `chooseOption` writes to `ctx.pendingShifts`; `questResolutionSubscriber` reads and clears it; test asserts that choosing a +0.20 shift option raises `resolveQuest`'s effective success probability by ~0.20
-- [ ] HEROISM adventurer completing a dungeon quest has `DUNGEON_SUCCESS` in their `personalGoalProgress.milestones`; a `GOAL_MILESTONE` lifecycle event appears in the event log
-- [ ] WEALTH adventurer receives `GOLD_EARNED:N` milestone on quest success
-- [ ] BELONGING adventurer can still complete goal (regression: graph-based check still fires)
-- [ ] `grantDI` is called on quest success (+5); `ctx.divineInfluence` increases and a `DI_GAINED` event is emitted
-- [ ] `grantDI` is called when a relationship reaches FRIENDSHIP_FORMED threshold (+8)
-- [ ] `applyGoalCompletion` and `scenarioEvaluatorSubscriber` no longer directly mutate `divineInfluence`; DI changes appear as `DI_GAINED` events
-- [ ] QUEST_DROUGHT fires when `available` board is empty for 72 ticks even if adventurers are on active quests
-- [ ] `tsc --noEmit` passes with zero errors
-- [ ] All existing 367 tests continue to pass; new tests added for each bullet above
+- [x] `chooseOption` writes to `ctx.pendingShifts`; `questResolutionSubscriber` reads and clears it; test asserts that choosing a +0.20 shift option raises `resolveQuest`'s effective success probability by ~0.20
+- [x] HEROISM adventurer completing a dungeon quest has `DUNGEON_SUCCESS` in their `personalGoalProgress.milestones`; a `GOAL_MILESTONE` lifecycle event appears in the event log
+- [x] WEALTH adventurer receives `GOLD_EARNED:N` milestone on quest success
+- [x] BELONGING adventurer can still complete goal (regression: graph-based check still fires)
+- [x] `grantDI` is called on quest success (+5); `ctx.divineInfluence` increases and a `DI_GAINED` event is emitted
+- [x] `grantDI` is called when a relationship reaches FRIENDSHIP_FORMED threshold (+8)
+- [x] `applyGoalCompletion` and `scenarioEvaluatorSubscriber` no longer directly mutate `divineInfluence`; DI changes appear as `DI_GAINED` events
+- [x] QUEST_DROUGHT fires when `available` board is empty for 72 ticks even if adventurers are on active quests
+- [x] `tsc --noEmit` passes with zero errors
+- [x] All existing tests continue to pass; 15 new P4c tests added (382 total passing)
 
 ## Risks / unknowns
 
@@ -193,8 +193,18 @@ occurrences of `despairingDayCount` with `despairStreak`.
 
 ## Notes
 
-(Populated at closeout.)
+Implemented in one session alongside P5 UI. Key non-obvious decisions:
+- `pendingShifts` is keyed by adventurer ID (not quest ID) so the shift travels from the
+  `CHOOSE_OPTION` dispatch to whichever quest that adventurer resolves next.
+- HEROISM milestone deduplication was initially guarded with `!milestones.includes(...)` —
+  removed because every dungeon success should add a new milestone (accumulation semantics).
+- `GOLD_EARNED:N` encodes the quest reward in the milestone string, not running total.
 
 ## Follow-ups
 
-(Populated at closeout.)
+- Issue: PEACE_STREAK_30 daily tick subscriber not yet implemented — PEACE goal milestones
+  still unwritten. Deferred to Phase 4d.
+- Issue: Full decision-moment detection suite (DEATH_IMMINENT, DEPARTURE, SCENARIO_CRITICAL,
+  PARTY_SELECTION, SCENARIO_GOAL) deferred to Phase 4d.
+- Deferred to plan phase-4d: relationship deltas for co-quest failure, DEFEND_ALLY, HESITATE
+  beats; social event 7-day idle proximity; divine tool effect application; mood factors.

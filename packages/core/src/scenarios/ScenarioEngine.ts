@@ -8,6 +8,7 @@
  */
 import type { SimulationContext, Scenario } from '../world/types.js';
 import { emitEvent } from '../events/eventBus.js';
+import { updateReputation } from '../world/WorldExpansion.js';
 
 // ---------------------------------------------------------------------------
 // Registry
@@ -120,6 +121,7 @@ export function scenarioEvaluatorSubscriber(
         { ...next, scenario, divineInfluence: Math.min(100, next.divineInfluence + gDef.diReward) },
         { kind: 'WORLD', subtype: 'SCENARIO_GOAL_ACHIEVED', goalId: gDef.id },
       );
+      next = { ...next, reputation: updateReputation(next.reputation, { event: 'SCENARIO_OBJECTIVE' }) };
       scenario = next.scenario!;
     }
   }

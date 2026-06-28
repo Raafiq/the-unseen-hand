@@ -1,5 +1,5 @@
 ---
-status: planned
+status: done
 depends: [phase-4-scenario]
 specs:
   - specs/behaviors/simulation-loop.md
@@ -205,8 +205,15 @@ verify social fires before departure by checking event log sequence.
 
 ## Notes
 
-(Populated at closeout.)
+All 8 steps implemented in one session (2026-06-28). Key decisions:
+- `Quest.startedAt?: number` added to types to enable resolution subscriber timing
+- `questExpirySubscriber` converted to factory (`createQuestExpirySubscriber`) to fix closure-based drought tracker; singleton `questExpirySubscriber` exported for backward compat
+- Mood factor values fixed directly in `resolveQuest` (not a separate constants file)
+- `updateReputation` wired from 4 call sites: questResolutionSubscriber, socialEventSubscriber (TRUSTED_COMPANION_BOND_FORMED), applyGoalCompletion, scenarioEvaluatorSubscriber
+- All 18 new P4b wiring tests use structural assertions (state checks, event presence), not rolled outcomes
 
 ## Follow-ups
 
-(Populated at closeout.)
+- `/audit-spec-drift` re-run recommended before starting P5 to confirm zero remaining gaps
+- `personalGoalSubscriber` wires milestone CHECKING but not milestone RECORDING for DUNGEON_SUCCESS/RESCUE_SUCCESS/GOLD_EARNED; these need to be appended in `questResolutionSubscriber` (HEROISM/WEALTH goals won't complete without them)
+- Adventurers with empty `moodFactors` have their mood recalculated to 0 on first day-tick — consider whether a baseline "CONTENT" factor should be seeded in `createAdventurer` (or in scenario seeds)

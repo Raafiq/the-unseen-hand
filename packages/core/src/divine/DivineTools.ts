@@ -88,7 +88,7 @@ function divineTouch(ctx: SimulationContext, cmd: Extract<DispatchCommand, { typ
   if (cmd.effect === 'MOOD_LIFT') {
     const updatedAdv = {
       ...adv,
-      moodFactors: [...adv.moodFactors, { id: 'divine_touch', label: 'Divine Touch', value: 25, decayRate: 0.20 }],
+      moodFactors: [...adv.moodFactors, { id: 'DIVINE_TOUCH', label: 'Divine Touch', value: 25, decayRate: 0.20 }],
     };
     next = { ...next, adventurers: new Map(next.adventurers).set(adv.id, updatedAdv) };
   } else if (cmd.effect === 'LUCK_CURSE' || cmd.effect === 'MARK_FOR_DEATH') {

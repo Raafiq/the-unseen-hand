@@ -6,7 +6,7 @@ _Last updated: 2026-06-28. Resume from this file at the start of the next sessio
 
 ## Current status
 
-**Phase 4 complete. Phase 4b (simulation wiring) is next — must land before P5 UI.**
+**Phase 4b complete. P5 UI is next.**
 
 | Phase | Plan file | Status |
 |---|---|---|
@@ -14,63 +14,39 @@ _Last updated: 2026-06-28. Resume from this file at the start of the next sessio
 | P2 — Autonomous World | `plans/phase-2-autonomous-world.md` | done |
 | P3 — Divine Intervention | `plans/phase-3-divine.md` | done |
 | P4 — Scenario Engine | `plans/phase-4-scenario.md` | done |
-| **P4b — Simulation Wiring** | **`plans/phase-4b-simulation-wiring.md`** | **planned (ready)** |
-| P5 — UI | `plans/phase-5-ui.md` | planned (blocked on P4b) |
+| P4b — Simulation Wiring | `plans/phase-4b-simulation-wiring.md` | **done** |
+| **P5 — UI** | **`plans/phase-5-ui.md`** | **planned (ready)** |
 | P6 — Narrator | `plans/phase-6-narrator.md` | planned (blocked on P5) |
 
-**Test baseline:** 349 tests, 23 test files, `tsc --noEmit` clean.
+**Test baseline:** 367 tests, 24 test files, `tsc --noEmit` clean.
 
-Last commit: `bc55961 feat(core): P4 scenario engine — scenario eval, Failing Guild, personal goals, history layer, world expansion`
-
----
-
-## What happened this session
-
-The `/audit-spec-drift` run revealed the autonomous world loop is **essentially broken** — quests never execute because the quest subscribers were never registered in `SimulationLoop`. This cascades into treasury never growing, reputation never updating, and history events never recording.
-
-A new plan `plans/phase-4b-simulation-wiring.md` was authored to fix all audit findings before P5 UI starts. `phase-5-ui` now `depends: [phase-4-scenario, phase-4b-simulation-wiring]`.
+**⚠️ P4b changes are NOT yet committed.** Commit them before starting P5.
 
 ---
 
-## Urgent: simulation is non-functional
+## What happened last session
 
-### Critical fixes needed (in dependency order)
+Phase 4b (simulation wiring) completed in full. All of the following was implemented and tested:
 
-1. **Register quest subscribers in `SimulationLoop`** — `questBoardSeedingSubscriber`, `questExpirySubscriber`, `partySelectionSubscriber` exist in `src/quests/questSystem.ts` but are not in the loop's constructor.
+- Quest subscribers registered in `SimulationLoop` in spec-mandated order (mood → relationships → quest seeding → quest expiry → party selection → quest resolution → social → personal goals → decision moments → departure → DI trickle → scenario → world expansion)
+- `questResolutionSubscriber` added: resolves active quests when `tick >= startedAt + duration`; credits treasury; emits `BEAT_LOG`; records `FIRST_KILL` / `WITNESSED_DEATH` / `NEAR_DEATH` / `SAVED_BY` history events; updates reputation
+- `personalGoalSubscriber` added; `applyGoalCompletion` now also calls `updateReputation`
+- `updateReputation` wired from 4 call sites: quest resolution, TRUSTED_COMPANION bond formed, goal achieved, scenario objective
+- QUEST_DROUGHT tracker fixed (closure-based `firstEmptyTick`, factory pattern via `createQuestExpirySubscriber`)
+- Spec-value fixes: quest failure mood `−20`, success decay `0.15`, social decay `0.20`/`0.25`, `fleeThreshold(0) = 0.80`, `DIVINE_TOUCH` id uppercase, social label strings readable
+- Subscriber order fixed: social slot 8, departure slot 10
+- `specs/data-model.md` and `specs/behaviors/event-bus.md` updated with all previously undocumented types
+- 18 new tests in `tests/p4b-wiring.test.ts`
 
-2. **Add quest resolution subscriber** — no subscriber calls `resolveQuest` when `tick >= quest.startedAt + quest.duration`. Adventurers on quests are stuck there forever. Needs to: call `resolveQuest`, apply `QuestOutcomeResult.loot` to `ctx.treasury`, fire `CombatEvent('BEAT_LOG')` with beats from `generateBeats`.
+---
 
-3. **Wire `updateReputation`** — called from nowhere. Hook into: quest outcome resolution (success by difficulty, failure, adventurer death), social threshold events (BOND_FORMED → +5), personal goals (GOAL_ACHIEVED → +10), scenario evaluator (SCENARIO_OBJECTIVE → +50).
+## Known gaps (not yet blocking P5)
 
-4. **Add personal goal subscriber** — `checkGoalCompletion`/`applyGoalCompletion` never called from any tick subscriber.
+1. **Goal milestone recording incomplete** — `DUNGEON_SUCCESS`, `RESCUE_SUCCESS`, `GOLD_EARNED:N` milestones are never appended to `personalGoalProgress.milestones`. HEROISM/WEALTH goals need these. Wire milestone appends into `questResolutionSubscriber`.
 
-5. **Wire goal milestone recording** — `DUNGEON_SUCCESS`, `RESCUE_SUCCESS`, `GOLD_EARNED:N` etc. are never appended to `personalGoalProgress.milestones`. Only BELONGING works (reads relationships directly).
+2. **Adventurer baseline mood** — freshly created adventurers have empty `moodFactors`, so after the first day-tick `recalculateMood([])` → mood = 0 (DESPAIRING). Scenario seeds should include a non-decaying baseline mood factor.
 
-### High priority (broken but not blocking the loop)
-
-6. **Wire `appendHistoryEvent`** — history events (`WITNESSED_DEATH`, `FIRST_KILL`, `NEAR_DEATH`, `SAVED_BY`) never recorded; `contextualModifier` always sees empty history.
-
-7. **Call `generateBeats` from `resolveQuest`** — spec requires `QuestOutcome.beats`; currently beats are never generated during resolution.
-
-8. **Fix QUEST_DROUGHT tracker** — first-empty-tick is set to current tick, so drought never fires.
-
-### Spec-value conflicts to fix
-
-9. Mood factor wrong values: quest failure `−10` should be `−20`; decay rates off for quest success (`0.1` → `0.15`) and social events (`0.1` → `0.20`/`0.25`).
-10. `fleeThreshold(courage=0)` returns `0.65` — spec requires `≥ 0.8`.
-11. Subscriber order wrong — social fires before departure; spec: social (slot 8) → departure (slot 10).
-12. Social mood factor labels are constant names (`SOCIAL_POSITIVE`) not readable strings.
-13. `DIVINE_TOUCH` mood factor id is lowercase (`divine_touch`) — should be `'DIVINE_TOUCH'`.
-
-### Spec updates needed (undocumented implementations)
-
-These are load-bearing types/fields in code not yet in specs — update `specs/data-model.md` and `specs/behaviors/event-bus.md`:
-- `HistoryEventKind`: add `LUCK_CURSE`, `MARK_FOR_DEATH`, `SEND_DREAM`
-- `DecisionMoment.kind: DecisionMomentKind`
-- `ScenarioState.treasuryNegativeSince: number | null`
-- `BehaviourContext`, `EnemyArchetype` types
-- `WorldEvent` subtypes: `SCENARIO_GOAL_ACHIEVED`, `SCENARIO_COMPLETE`, `SCENARIO_FAILED`, `goalId`
-- `ReputationEvent` discriminated union (in `world-expansion.md`)
+These are deferred and do not block P5.
 
 ---
 
@@ -81,33 +57,32 @@ world/
   SeededRNG.ts               - mulberry32 PRNG; all randomness via ctx.rng
   SimulationContext.ts       - createSimulationContext; defaults: DI=50, treasury=0, reputation=0
   WorldClock.ts              - real-time interval; onTick, currentSpeed
-  SimulationLoop.ts          - ← BROKEN: quest subscribers not registered here
+  SimulationLoop.ts          - subscriber registry (fully wired as of P4b)
   WorldExpansion.ts          - createStartingRegions, worldExpansionSubscriber, updateReputation
   types.ts                   - ALL canonical types
 
 adventurers/
-  personality.ts             - fleeThreshold (conflict at courage=0), questVolunteerWeight, etc.
+  personality.ts             - fleeThreshold, questVolunteerWeight
   stateMachine.ts            - transitionState
   mood.ts                    - upsertMoodFactor, applyDayTickMood, moodSubscriber
-  departureSystem.ts         - departureSubscriber (needs decision moment before retiring)
-  PersonalGoals.ts           - checkGoalCompletion, applyGoalCompletion (← never called from loop)
-  HistoryLayer.ts            - contextualModifier (pure), appendHistoryEvent (← never called)
+  departureSystem.ts         - departureSubscriber
+  PersonalGoals.ts           - checkGoalCompletion, applyGoalCompletion, personalGoalSubscriber
+  HistoryLayer.ts            - contextualModifier (pure), appendHistoryEvent
 
 relationships/
-  graph.ts                   - applyStrengthShift, detectThresholdEvents, etc.
+  graph.ts                   - applyStrengthShift, detectThresholdEvents
 
 events/
   eventBus.ts                - emitEvent (typed union, template engine)
-  socialResolver.ts          - socialEventSubscriber (wrong subscriber order; label strings)
+  socialResolver.ts          - socialEventSubscriber
   DecisionMomentDetector.ts  - decisionMomentSubscriber
 
 quests/
-  questSystem.ts             - questBoardSeedingSubscriber, questExpirySubscriber,
-                               partySelectionSubscriber, resolveQuest
-                               (← none registered in SimulationLoop)
+  questSystem.ts             - questBoardSeedingSubscriber, createQuestExpirySubscriber,
+                               partySelectionSubscriber, resolveQuest, questResolutionSubscriber
 
 combat/
-  beatGenerator.ts           - generateBeats (← never called from resolveQuest)
+  beatGenerator.ts           - generateBeats (called from questResolutionSubscriber)
 
 divine/
   DivineInfluence.ts         - diTrickleSubscriber, grantDI
@@ -117,6 +92,25 @@ divine/
 scenarios/
   ScenarioEngine.ts          - registerScenario, scenarioEvaluatorSubscriber
   scenario1.ts               - createScenario1Context, SCENARIO_1_ID, S1_IDS
+```
+
+## SimulationLoop subscriber order (as of P4b)
+
+```
+1.  advanceTime (implicit pre-step)
+2.  moodSubscriber
+3.  relationshipDecaySubscriber
+4.  questBoardSeedingSubscriber       (weekly)
+5.  createQuestExpirySubscriber()     (daily + drought tracking)
+6.  partySelectionSubscriber          (daily)
+7.  questResolutionSubscriber         (every tick)
+8.  socialEventSubscriber             (daily)
+9.  personalGoalSubscriber            (every tick)
+10. decisionMomentSubscriber          (every tick)
+11. departureSubscriber               (daily)
+12. diTrickleSubscriber               (every tick)
+13. scenarioEvaluatorSubscriber       (every tick)
+14. worldExpansionSubscriber          (every tick)
 ```
 
 ---
@@ -129,11 +123,12 @@ scenarios/
 - **`tsc --noEmit` + `svelte-check` must both pass** before any Svelte edit is considered done
 - **`contextualModifier` is pure** — never stored on adventurer; always called on-demand
 - **`ScenarioState.treasuryNegativeSince`** — must initialize to `null`
+- **`questExpirySubscriber` singleton** is module-level; tests needing independent drought state must use `createQuestExpirySubscriber()` directly
 
 ---
 
 ## Suggested skills for next session
 
-1. **`/specops`** — read `plans/phase-4b-simulation-wiring.md`, mark it in-progress, begin Step 1 (spec updates for undocumented types)
-2. **`/tdd`** — for each of the 8 wiring steps; one failing test → minimum code → repeat
-3. **`/audit-spec-drift`** — re-run after all fixes to confirm zero critical gaps before P5
+1. **`/specops`** — read `plans/phase-5-ui.md`, mark it in-progress, begin P5 Svelte implementation
+2. **`/audit-spec-drift`** — optional re-run to confirm zero remaining wiring gaps before touching UI
+3. **`/tdd`** — for any new P5 Svelte component behavior that needs headless test coverage first

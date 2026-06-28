@@ -9,10 +9,12 @@ import type { PersonalityAxes, RelationshipEdge, Adventurer, Quest } from '../wo
 
 /** Probability that an adventurer attempts to flee when losing. */
 export function fleeThreshold(axes: PersonalityAxes): number {
-  // Piecewise per spec: courage ≥ 70 → 0.10; courage ≤ 30 → 0.65; linear between.
+  // Piecewise per spec: courage ≥ 70 → 0.10; courage = 0 → 0.80; courage = 30 → 0.65.
+  // Segment [0, 30]: linear 0.80 → 0.65; segment [30, 70]: linear 0.65 → 0.10.
   const c = axes.courage;
   if (c >= 70) return 0.10;
-  if (c <= 30) return 0.65;
+  if (c <= 0) return 0.80;
+  if (c <= 30) return 0.80 - (c / 30) * 0.15;
   return 0.65 - ((c - 30) / 40) * 0.55;
 }
 

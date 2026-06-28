@@ -18,6 +18,9 @@ import { transitionState } from '../adventurers/stateMachine.js';
 import { upsertMoodFactor } from '../adventurers/mood.js';
 import { questVolunteerWeight } from '../adventurers/personality.js';
 import { emitEvent } from '../events/eventBus.js';
+import { appendHistoryEvent } from '../adventurers/HistoryLayer.js';
+import { generateBeats } from '../combat/beatGenerator.js';
+import { updateReputation } from '../world/WorldExpansion.js';
 
 // ---------------------------------------------------------------------------
 // Probability composition
@@ -137,33 +140,45 @@ export function questBoardSeedingSubscriber(ctx: SimulationContext): SimulationC
 
 const DROUGHT_TICKS = 72; // 3 days
 
-export function questExpirySubscriber(ctx: SimulationContext): SimulationContext {
-  if (ctx.worldTime.hour !== 0) return ctx;
+/** Factory: creates a quest expiry subscriber with its own drought-tracking state. */
+export function createQuestExpirySubscriber() {
+  let firstEmptyTick: number | null = null;
 
-  const tick = ctx.worldTime.tick;
-  const { expired, remaining } = ctx.questBoard.available.reduce(
-    (acc, q) => {
-      if (q.status === 'AVAILABLE' && tick >= q.expiresAt) acc.expired.push(q);
-      else acc.remaining.push(q);
-      return acc;
-    },
-    { expired: [] as Quest[], remaining: [] as Quest[] },
-  );
+  return function questExpirySubscriber(ctx: SimulationContext): SimulationContext {
+    if (ctx.worldTime.hour !== 0) return ctx;
 
-  if (expired.length === 0) return ctx;
+    const tick = ctx.worldTime.tick;
+    const { expired, remaining } = ctx.questBoard.available.reduce(
+      (acc, q) => {
+        if (q.status === 'AVAILABLE' && tick >= q.expiresAt) acc.expired.push(q);
+        else acc.remaining.push(q);
+        return acc;
+      },
+      { expired: [] as Quest[], remaining: [] as Quest[] },
+    );
 
-  let next: SimulationContext = { ...ctx, questBoard: { ...ctx.questBoard, available: remaining } };
+    let next: SimulationContext = expired.length > 0
+      ? { ...ctx, questBoard: { ...ctx.questBoard, available: remaining } }
+      : ctx;
 
-  // Drought: if board empty for 3+ days, fire QUEST_DROUGHT
-  if (remaining.length === 0) {
-    const firstEmptyTick = ctx.worldTime.tick; // approximation; Phase 3 can track precisely
-    if (tick - firstEmptyTick >= DROUGHT_TICKS) {
-      next = emitEvent(next, { kind: 'WORLD', subtype: 'QUEST_DROUGHT' });
+    // Drought: board empty for DROUGHT_TICKS consecutive ticks
+    const activelyEmpty = remaining.length === 0 && next.questBoard.active.length === 0;
+    if (activelyEmpty) {
+      if (firstEmptyTick === null) firstEmptyTick = tick;
+      if (tick - firstEmptyTick >= DROUGHT_TICKS) {
+        next = emitEvent(next, { kind: 'WORLD', subtype: 'QUEST_DROUGHT' });
+        firstEmptyTick = null; // reset after firing
+      }
+    } else {
+      firstEmptyTick = null;
     }
-  }
 
-  return next;
+    return next;
+  };
 }
+
+/** Convenience singleton for use in SimulationLoop. */
+export const questExpirySubscriber = createQuestExpirySubscriber();
 
 // ---------------------------------------------------------------------------
 // Party selection subscriber (day tick)
@@ -235,7 +250,7 @@ export function partySelectionSubscriber(ctx: SimulationContext): SimulationCont
       ),
       active: [
         ...updatedCtx.questBoard.active,
-        { ...quest, assignedParty: partyIds, status: 'IN_PROGRESS' as const },
+        { ...quest, assignedParty: partyIds, status: 'IN_PROGRESS' as const, startedAt: updatedCtx.worldTime.tick },
       ],
     };
 
@@ -279,7 +294,7 @@ export function resolveQuest(
     const loot = quest.reward;
     for (const adv of party) {
       const next = upsertMoodFactor(adv.moodFactors, {
-        id: 'QUEST_SUCCESS', label: 'Quest Success', value: 15, decayRate: 0.1,
+        id: 'QUEST_SUCCESS', label: 'Quest Success', value: 15, decayRate: 0.15,
       });
       updatedAdventurers.set(adv.id, {
         ...transitionState(adv, 'IDLE', { isDev: false, questId: null }),
@@ -326,7 +341,7 @@ export function resolveQuest(
         updatedAdventurers.set(adv.id, {
           ...transitionState(adv, 'RESTING', { isDev: false, questId: null }),
           moodFactors: upsertMoodFactor(adv.moodFactors, {
-            id: 'QUEST_FAILURE', label: 'Quest Failed', value: -10, decayRate: 0.1,
+            id: 'QUEST_FAILURE', label: 'Quest Failed', value: -20, decayRate: 0.1,
           }),
           currentQuestId: null,
         });
@@ -334,7 +349,7 @@ export function resolveQuest(
         updatedAdventurers.set(adv.id, {
           ...transitionState(adv, 'IDLE', { isDev: false, questId: null }),
           moodFactors: upsertMoodFactor(adv.moodFactors, {
-            id: 'QUEST_FAILURE', label: 'Quest Failed', value: -10, decayRate: 0.1,
+            id: 'QUEST_FAILURE', label: 'Quest Failed', value: -20, decayRate: 0.1,
           }),
           currentQuestId: null,
         });
@@ -348,4 +363,112 @@ export function resolveQuest(
 
     return { ctx: updatedCtx, success: false, injuries, deaths, loot: 0 };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Quest resolution subscriber (runs each tick after party selection)
+// ---------------------------------------------------------------------------
+
+/** Resolves quests whose duration has elapsed: credits treasury, fires beats, records history, updates reputation. */
+export function questResolutionSubscriber(ctx: SimulationContext): SimulationContext {
+  const tick = ctx.worldTime.tick;
+  const toResolve = ctx.questBoard.active.filter(
+    q => q.startedAt !== undefined && tick >= q.startedAt + q.duration,
+  );
+
+  if (toResolve.length === 0) return ctx;
+
+  let updatedCtx = ctx;
+
+  for (const quest of toResolve) {
+    const party = (quest.assignedParty ?? [])
+      .map(id => updatedCtx.adventurers.get(id))
+      .filter((a): a is Adventurer => a !== undefined);
+
+    if (party.length === 0) {
+      updatedCtx = {
+        ...updatedCtx,
+        questBoard: { ...updatedCtx.questBoard, active: updatedCtx.questBoard.active.filter(q2 => q2.id !== quest.id) },
+      };
+      continue;
+    }
+
+    // Resolve outcome (transitions adventurer states, advances RNG)
+    const result = resolveQuest(quest, party, updatedCtx, 0);
+    updatedCtx = result.ctx;
+
+    // Generate beats (uses post-resolve RNG for deterministic continuation)
+    const beats = generateBeats(quest, party, ctx.relationships, updatedCtx.rng, result.success);
+
+    // Emit BEAT_LOG combat event
+    updatedCtx = emitEvent(updatedCtx, {
+      kind: 'COMBAT',
+      subtype: 'BEAT_LOG',
+      questId: quest.id,
+      involvedIds: party.map(a => a.id),
+    });
+
+    // Credit treasury on success
+    updatedCtx = { ...updatedCtx, treasury: updatedCtx.treasury + result.loot };
+
+    // Append history events to surviving party members
+    const updatedAdventurers = new Map(updatedCtx.adventurers);
+    for (const origAdv of party) {
+      const adv = updatedAdventurers.get(origAdv.id);
+      if (!adv || result.deaths.includes(adv.id)) continue;
+
+      let history = adv.history;
+
+      // FIRST_KILL: quest succeeded, adventurer has no prior FIRST_KILL event
+      if (result.success && !history.some(h => h.kind === 'FIRST_KILL')) {
+        history = appendHistoryEvent(history, { tick, kind: 'FIRST_KILL', involvedIds: [], weight: 1 });
+      }
+
+      // WITNESSED_DEATH: another party member died this quest
+      const witnessedDeaths = result.deaths.filter(id => id !== adv.id);
+      if (witnessedDeaths.length > 0) {
+        history = appendHistoryEvent(history, {
+          tick, kind: 'WITNESSED_DEATH', involvedIds: witnessedDeaths, weight: 2, enemyArchetype: 'UNKNOWN',
+        });
+      }
+
+      // NEAR_DEATH: beats show this adventurer was brought to the brink
+      if (beats.some(b => b.actorId === adv.id && b.action === 'NEAR_DEATH')) {
+        history = appendHistoryEvent(history, { tick, kind: 'NEAR_DEATH', involvedIds: [], weight: 2 });
+      }
+
+      // SAVED_BY: another party member performed DEFEND_ALLY
+      const saverIds = beats
+        .filter(b => b.action === 'DEFEND_ALLY' && b.actorId !== adv.id)
+        .map(b => b.actorId);
+      if (saverIds.length > 0) {
+        history = appendHistoryEvent(history, { tick, kind: 'SAVED_BY', involvedIds: saverIds, weight: 1 });
+      }
+
+      if (history !== adv.history) {
+        updatedAdventurers.set(adv.id, { ...adv, history });
+      }
+    }
+    updatedCtx = { ...updatedCtx, adventurers: updatedAdventurers };
+
+    // Update reputation
+    updatedCtx = {
+      ...updatedCtx,
+      reputation: updateReputation(
+        updatedCtx.reputation,
+        result.success ? { event: 'QUEST_SUCCESS', difficulty: quest.difficulty } : { event: 'QUEST_FAILURE' },
+      ),
+    };
+    for (const _id of result.deaths) {
+      updatedCtx = { ...updatedCtx, reputation: updateReputation(updatedCtx.reputation, { event: 'ADVENTURER_DEATH' }) };
+    }
+
+    // Remove from active board
+    updatedCtx = {
+      ...updatedCtx,
+      questBoard: { ...updatedCtx.questBoard, active: updatedCtx.questBoard.active.filter(q2 => q2.id !== quest.id) },
+    };
+  }
+
+  return updatedCtx;
 }

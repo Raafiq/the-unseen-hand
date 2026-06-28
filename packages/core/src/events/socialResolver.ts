@@ -14,6 +14,7 @@ import type {
 import { strengthToType, applyStrengthShift, detectThresholdEvents, createEdge } from '../relationships/graph.js';
 import { upsertMoodFactor } from '../adventurers/mood.js';
 import { emitEvent } from './eventBus.js';
+import { updateReputation } from '../world/WorldExpansion.js';
 
 // ---------------------------------------------------------------------------
 // Interaction probability
@@ -110,12 +111,18 @@ function renderSocialText(
 // Effect application
 // ---------------------------------------------------------------------------
 
-type SocialOutcomeEffects = { relationshipDelta: number; moodFactorId?: string; moodValue?: number };
+type SocialOutcomeEffects = {
+  relationshipDelta: number;
+  moodFactorId?: string;
+  moodLabel?: string;
+  moodDecayRate?: number;
+  moodValue?: number;
+};
 
 const EFFECTS: Record<SocialOutcomeType, SocialOutcomeEffects> = {
-  POSITIVE_CHAT:   { relationshipDelta: +5,  moodFactorId: 'SOCIAL_POSITIVE',  moodValue: +8 },
-  ARGUMENT:        { relationshipDelta: -8,  moodFactorId: 'SOCIAL_ARGUMENT',   moodValue: -10 },
-  BREAKTHROUGH:    { relationshipDelta: +15, moodFactorId: 'SOCIAL_POSITIVE',  moodValue: +20 },
+  POSITIVE_CHAT:   { relationshipDelta: +5,  moodFactorId: 'SOCIAL_POSITIVE', moodLabel: 'Social bond formed', moodDecayRate: 0.20, moodValue: +8 },
+  ARGUMENT:        { relationshipDelta: -8,  moodFactorId: 'SOCIAL_ARGUMENT',  moodLabel: 'Social conflict',   moodDecayRate: 0.25, moodValue: -10 },
+  BREAKTHROUGH:    { relationshipDelta: +15, moodFactorId: 'SOCIAL_POSITIVE', moodLabel: 'Social bond formed', moodDecayRate: 0.20, moodValue: +20 },
   SILENT_DISTANCE: { relationshipDelta: -3 },
 };
 
@@ -166,7 +173,12 @@ export function socialEventSubscriber(ctx: SimulationContext): SimulationContext
       // Apply mood factors
       const updatedAdventurers = new Map(updatedCtx.adventurers);
       if (effects.moodFactorId && effects.moodValue !== undefined) {
-        const factor = { id: effects.moodFactorId, label: effects.moodFactorId, value: effects.moodValue, decayRate: 0.1 };
+        const factor = {
+          id: effects.moodFactorId,
+          label: effects.moodLabel ?? effects.moodFactorId,
+          value: effects.moodValue,
+          decayRate: effects.moodDecayRate ?? 0.20,
+        };
         updatedAdventurers.set(idA, { ...a1, moodFactors: upsertMoodFactor(a1.moodFactors, factor) });
         updatedAdventurers.set(idB, { ...a2, moodFactors: upsertMoodFactor(a2.moodFactors, factor) });
       }
@@ -177,7 +189,7 @@ export function socialEventSubscriber(ctx: SimulationContext): SimulationContext
       // Build updated context before emitting events
       updatedCtx = { ...updatedCtx, adventurers: updatedAdventurers, relationships: graph, lastSharedActivity };
 
-      // Threshold events → lifecycle events
+      // Threshold events → lifecycle events; wire reputation on BOND_FORMED
       const thresholdEvents = detectThresholdEvents(idA, idB, priorStrength, newStrength);
       for (const te of thresholdEvents) {
         updatedCtx = emitEvent(updatedCtx, {
@@ -185,6 +197,9 @@ export function socialEventSubscriber(ctx: SimulationContext): SimulationContext
           subtype: te.type,
           involvedIds: [te.adventurerId1, te.adventurerId2],
         });
+        if (te.type === 'TRUSTED_COMPANION_BOND_FORMED') {
+          updatedCtx = { ...updatedCtx, reputation: updateReputation(updatedCtx.reputation, { event: 'BOND_FORMED' }) };
+        }
       }
 
       // Social event

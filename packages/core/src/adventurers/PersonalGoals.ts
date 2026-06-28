@@ -14,6 +14,7 @@ import type {
   DecisionMoment,
 } from '../world/types.js';
 import { emitEvent } from '../events/eventBus.js';
+import { updateReputation } from '../world/WorldExpansion.js';
 
 // ---------------------------------------------------------------------------
 // Goal completion checks
@@ -219,9 +220,34 @@ export function applyGoalCompletion(
   // 3. Grant +12 DI
   next = { ...next, divineInfluence: Math.min(100, next.divineInfluence + 12) };
 
-  // 4. Surface retirement decision moment
+  // 4. Update reputation
+  next = { ...next, reputation: updateReputation(next.reputation, { event: 'GOAL_ACHIEVED' }) };
+
+  // 5. Surface retirement decision moment
   const dm = retirementDecisionMoment(updatedAdv, tick, next.rng);
   next = { ...next, pendingDecisions: [...next.pendingDecisions, dm] };
 
   return next;
+}
+
+// ---------------------------------------------------------------------------
+// Tick subscriber
+// ---------------------------------------------------------------------------
+
+/** Per-tick subscriber: checks goal completion for all adventurers and applies effects. */
+export function personalGoalSubscriber(ctx: SimulationContext): SimulationContext {
+  if (ctx.adventurers.size === 0) return ctx;
+
+  let updatedCtx = ctx;
+
+  for (const adv of ctx.adventurers.values()) {
+    if (adv.state === 'DEAD' || adv.state === 'RETIRED') continue;
+    if (adv.personalGoalProgress.completed) continue;
+
+    if (checkGoalCompletion(adv, updatedCtx)) {
+      updatedCtx = applyGoalCompletion(updatedCtx, adv);
+    }
+  }
+
+  return updatedCtx;
 }

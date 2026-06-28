@@ -180,6 +180,7 @@ export type Quest = {
   expiresAt: number;
   assignedParty: AdventurerId[] | null;
   status: QuestStatus;
+  startedAt?: number; // tick when party was assigned; set by partySelectionSubscriber
 };
 
 export type BeatAction =

@@ -16,6 +16,13 @@ import { diTrickleSubscriber } from '../divine/DivineInfluence.js';
 import { decisionMomentSubscriber } from '../events/DecisionMomentDetector.js';
 import { scenarioEvaluatorSubscriber } from '../scenarios/ScenarioEngine.js';
 import { worldExpansionSubscriber } from './WorldExpansion.js';
+import {
+  questBoardSeedingSubscriber,
+  createQuestExpirySubscriber,
+  partySelectionSubscriber,
+  questResolutionSubscriber,
+} from '../quests/questSystem.js';
+import { personalGoalSubscriber } from '../adventurers/PersonalGoals.js';
 
 export type TickSubscriber = (ctx: SimulationContext, delta: number) => SimulationContext;
 
@@ -40,16 +47,21 @@ export class SimulationLoop {
     this._ctx = initialCtx;
     this._clock = new WorldClock();
     this._clock.onTick(() => this._tick());
-    // Core subscribers in spec-mandated order
+    // Spec-mandated subscriber order (simulation-loop.md §Subscriber execution order)
     this._subscribers.push(
-      moodSubscriber,
-      relationshipDecaySubscriber,
-      socialEventSubscriber,
-      departureSubscriber,
-      diTrickleSubscriber,
-      decisionMomentSubscriber,
-      scenarioEvaluatorSubscriber,
-      worldExpansionSubscriber,
+      moodSubscriber,            // slot 2: mood recalculation (day ticks only)
+      relationshipDecaySubscriber, // slot 3: relationship tick
+      questBoardSeedingSubscriber, // slot 5a: quest board seeding (weekly)
+      createQuestExpirySubscriber(), // slot 5b: quest expiry + drought tracking
+      partySelectionSubscriber,  // slot 6: autonomous party selection (day ticks)
+      questResolutionSubscriber, // slot 7: quest outcome resolution
+      socialEventSubscriber,     // slot 8: social interaction resolver (day ticks)
+      personalGoalSubscriber,    // slot 9a: personal goal completion checks
+      decisionMomentSubscriber,  // slot 9b: decision moment detector
+      departureSubscriber,       // slot 10: departure system (day ticks)
+      diTrickleSubscriber,       // DI trickle (every tick)
+      scenarioEvaluatorSubscriber, // scenario evaluation (every tick, after all systems)
+      worldExpansionSubscriber,  // region unlocks (every tick, after scenario)
     );
   }
 

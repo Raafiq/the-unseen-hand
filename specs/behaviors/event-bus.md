@@ -97,10 +97,34 @@ type LifecycleEvent = EventBase & {
 ```typescript
 type WorldEvent = EventBase & {
   kind: 'WORLD';
-  subtype: 'STORM' | 'PLAGUE' | 'WINDFALL' | 'MONSTER_SURGE' | 'TRAVELLING_MERCHANT' | 'RUMOUR' | 'QUEST_DROUGHT' | 'REGION_UNLOCKED' | 'INTERNAL_ERROR';
+  subtype:
+    | 'STORM' | 'PLAGUE' | 'WINDFALL' | 'MONSTER_SURGE' | 'TRAVELLING_MERCHANT' | 'RUMOUR'
+    | 'QUEST_DROUGHT'
+    | 'REGION_UNLOCKED'
+    | 'SCENARIO_GOAL_ACHIEVED'   // a non-optional scenario goal was completed
+    | 'SCENARIO_COMPLETE'        // all required scenario goals met
+    | 'SCENARIO_FAILED'          // a fail condition triggered
+    | 'INTERNAL_ERROR';          // illegal state transition caught in production mode
   regionId?: RegionId;
+  goalId?: string;               // set on SCENARIO_GOAL_ACHIEVED
 };
 ```
+
+### ReputationEvent
+
+The `updateReputation` pure function accepts a discriminated union describing the triggering event:
+
+```typescript
+type ReputationEvent =
+  | { event: 'QUEST_SUCCESS'; difficulty: number }  // +5 / +10 / +20 by difficulty tier
+  | { event: 'QUEST_FAILURE' }                      // −8
+  | { event: 'ADVENTURER_DEATH' }                   // −15
+  | { event: 'BOND_FORMED' }                        // +5 (TRUSTED_COMPANION threshold crossed)
+  | { event: 'GOAL_ACHIEVED' }                      // +10
+  | { event: 'SCENARIO_OBJECTIVE' };                // +50
+```
+
+Callers: `questResolutionSubscriber`, `socialEventSubscriber` (TRUSTED_COMPANION_BOND_FORMED threshold), `applyGoalCompletion`, `scenarioEvaluatorSubscriber` (SCENARIO_GOAL_ACHIEVED).
 
 ### DecisionMomentEvent
 

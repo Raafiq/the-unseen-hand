@@ -185,9 +185,10 @@ type Quest = {
   reward: number;           // gold
   risk: QuestRisk;
   requiredPartySize: number;
-  expiresAt: number;        // tick
+  expiresAt: number;        // tick; board expiry, unrelated to startedAt
   assignedParty: AdventurerId[] | null;
   status: QuestStatus;
+  startedAt?: number;       // tick when party was assigned; set by partySelectionSubscriber; used by questResolutionSubscriber
 };
 
 type QuestType =
@@ -264,8 +265,18 @@ See `behaviors/event-bus.md` for each event shape.
 ## Decision moments
 
 ```typescript
+type DecisionMomentKind =
+  | 'DEATH_IMMINENT'
+  | 'RELATIONSHIP_COLLAPSE'
+  | 'DEPARTURE'
+  | 'SCENARIO_CRITICAL'
+  | 'SCENARIO_GOAL'
+  | 'PARTY_SELECTION'
+  | 'OTHER';
+
 type DecisionMoment = {
   id: string;
+  kind: DecisionMomentKind;  // categorizes the situation; drives UI grouping
   tick: number;
   situationText: string;
   options: DecisionOption[];
@@ -326,6 +337,7 @@ type ScenarioState = {
   goals: ScenarioGoalState[];
   failConditions: FailConditionState[];
   status: 'ACTIVE' | 'COMPLETE' | 'FAILED';
+  treasuryNegativeSince: number | null; // tick when treasury first went negative; null if non-negative
 };
 
 type ScenarioGoalState = {
@@ -347,11 +359,14 @@ type FailConditionState = {
 ## History
 
 ```typescript
+type EnemyArchetype = 'UNDEAD' | 'BEAST' | 'HUMAN' | 'ELEMENTAL' | 'UNKNOWN';
+
 type HistoryEvent = {
   tick: number;
   kind: HistoryEventKind;
-  involvedIds: AdventurerId[];  // other adventurers involved, if any
-  weight: number;               // emotional weight; used by contextual modifier
+  involvedIds: AdventurerId[];      // other adventurers involved, if any
+  weight: number;                   // emotional weight; used by contextual modifier
+  enemyArchetype?: EnemyArchetype;  // set on WITNESSED_DEATH events
 };
 
 type HistoryEventKind =
@@ -361,7 +376,18 @@ type HistoryEventKind =
   | 'FIRST_KILL'
   | 'NEAR_DEATH'
   | 'QUEST_TRIUMPH'
-  | 'GOAL_ACHIEVED';
+  | 'GOAL_ACHIEVED'
+  | 'LUCK_CURSE'       // divine tool: reduces adventurer's success probability for 7 days
+  | 'MARK_FOR_DEATH'   // divine tool: flags adventurer for elevated death chance; 7-day cooldown
+  | 'SEND_DREAM';      // divine tool: suppresses departure roll for 30 days
+
+/** Context passed to contextualModifier to derive situational personality adjustments. */
+type BehaviourContext = {
+  questType?: string;
+  enemyArchetype?: EnemyArchetype;
+  involvedAdventurerIds?: AdventurerId[];
+  tick: number;
+};
 ```
 
 ## GoalProgress

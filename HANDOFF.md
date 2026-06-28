@@ -20,8 +20,6 @@ _Last updated: 2026-06-28. Resume from this file at the start of the next sessio
 
 **Test baseline:** 367 tests, 24 test files, `tsc --noEmit` clean.
 
-**⚠️ P4b changes are NOT yet committed.** Commit them before starting P5.
-
 ---
 
 ## What happened last session

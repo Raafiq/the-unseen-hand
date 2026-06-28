@@ -6,7 +6,7 @@ _Last updated: 2026-06-28. Resume from this file at the start of the next sessio
 
 ## Current status
 
-**Phase 4c + Phase 5 complete. P6 (Narrator) is next, pending manual browser smoke-test.**
+**Phase 4c + Phase 5 complete. Next session: add Playwright E2E tests (P5b), then P6.**
 
 | Phase | Plan file | Status |
 |---|---|---|
@@ -16,8 +16,9 @@ _Last updated: 2026-06-28. Resume from this file at the start of the next sessio
 | P4 — Scenario Engine | `plans/phase-4-scenario.md` | done |
 | P4b — Simulation Wiring | `plans/phase-4b-simulation-wiring.md` | done |
 | **P4c — Mechanics Completion** | **`plans/phase-4c-mechanics-completion.md`** | **done** |
-| **P5 — UI** | **`plans/phase-5-ui.md`** | **done (browser test pending)** |
-| P6 — Narrator | `plans/phase-6-narrator.md` | planned (blocked on P5 browser gate) |
+| **P5 — UI** | **`plans/phase-5-ui.md`** | **done (E2E gate pending)** |
+| **P5b — E2E Smoke Tests** | *(plan to be authored next session)* | **planned** |
+| P6 — Narrator | `plans/phase-6-narrator.md` | planned (blocked on P5b) |
 
 **Test baseline:** 382 tests, 25 test files, `tsc --noEmit` + `svelte-check` both clean.
 
@@ -63,7 +64,7 @@ Built the full god-game dashboard in `apps/game-client/src/`:
 1. **PEACE_STREAK_30 daily tick subscriber** — not yet implemented; PEACE goal milestones still unwritten. Deferred to P4d.
 2. **Decision-moment detection suite** — DEATH_IMMINENT, DEPARTURE, SCENARIO_CRITICAL, PARTY_SELECTION, SCENARIO_GOAL moment detection not yet built. Deferred to P4d.
 3. **Adventurer baseline mood** — freshly created adventurers have empty `moodFactors` → mood = 0 (DESPAIRING) after first day-tick. Seeds need a non-decaying baseline. Deferred.
-4. **P5 browser smoke-test** — `pnpm --filter game-client dev` + visual check not yet done. Blocking gate for P6.
+4. **P5b E2E smoke tests** — the manual browser gate from P5 is being replaced with Playwright automation. Decision made: use Playwright against `vite preview` (built output). Plan to be authored at start of next session before implementation. Blocking gate for P6.
 
 ---
 
@@ -149,6 +150,15 @@ scenarios/
 
 ## Suggested next steps
 
-1. **Manual browser smoke-test** — `pnpm --filter game-client dev`, open `localhost:5173`, verify live run
-2. **`/specops`** — read `plans/phase-6-narrator.md`, start P6 only after browser gate passes
-3. **`/audit-spec-drift`** — optional re-run to catch any P5 screen spec gaps before P6
+1. **Author P5b plan** (`plans/phase-5b-e2e.md`) — scope: add Playwright to `apps/game-client`, update `specs/architecture.md` testing row, write `apps/game-client/tests/smoke.spec.ts`. Use `/specops` to author the plan before touching code.
+
+2. **P5b implementation** — what to test:
+   - App mounts and topbar/nav render (DOM presence)
+   - At least 3 events accumulate in the event feed within 5s (simulation running)
+   - Clicking speed controls changes the active button class
+   - Clicking Events tab clears the unread badge
+   - DI meter bar has non-zero width
+   - `vite build` then `vite preview` as the `webServer` in Playwright config (more stable than `dev` for CI)
+   - Add `test:e2e` script to `apps/game-client/package.json`
+
+3. **After P5b done** — mark P5 fully complete, unblock P6, run `/specops` to start narrator plan.

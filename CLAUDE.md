@@ -76,3 +76,40 @@ All randomness flows through `SimulationContext.rng` (seeded PRNG). No module in
 ```powershell
 grep -r "Math.random" packages/
 ```
+
+### Svelte project setup — svelte.config.js is required
+
+Any Svelte app in this monorepo needs **both** `vite.config.ts` and `svelte.config.js`.
+`svelte-check` resolves the preprocessor from `svelte.config.js`, not from the Vite
+plugin — without it, `svelte-check` fails with "No Svelte configuration found."
+
+```javascript
+// svelte.config.js — must exist alongside vite.config.ts
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
+export default { preprocess: vitePreprocess() };
+```
+
+### Testing rule — test through the subscriber, not the underlying function
+
+Subscribers are the authoritative write sites for side effects (milestones, DI bursts,
+lifecycle events, `pendingShifts`). The pure functions they call (e.g. `resolveQuest`)
+do not produce these effects. Always route tests for subscriber-owned behavior through
+the subscriber itself with a properly constructed `SimulationContext`.
+
+```typescript
+// ✅ Correct — routes through questResolutionSubscriber, which writes milestones
+const next = questResolutionSubscriber(ctx);
+expect(next.adventurers.get(id)?.personalGoalProgress.milestones).toContain('DUNGEON_SUCCESS');
+
+// ❌ Wrong — resolveQuest never writes milestones; test will always fail
+const result = resolveQuest(quest, party, ctx);
+expect(result.milestones).toContain('DUNGEON_SUCCESS');
+```
+
+### UI verification — no manual browser gates
+
+All UI validation must be automated. Do not leave a plan validation step that requires
+a human to open a browser. Use Playwright (`apps/game-client/tests/`) targeting
+`vite preview` (built output) as the `webServer`. Add a `test:e2e` script to the
+package. Replace any "verify in browser" checklist item with a concrete Playwright
+assertion before calling a plan done.

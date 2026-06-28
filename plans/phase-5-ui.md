@@ -1,5 +1,5 @@
 ---
-status: planned
+status: in-progress
 depends: [phase-4-scenario, phase-4b-simulation-wiring]
 specs:
   - specs/screens/app-shell.md

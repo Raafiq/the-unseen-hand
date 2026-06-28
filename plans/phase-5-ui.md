@@ -1,6 +1,6 @@
 ---
 status: planned
-depends: [phase-4-scenario]
+depends: [phase-4-scenario, phase-4b-simulation-wiring]
 specs:
   - specs/screens/app-shell.md
   - specs/screens/roster-grid.md

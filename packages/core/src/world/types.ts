@@ -75,13 +75,24 @@ export type HistoryEventKind =
   | 'QUEST_TRIUMPH'
   | 'GOAL_ACHIEVED'
   | 'LUCK_CURSE'
-  | 'MARK_FOR_DEATH';
+  | 'MARK_FOR_DEATH'
+  | 'SEND_DREAM';
+
+export type EnemyArchetype = 'UNDEAD' | 'BEAST' | 'HUMAN' | 'ELEMENTAL' | 'UNKNOWN';
 
 export type HistoryEvent = {
   tick: number;
   kind: HistoryEventKind;
   involvedIds: AdventurerId[];
   weight: number;
+  enemyArchetype?: EnemyArchetype; // set for WITNESSED_DEATH events
+};
+
+export type BehaviourContext = {
+  questType?: string;
+  enemyArchetype?: EnemyArchetype;
+  involvedAdventurerIds?: AdventurerId[];
+  tick: number;
 };
 
 export type AdventurerIdentity = {
@@ -260,8 +271,12 @@ export type WorldEvent = EventBase & {
     | 'RUMOUR'
     | 'QUEST_DROUGHT'
     | 'REGION_UNLOCKED'
+    | 'SCENARIO_GOAL_ACHIEVED'
+    | 'SCENARIO_COMPLETE'
+    | 'SCENARIO_FAILED'
     | 'INTERNAL_ERROR';
   regionId?: RegionId;
+  goalId?: string;
 };
 
 export type DecisionMomentEvent = EventBase & {
@@ -371,6 +386,47 @@ export type ScenarioState = {
   goals: ScenarioGoalState[];
   failConditions: FailConditionState[];
   status: 'ACTIVE' | 'COMPLETE' | 'FAILED';
+  treasuryNegativeSince: number | null; // tick when treasury first went negative (BANKRUPTCY tracking)
+};
+
+// ---------------------------------------------------------------------------
+// Scenario definition (runtime spec; separate from ScenarioState runtime record)
+// ---------------------------------------------------------------------------
+
+export type AdventurerSeed = {
+  id: AdventurerId;
+  name: string;
+  age: number;
+  backstory: string;
+  personalGoal: PersonalGoal;
+  personality: PersonalityAxes;
+  /** Pre-existing relationship edges seeded with this adventurer. */
+  edges?: Array<{ targetId: AdventurerId; strength: number }>;
+};
+
+export type ScenarioGoalDef = {
+  id: string;
+  description: string;
+  condition: (ctx: SimulationContext) => boolean;
+  diReward: number;
+  optional?: boolean;
+};
+
+export type FailConditionDef = {
+  id: string;
+  description: string;
+  condition: (ctx: SimulationContext) => boolean;
+};
+
+export type Scenario = {
+  id: string;
+  title: string;
+  premise: string;
+  goals: ScenarioGoalDef[];
+  failConditions: FailConditionDef[];
+  timeLimit?: number;
+  startingRoster: AdventurerSeed[];
+  startingDI: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -389,4 +445,6 @@ export type SimulationContext = {
   divineInfluence: number; // 0–100
   activeRegions: Map<RegionId, Region>;
   scenario: ScenarioState | null;
+  treasury: number;    // gold; quest rewards add, upkeep deducts
+  reputation: number;  // 0–1000; drives region unlocks
 };

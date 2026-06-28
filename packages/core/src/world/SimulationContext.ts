@@ -35,5 +35,7 @@ export function createSimulationContext(seed: string): SimulationContext {
     divineInfluence: 50,
     activeRegions: new Map(),
     scenario: null,
+    treasury: 0,
+    reputation: 0,
   };
 }

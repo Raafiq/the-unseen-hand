@@ -65,8 +65,12 @@ export type WorldEventInput = {
     | 'RUMOUR'
     | 'QUEST_DROUGHT'
     | 'REGION_UNLOCKED'
+    | 'SCENARIO_GOAL_ACHIEVED'
+    | 'SCENARIO_COMPLETE'
+    | 'SCENARIO_FAILED'
     | 'INTERNAL_ERROR';
   regionId?: RegionId;
+  goalId?: string;
 };
 
 export type DecisionMomentEventInput = {
@@ -146,9 +150,12 @@ function renderText(input: SimulationEventInput): string {
         case 'MONSTER_SURGE':       return `A surge of monsters is reported${region}.`;
         case 'TRAVELLING_MERCHANT': return `A travelling merchant arrives${region}.`;
         case 'RUMOUR':              return `Rumours stir among the populace${region}.`;
-        case 'QUEST_DROUGHT':       return `Work dries up across the region${region}.`;
-        case 'REGION_UNLOCKED':     return `New territory opens up${region}.`;
-        case 'INTERNAL_ERROR':      return `[Simulation error — prior state restored.]`;
+        case 'QUEST_DROUGHT':            return `Work dries up across the region${region}.`;
+        case 'REGION_UNLOCKED':          return `New territory opens up${region}.`;
+        case 'SCENARIO_GOAL_ACHIEVED':   return `A scenario goal has been achieved${input.goalId ? ` (${input.goalId})` : ''}.`;
+        case 'SCENARIO_COMPLETE':        return `The scenario is complete — the guild has prevailed.`;
+        case 'SCENARIO_FAILED':          return `The scenario has ended in failure.`;
+        case 'INTERNAL_ERROR':           return `[Simulation error — prior state restored.]`;
       }
     }
     case 'DECISION_MOMENT':

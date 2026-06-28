@@ -63,6 +63,24 @@ export { decisionMomentSubscriber } from './events/DecisionMomentDetector.js';
 export { diTrickleSubscriber, grantDI } from './divine/DivineInfluence.js';
 export { narrativeDistance, applyDivineShift } from './divine/ProbabilityShifter.js';
 
+// Scenario engine
+export { registerScenario, scenarioEvaluatorSubscriber } from './scenarios/ScenarioEngine.js';
+export { createScenario1Context, SCENARIO_1_ID, S1_IDS } from './scenarios/scenario1.js';
+
+// Personal goals
+export { checkGoalCompletion, applyGoalCompletion } from './adventurers/PersonalGoals.js';
+
+// History layer
+export { contextualModifier, appendHistoryEvent } from './adventurers/HistoryLayer.js';
+
+// World expansion
+export {
+  createStartingRegions,
+  worldExpansionSubscriber,
+  updateReputation,
+} from './world/WorldExpansion.js';
+export type { ReputationEvent } from './world/WorldExpansion.js';
+
 // Quest system
 export {
   computeQuestProbability,

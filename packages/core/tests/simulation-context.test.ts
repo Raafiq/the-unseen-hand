@@ -54,6 +54,16 @@ describe('SimulationContext', () => {
     expect(seq1).not.toEqual(seq2);
   });
 
+  it('fresh context has treasury === 0', () => {
+    const ctx = createSimulationContext('seed-1');
+    expect(ctx.treasury).toBe(0);
+  });
+
+  it('fresh context has reputation === 0', () => {
+    const ctx = createSimulationContext('seed-1');
+    expect(ctx.reputation).toBe(0);
+  });
+
   it('RNG is carried by the context, not global state — two separate contexts do not share state', () => {
     const ctx1 = createSimulationContext('isolated');
     const ctx2 = createSimulationContext('isolated');

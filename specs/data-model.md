@@ -33,6 +33,8 @@ type SimulationContext = {
   divineInfluence: number;          // 0–100
   activeRegions: Map<RegionId, Region>;
   scenario: ScenarioState | null;   // null in sandbox mode
+  treasury: number;                 // gold; quest rewards add, upkeep deducts (added Phase 4)
+  reputation: number;               // 0–1000; drives region unlocks (added Phase 4)
 };
 
 type QuestBoard = {

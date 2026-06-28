@@ -1,5 +1,5 @@
 ---
-status: planned
+status: done
 depends: [phase-3-divine]
 specs:
   - specs/behaviors/scenario-engine.md
@@ -51,14 +51,14 @@ Build in TDD order:
 
 ## Validation
 
-- [ ] A full 30-day "Failing Guild" run from a fixed seed is reproducible (same seed → same outcome).
-- [ ] Scenario 1 can reach both win and lose states (test with seeds that drive each path).
-- [ ] Transitioning to sandbox mode clears `scenario` to null.
-- [ ] Personal-goal `GOAL_ACHIEVED` fires a permanent (bounded) trait shift on the adventurer.
-- [ ] `contextualModifier` is a pure function; calling it twice with the same inputs returns the same result without mutating the adventurer.
-- [ ] History events accumulate on the adventurer correctly (tick, kind, involvedIds, weight).
-- [ ] Region unlock gated by `reputation` threshold — below threshold, region stays locked.
-- [ ] `/audit-spec-drift` shows no Phase-4 spec gap.
+- [x] A full 30-day "Failing Guild" run from a fixed seed is reproducible (same seed → same outcome).
+- [x] Scenario 1 can reach both win and lose states (test with seeds that drive each path).
+- [x] Transitioning to sandbox: `ctx.scenario.status === 'COMPLETE'`; `ctx.scenario` is NOT null (preserved as record per spec validation note). Plan item was imprecise.
+- [x] Personal-goal `GOAL_ACHIEVED` fires a permanent (bounded) trait shift on the adventurer.
+- [x] `contextualModifier` is a pure function; calling it twice with the same inputs returns the same result without mutating the adventurer.
+- [x] History events accumulate on the adventurer correctly (tick, kind, involvedIds, weight).
+- [x] Region unlock gated by `reputation` threshold — below threshold, region stays locked.
+- [ ] `/audit-spec-drift` shows no Phase-4 spec gap. (Run after merge.)
 
 ## Risks / unknowns
 
@@ -69,8 +69,19 @@ Build in TDD order:
 
 ## Notes
 
-(Populated at closeout.)
+Built in TDD order across 6 steps. All 349 tests pass, `tsc --noEmit` clean.
+
+New modules: `ScenarioEngine.ts` (registry + evaluator), `scenario1.ts` (Failing Guild definition + context factory), `PersonalGoals.ts` (completion check + effects), `HistoryLayer.ts` (contextualModifier + appendHistoryEvent), `WorldExpansion.ts` (region seeds + subscriber + reputation helper).
+
+Type additions to `types.ts`: `treasury`/`reputation` on `SimulationContext`, `treasuryNegativeSince` on `ScenarioState`, `Scenario`/`ScenarioGoalDef`/`FailConditionDef`/`AdventurerSeed` definition types, `BehaviourContext`, `EnemyArchetype`, `enemyArchetype` on `HistoryEvent`, `SEND_DREAM` in `HistoryEventKind`, `SCENARIO_GOAL_ACHIEVED`/`SCENARIO_COMPLETE`/`SCENARIO_FAILED`/`goalId` on `WorldEvent`.
+
+`createScenario1Context()` includes `createStartingRegions()` in the initial activeRegions (required for THORNVALE unlock test to pass).
+
+Decision moment surfaced by `applyGoalCompletion` uses `kind: 'OTHER'` — DecisionMomentDetector P3 stub conditions for scenario-critical/goal kinds still need wiring in Phase 5.
 
 ## Follow-ups
 
-(Populated at closeout.)
+- Deferred: `/audit-spec-drift` to run after Phase 4 merge.
+- Deferred: Wire `GOAL_ACHIEVED`/`NEAR_DEATH` history event recording into `questSystem.ts` beat resolution (history is stored but not yet auto-appended on relevant quest events).
+- Deferred: WANDERLUST/REVENGE/PEACE personal goal milestone recording (spec exists; detection hooks needed in quest system and social events).
+- Deferred: Scenario-critical and scenario-goal `DecisionMoment` detection in `DecisionMomentDetector.ts` (depends on scenario engine now available).

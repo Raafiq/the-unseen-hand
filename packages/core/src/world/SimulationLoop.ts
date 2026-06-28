@@ -14,6 +14,8 @@ import { socialEventSubscriber } from '../events/socialResolver.js';
 import { departureSubscriber } from '../adventurers/departureSystem.js';
 import { diTrickleSubscriber } from '../divine/DivineInfluence.js';
 import { decisionMomentSubscriber } from '../events/DecisionMomentDetector.js';
+import { scenarioEvaluatorSubscriber } from '../scenarios/ScenarioEngine.js';
+import { worldExpansionSubscriber } from './WorldExpansion.js';
 
 export type TickSubscriber = (ctx: SimulationContext, delta: number) => SimulationContext;
 
@@ -46,6 +48,8 @@ export class SimulationLoop {
       departureSubscriber,
       diTrickleSubscriber,
       decisionMomentSubscriber,
+      scenarioEvaluatorSubscriber,
+      worldExpansionSubscriber,
     );
   }
 

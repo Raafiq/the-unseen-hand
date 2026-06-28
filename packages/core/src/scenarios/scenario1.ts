@@ -64,12 +64,14 @@ const scenario1: Scenario = {
       description: 'Maintain ≥ 4 living (non-retired) adventurers through day 30',
       diReward: 25,
       condition: (ctx) => ctx.worldTime.tick === TIME_LIMIT && livingCount(ctx) >= 4,
+      isImminent: (ctx) => ctx.worldTime.tick > 600 && livingCount(ctx) >= 4,
     },
     {
       id: 'SOLVENT',
       description: 'Treasury above 0 at day 30',
       diReward: 20,
       condition: (ctx) => ctx.worldTime.tick === TIME_LIMIT && ctx.treasury > 0,
+      isImminent: (ctx) => ctx.worldTime.tick > 600 && ctx.treasury > 0,
     },
     {
       id: 'BOND',
@@ -77,6 +79,15 @@ const scenario1: Scenario = {
       diReward: 30,
       optional: true,
       condition: (ctx) => hasBondEvent(ctx),
+      isImminent: (ctx) => {
+        if (hasBondEvent(ctx)) return false; // already complete
+        for (const [, edges] of ctx.relationships) {
+          for (const edge of edges.values()) {
+            if (edge.strength >= 55 && edge.strength < 70) return true;
+          }
+        }
+        return false;
+      },
     },
   ],
 
@@ -117,7 +128,7 @@ function makeAdventurer(
     identity: { id, name, age, backstory, personalGoal },
     personality,
     mood: 50,
-    moodFactors: [],
+    moodFactors: [{ id: 'BASELINE', label: 'Adventurer spirit', value: 30, decayRate: 0 }],
     state: 'IDLE',
     history: [],
     despairStreak: 0,

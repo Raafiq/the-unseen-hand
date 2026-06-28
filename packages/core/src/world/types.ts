@@ -237,6 +237,8 @@ export type CombatEvent = EventBase & {
   subtype: 'BEAT_LOG' | 'QUEST_RESOLVED';
   questId: QuestId;
   involvedIds: AdventurerId[];
+  beats?: CombatBeat[];   // present on BEAT_LOG events; used by combat replay UI
+  success?: boolean;      // present on BEAT_LOG events; true if quest succeeded
 };
 
 export type QuestEvent = EventBase & {
@@ -413,6 +415,7 @@ export type ScenarioGoalDef = {
   condition: (ctx: SimulationContext) => boolean;
   diReward: number;
   optional?: boolean;
+  isImminent?: (ctx: SimulationContext) => boolean;
 };
 
 export type FailConditionDef = {

@@ -1,6 +1,10 @@
-import type { SimulationContext, DecisionMoment, DecisionMomentKind } from '../world/types.js';
+import type { SimulationContext, DecisionMoment, DecisionMomentKind, Adventurer } from '../world/types.js';
 import { emitEvent } from './eventBus.js';
 import { grantDI } from '../divine/DivineInfluence.js';
+import { computeDepartureProbability } from '../adventurers/departureSystem.js';
+import { computeQuestProbability } from '../quests/questSystem.js';
+import { narrativeDistance } from '../divine/ProbabilityShifter.js';
+import { getScenario } from '../scenarios/ScenarioEngine.js';
 
 // ---------------------------------------------------------------------------
 // Priority (lower index = higher priority, dropped last)
@@ -139,6 +143,212 @@ function detectConditions(ctx: SimulationContext): SimulationContext {
       situationText: 'A bond between guild members is fracturing.',
       options: [FATE_OPTION],
       expiresAt: tick + EXPIRY_WINDOW.RELATIONSHIP_COLLAPSE,
+    });
+  }
+
+  // DEATH_IMMINENT: active quest resolving within 12 ticks with low success probability
+  const DEATH_IMMINENT_WINDOW = EXPIRY_WINDOW.DEATH_IMMINENT;
+  for (const quest of next.questBoard.active) {
+    if (quest.startedAt === undefined) continue;
+    const ticksUntilResolution = quest.startedAt + quest.duration - tick;
+    if (ticksUntilResolution <= 0 || ticksUntilResolution > DEATH_IMMINENT_WINDOW) continue;
+
+    const party = (quest.assignedParty ?? [])
+      .map(id => next.adventurers.get(id))
+      .filter((a): a is Adventurer => a !== undefined);
+    if (party.length === 0) continue;
+
+    const prob = computeQuestProbability(quest, party, next.relationships, 0);
+    if (prob >= 0.40) continue;
+
+    const alreadyHasDeath = next.pendingDecisions.some(
+      m => m.kind === 'DEATH_IMMINENT' && party.some(a => a.id === m.subjectId),
+    );
+    if (alreadyHasDeath) continue;
+
+    // Build probability-shift options
+    const targets = [0.50, 0.80, 0.95];
+    const shiftOptions = targets.map(target => {
+      const shift = Math.max(0, Math.min(0.95, target) - prob);
+      const dist = narrativeDistance(prob, target);
+      const diCost = Math.max(1, Math.round(dist * 10));
+      const label =
+        target === 0.50 ? 'Favour survival' :
+        target === 0.80 ? 'Grant fortune' :
+        'Divine protection';
+      const distLabel: 'LOW' | 'MODERATE' | 'EXTREME' =
+        dist < 1.5 ? 'LOW' : dist <= 4 ? 'MODERATE' : 'EXTREME';
+      return { label, description: `Shift survival odds toward ${Math.round(target * 100)}%.`, diCost, probabilityShift: shift, narrativeDistanceLabel: distLabel };
+    });
+
+    const subjectId = party[0]!.id;
+    const partyNames = party.map(a => a.identity.name).join(' & ');
+    next = addMoment(next, {
+      kind: 'DEATH_IMMINENT',
+      tick,
+      subjectId,
+      situationText: `${partyNames} face long odds in the dungeon. ${quest.name} may end in tragedy.`,
+      options: [FATE_OPTION, ...shiftOptions],
+      expiresAt: tick + DEATH_IMMINENT_WINDOW,
+    });
+  }
+
+  // SCENARIO_CRITICAL: a fail condition is within 3 days (72 ticks) of triggering
+  if (next.scenario && next.scenario.status === 'ACTIVE') {
+    const { treasuryNegativeSince } = next.scenario;
+    const BANKRUPTCY_THRESHOLD = 168;
+    const CRITICAL_LEAD_TIME = 72; // 3 days warning
+
+    if (
+      treasuryNegativeSince !== null &&
+      tick - treasuryNegativeSince >= BANKRUPTCY_THRESHOLD - CRITICAL_LEAD_TIME &&
+      !next.pendingDecisions.some(m => m.kind === 'SCENARIO_CRITICAL' && m.subjectId === 'BANKRUPTCY')
+    ) {
+      const daysElapsed = Math.floor((tick - treasuryNegativeSince) / 24);
+      next = addMoment(next, {
+        kind: 'SCENARIO_CRITICAL',
+        tick,
+        subjectId: 'BANKRUPTCY',
+        situationText: `The guild treasury has been empty for ${daysElapsed} days. Bankruptcy looms.`,
+        options: [
+          FATE_OPTION,
+          {
+            label: 'Seed a windfall',
+            description: 'Petition the divine for a merchant windfall in the region.',
+            diCost: 15,
+            probabilityShift: 0,
+            narrativeDistanceLabel: 'MODERATE' as const,
+          },
+        ],
+        expiresAt: tick + EXPIRY_WINDOW.SCENARIO_CRITICAL,
+      });
+    }
+
+    const living = [...next.adventurers.values()].filter(
+      a => a.state !== 'DEAD' && a.state !== 'RETIRED',
+    );
+    if (
+      living.length === 2 &&
+      !next.pendingDecisions.some(m => m.kind === 'SCENARIO_CRITICAL' && m.subjectId === 'ROSTER_COLLAPSE')
+    ) {
+      next = addMoment(next, {
+        kind: 'SCENARIO_CRITICAL',
+        tick,
+        subjectId: 'ROSTER_COLLAPSE',
+        situationText: `Only ${living.length} adventurers remain. One more death ends everything.`,
+        options: [
+          FATE_OPTION,
+          {
+            label: 'Uplift the survivors',
+            description: 'Bolster the spirits of the remaining adventurers.',
+            diCost: 10,
+            probabilityShift: 0.25,
+            narrativeDistanceLabel: 'MODERATE' as const,
+          },
+        ],
+        expiresAt: tick + EXPIRY_WINDOW.SCENARIO_CRITICAL,
+      });
+    }
+  }
+
+  // PARTY_SELECTION: an available quest has unusually low probability for the best idle party
+  const PARTY_SELECTION_THRESHOLD = 0.30;
+  const idleAdventurers = [...next.adventurers.values()].filter(a => a.state === 'IDLE');
+  for (const quest of next.questBoard.available) {
+    if (quest.status !== 'AVAILABLE') continue;
+    if (quest.requiredPartySize > idleAdventurers.length) continue;
+
+    const ranked = idleAdventurers
+      .map(a => ({ adv: a, weight: a.personality.courage + a.personality.ambition }))
+      .sort((a, b) => b.weight - a.weight);
+    const party = ranked.slice(0, quest.requiredPartySize).map(x => x.adv);
+    if (party.length < quest.requiredPartySize) continue;
+
+    const prob = computeQuestProbability(quest, party, next.relationships, 0);
+    if (prob >= PARTY_SELECTION_THRESHOLD) continue;
+
+    const partyIdSet = new Set(party.map(a => a.id));
+    if (next.pendingDecisions.some(m =>
+      m.kind === 'PARTY_SELECTION' &&
+      m.subjectId?.split(',').some(id => partyIdSet.has(id)),
+    )) continue;
+
+    // subjectId = comma-joined adventurer IDs so chooseOption can fan out the shift
+    const partySubjectId = party.map(a => a.id).join(',');
+    next = addMoment(next, {
+      kind: 'PARTY_SELECTION',
+      tick,
+      subjectId: partySubjectId,
+      situationText: `${quest.name} has a ${Math.round(prob * 100)}% chance of success with the current roster.`,
+      options: [
+        FATE_OPTION,
+        {
+          label: 'Bless the party',
+          description: 'A divine blessing improves their odds.',
+          diCost: 12,
+          probabilityShift: 0.20,
+          narrativeDistanceLabel: 'MODERATE' as const,
+        },
+      ],
+      expiresAt: tick + EXPIRY_WINDOW.PARTY_SELECTION,
+    });
+  }
+
+  // SCENARIO_GOAL: a scenario goal is one step away from completion
+  if (next.scenario && next.scenario.status === 'ACTIVE') {
+    const scenarioDef = getScenario(next.scenario.scenarioId);
+    if (scenarioDef) {
+      for (const goalState of next.scenario.goals) {
+        if (goalState.completed) continue;
+        const goalDef = scenarioDef.goals.find(g => g.id === goalState.id);
+        if (!goalDef?.isImminent?.(next)) continue;
+        if (next.pendingDecisions.some(m => m.kind === 'SCENARIO_GOAL' && m.subjectId === goalState.id)) continue;
+        next = addMoment(next, {
+          kind: 'SCENARIO_GOAL',
+          tick,
+          subjectId: goalState.id,
+          situationText: `The guild is close to: ${goalState.description}`,
+          options: [
+            FATE_OPTION,
+            {
+              label: 'Grant favour',
+              description: 'Acknowledge this moment. A DI bonus awaits if the goal completes.',
+              diCost: 5,
+              probabilityShift: 0,
+              narrativeDistanceLabel: 'LOW' as const,
+            },
+          ],
+          expiresAt: tick + EXPIRY_WINDOW.SCENARIO_GOAL,
+        });
+      }
+    }
+  }
+
+  // DEPARTURE: adventurer with despairStreak >= 3 in departure-eligible state
+  const DEPARTURE_ELIGIBLE_STATES = new Set(['IDLE', 'RESTING', 'SOCIALIZING'] as const);
+  for (const adv of next.adventurers.values()) {
+    if (!DEPARTURE_ELIGIBLE_STATES.has(adv.state as 'IDLE' | 'RESTING' | 'SOCIALIZING')) continue;
+    if (computeDepartureProbability(adv) <= 0) continue;
+    const alreadyHasDeparture = next.pendingDecisions.some(
+      m => m.kind === 'DEPARTURE' && m.subjectId === adv.id,
+    );
+    if (alreadyHasDeparture) continue;
+    next = addMoment(next, {
+      kind: 'DEPARTURE',
+      tick,
+      subjectId: adv.id,
+      situationText: `${adv.identity.name} has gone ${adv.despairStreak} days without hope. They may leave the guild.`,
+      options: [
+        FATE_OPTION,
+        {
+          label: 'Lift their spirits',
+          description: 'A divine touch lifts their mood and reduces the chance they leave.',
+          diCost: 8,
+          probabilityShift: 0.30,
+          narrativeDistanceLabel: 'MODERATE' as const,
+        },
+      ],
+      expiresAt: tick + EXPIRY_WINDOW.DEPARTURE,
     });
   }
 

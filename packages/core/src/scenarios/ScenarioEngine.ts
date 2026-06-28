@@ -22,6 +22,11 @@ export function registerScenario(scenario: Scenario): void {
   registry.set(scenario.id, scenario);
 }
 
+/** Look up a registered Scenario definition by ID. Returns undefined if not registered. */
+export function getScenario(id: string): Scenario | undefined {
+  return registry.get(id);
+}
+
 // ---------------------------------------------------------------------------
 // Upkeep
 // ---------------------------------------------------------------------------

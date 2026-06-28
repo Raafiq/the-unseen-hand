@@ -235,18 +235,72 @@ export function applyGoalCompletion(
 // Tick subscriber
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// PEACE_STREAK_30 milestone
+// ---------------------------------------------------------------------------
+
+const PEACE_STREAK_TICKS = 720; // 30 days
+
+function hasPeaceStreakMilestone(adv: Adventurer): boolean {
+  return adv.personalGoalProgress.milestones.some(m => m.description === 'PEACE_STREAK_30');
+}
+
+function lastQuestTickForAdventurer(ctx: SimulationContext, advId: string): number | undefined {
+  const questEvents = ctx.eventLog.filter(
+    e => e.kind === 'QUEST' &&
+    (e as { partyIds?: string[] }).partyIds?.includes(advId),
+  );
+  if (questEvents.length === 0) return undefined;
+  return Math.max(...questEvents.map(e => e.tick));
+}
+
+function applyPeaceStreakMilestone(ctx: SimulationContext, adv: Adventurer): SimulationContext {
+  const { tick } = ctx.worldTime;
+  const updatedAdv: Adventurer = {
+    ...adv,
+    personalGoalProgress: {
+      ...adv.personalGoalProgress,
+      milestones: [
+        ...adv.personalGoalProgress.milestones,
+        { tick, description: 'PEACE_STREAK_30' },
+      ],
+    },
+  };
+  return { ...ctx, adventurers: new Map(ctx.adventurers).set(adv.id, updatedAdv) };
+}
+
+// ---------------------------------------------------------------------------
+// Subscriber
+// ---------------------------------------------------------------------------
+
 /** Per-tick subscriber: checks goal completion for all adventurers and applies effects. */
 export function personalGoalSubscriber(ctx: SimulationContext): SimulationContext {
   if (ctx.adventurers.size === 0) return ctx;
 
   let updatedCtx = ctx;
+  const { tick } = ctx.worldTime;
 
   for (const adv of ctx.adventurers.values()) {
     if (adv.state === 'DEAD' || adv.state === 'RETIRED') continue;
     if (adv.personalGoalProgress.completed) continue;
 
-    if (checkGoalCompletion(adv, updatedCtx)) {
-      updatedCtx = applyGoalCompletion(updatedCtx, adv);
+    // PEACE_STREAK_30: fire milestone when 30 consecutive days without a quest
+    if (
+      adv.identity.personalGoal === 'PEACE' &&
+      !hasPeaceStreakMilestone(adv)
+    ) {
+      const lastQuestTick = lastQuestTickForAdventurer(updatedCtx, adv.id);
+      const streakLongEnough =
+        lastQuestTick === undefined ? tick >= PEACE_STREAK_TICKS : tick - lastQuestTick > PEACE_STREAK_TICKS;
+      if (streakLongEnough) {
+        updatedCtx = applyPeaceStreakMilestone(updatedCtx, adv);
+      }
+    }
+
+    // Re-read (may have been updated by milestone above)
+    const current = updatedCtx.adventurers.get(adv.id) ?? adv;
+    if (checkGoalCompletion(current, updatedCtx)) {
+      updatedCtx = applyGoalCompletion(updatedCtx, current);
     }
   }
 

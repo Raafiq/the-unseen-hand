@@ -51,7 +51,10 @@ function chooseOption(ctx: SimulationContext, cmd: Extract<DispatchCommand, { ty
 
   const pendingShifts = new Map(ctx.pendingShifts);
   if (option.probabilityShift !== 0 && moment.subjectId) {
-    pendingShifts.set(moment.subjectId, (pendingShifts.get(moment.subjectId) ?? 0) + option.probabilityShift);
+    // subjectId may be comma-joined for multi-target moments (e.g. PARTY_SELECTION)
+    for (const id of moment.subjectId.split(',')) {
+      pendingShifts.set(id, (pendingShifts.get(id) ?? 0) + option.probabilityShift);
+    }
   }
 
   let next: SimulationContext = {

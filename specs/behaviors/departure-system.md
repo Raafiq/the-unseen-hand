@@ -13,17 +13,17 @@ An adventurer who sustains `mood < 10` for 3 consecutive days enters a departure
 ### Departure trigger
 
 Evaluated at each day tick for every `IDLE`, `RESTING`, or `SOCIALIZING` adventurer:
-1. If `adventurer.mood < 10`: increment the adventurer's `despairingDayCount`.
-2. If `adventurer.mood >= 10`: reset `despairingDayCount` to 0.
-3. If `despairingDayCount >= 3`: roll departure.
+1. If `adventurer.mood < 10`: increment the adventurer's `despairStreak`.
+2. If `adventurer.mood >= 10`: reset `despairStreak` to 0.
+3. If `despairStreak >= 3`: roll departure.
 
-`despairingDayCount` is stored on the adventurer object. It is reset only when mood rises above 10 — not when the adventurer goes on a quest or changes state.
+`despairStreak` is stored on the adventurer object. It is reset only when mood rises above 10 — not when the adventurer goes on a quest or changes state.
 
-**Adventurers on quests (`ON_QUEST`, `IN_DUNGEON`) do not roll departure,** regardless of mood. Their `despairingDayCount` does not increment. Low-mood adventurers may still be autonomous-assigned to quests while despairing if mood is not below 10 at assignment time; if mood drops below 10 mid-quest, the count is frozen until they return.
+**Adventurers on quests (`ON_QUEST`, `IN_DUNGEON`) do not roll departure,** regardless of mood. Their `despairStreak` does not increment. Low-mood adventurers may still be autonomous-assigned to quests while despairing if mood is not below 10 at assignment time; if mood drops below 10 mid-quest, the count is frozen until they return.
 
 ### Departure roll
 
-Probability: `0.10 + (despairingDayCount - 3) * 0.05`, capped at 0.40.
+Probability: `0.10 + (despairStreak - 3) * 0.05`, capped at 0.40.
 
 | Days despairing | Departure probability |
 |---|---|
@@ -54,7 +54,7 @@ Probability: `0.10 + (despairingDayCount - 3) * 0.05`, capped at 0.40.
 
 When the departure roll **succeeds**, a `DecisionMomentEvent` is briefly surfaced (expiry: 12 ticks / 30 minutes real time at 1×) offering the player a chance to spend DI to boost the adventurer's mood before the departure is finalised. The departure is not finalised until the decision moment expires or is resolved.
 
-If the player boosts mood above 10 via this intervention, departure is cancelled and `despairingDayCount` is reset to 0.
+If the player boosts mood above 10 via this intervention, departure is cancelled and `despairStreak` is reset to 0.
 
 ## Validation
 

@@ -15,6 +15,7 @@ import type {
 } from '../world/types.js';
 import { emitEvent } from '../events/eventBus.js';
 import { updateReputation } from '../world/WorldExpansion.js';
+import { grantDI } from '../divine/DivineInfluence.js';
 
 // ---------------------------------------------------------------------------
 // Goal completion checks
@@ -217,8 +218,8 @@ export function applyGoalCompletion(
   adventurers.set(adv.id, updatedAdv);
   next = { ...next, adventurers };
 
-  // 3. Grant +12 DI
-  next = { ...next, divineInfluence: Math.min(100, next.divineInfluence + 12) };
+  // 3. Grant +12 DI (via grantDI so a DI_GAINED event is emitted)
+  next = grantDI(next, 12);
 
   // 4. Update reputation
   next = { ...next, reputation: updateReputation(next.reputation, { event: 'GOAL_ACHIEVED' }) };

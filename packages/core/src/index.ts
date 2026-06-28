@@ -88,6 +88,7 @@ export {
   questExpirySubscriber,
   partySelectionSubscriber,
   resolveQuest,
+  questResolutionSubscriber,
 } from './quests/questSystem.js';
 export type { QuestOutcomeResult } from './quests/questSystem.js';
 export type { SimulationEventInput, SocialEventInput, CombatEventInput, QuestEventInput,

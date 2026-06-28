@@ -32,6 +32,7 @@ export function createSimulationContext(seed: string): SimulationContext {
     questBoard: { available: [], active: [] },
     eventLog: [],
     pendingDecisions: [],
+    pendingShifts: new Map(),
     divineInfluence: 50,
     activeRegions: new Map(),
     scenario: null,

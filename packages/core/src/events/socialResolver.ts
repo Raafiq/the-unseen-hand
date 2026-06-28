@@ -15,6 +15,7 @@ import { strengthToType, applyStrengthShift, detectThresholdEvents, createEdge }
 import { upsertMoodFactor } from '../adventurers/mood.js';
 import { emitEvent } from './eventBus.js';
 import { updateReputation } from '../world/WorldExpansion.js';
+import { grantDI } from '../divine/DivineInfluence.js';
 
 // ---------------------------------------------------------------------------
 // Interaction probability
@@ -189,7 +190,7 @@ export function socialEventSubscriber(ctx: SimulationContext): SimulationContext
       // Build updated context before emitting events
       updatedCtx = { ...updatedCtx, adventurers: updatedAdventurers, relationships: graph, lastSharedActivity };
 
-      // Threshold events → lifecycle events; wire reputation on BOND_FORMED
+      // Threshold events → lifecycle events; wire reputation and DI bursts on bond milestones
       const thresholdEvents = detectThresholdEvents(idA, idB, priorStrength, newStrength);
       for (const te of thresholdEvents) {
         updatedCtx = emitEvent(updatedCtx, {
@@ -199,6 +200,9 @@ export function socialEventSubscriber(ctx: SimulationContext): SimulationContext
         });
         if (te.type === 'TRUSTED_COMPANION_BOND_FORMED') {
           updatedCtx = { ...updatedCtx, reputation: updateReputation(updatedCtx.reputation, { event: 'BOND_FORMED' }) };
+          updatedCtx = grantDI(updatedCtx, 8);
+        } else if (te.type === 'FRIENDSHIP_FORMED') {
+          updatedCtx = grantDI(updatedCtx, 8);
         }
       }
 

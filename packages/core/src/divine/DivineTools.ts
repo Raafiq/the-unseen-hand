@@ -49,10 +49,16 @@ function chooseOption(ctx: SimulationContext, cmd: Extract<DispatchCommand, { ty
 
   if (ctx.divineInfluence < option.diCost) return { ok: false, error: 'INSUFFICIENT_DI' };
 
+  const pendingShifts = new Map(ctx.pendingShifts);
+  if (option.probabilityShift !== 0 && moment.subjectId) {
+    pendingShifts.set(moment.subjectId, (pendingShifts.get(moment.subjectId) ?? 0) + option.probabilityShift);
+  }
+
   let next: SimulationContext = {
     ...ctx,
     divineInfluence: ctx.divineInfluence - option.diCost,
     pendingDecisions: ctx.pendingDecisions.filter(m => m.id !== cmd.decisionId),
+    pendingShifts,
   };
   next = emitEvent(next, { kind: 'DIVINE', subtype: 'OPTION_CHOSEN', diDelta: -option.diCost });
 

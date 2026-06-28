@@ -30,6 +30,7 @@ type SimulationContext = {
   questBoard: QuestBoard;
   eventLog: SimulationEvent[];
   pendingDecisions: DecisionMoment[];
+  pendingShifts: Map<string, number>; // subjectId → probabilityShift; written by CHOOSE_OPTION, read+cleared by quest resolver
   divineInfluence: number;          // 0–100
   activeRegions: Map<RegionId, Region>;
   scenario: ScenarioState | null;   // null in sandbox mode

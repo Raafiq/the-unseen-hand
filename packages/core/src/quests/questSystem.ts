@@ -12,6 +12,7 @@ import type {
   Adventurer,
   AdventurerId,
   RelationshipGraph,
+  GoalMilestone,
 } from '../world/types.js';
 import { strengthToType, createEdge, applyStrengthShift } from '../relationships/graph.js';
 import { transitionState } from '../adventurers/stateMachine.js';
@@ -21,6 +22,7 @@ import { emitEvent } from '../events/eventBus.js';
 import { appendHistoryEvent } from '../adventurers/HistoryLayer.js';
 import { generateBeats } from '../combat/beatGenerator.js';
 import { updateReputation } from '../world/WorldExpansion.js';
+import { grantDI } from '../divine/DivineInfluence.js';
 
 // ---------------------------------------------------------------------------
 // Probability composition
@@ -117,7 +119,7 @@ export function questBoardSeedingSubscriber(ctx: SimulationContext): SimulationC
   if (ctx.worldTime.tick === 0 || ctx.worldTime.tick % 168 !== 0) return ctx;
 
   const currentBoardSize = ctx.questBoard.available.length;
-  const questPressure = ctx.scenario ? 0 : 0; // Phase 4: scenario.questPressure
+  const questPressure = ctx.scenario?.questPressure ?? 0;
   const n = Math.max(1, baseQuestRate(ctx) + questPressure - currentBoardSize);
 
   const newQuests: Quest[] = [];
@@ -161,8 +163,8 @@ export function createQuestExpirySubscriber() {
       ? { ...ctx, questBoard: { ...ctx.questBoard, available: remaining } }
       : ctx;
 
-    // Drought: board empty for DROUGHT_TICKS consecutive ticks
-    const activelyEmpty = remaining.length === 0 && next.questBoard.active.length === 0;
+    // Drought: available board empty for DROUGHT_TICKS consecutive ticks (active quests don't suppress drought)
+    const activelyEmpty = remaining.length === 0;
     if (activelyEmpty) {
       if (firstEmptyTick === null) firstEmptyTick = tick;
       if (tick - firstEmptyTick >= DROUGHT_TICKS) {
@@ -393,8 +395,14 @@ export function questResolutionSubscriber(ctx: SimulationContext): SimulationCon
       continue;
     }
 
+    // Collect pending DI shifts for this party and clear them
+    const pendingShifts = new Map(updatedCtx.pendingShifts);
+    const diModifier = party.reduce((acc, a) => acc + (pendingShifts.get(a.id) ?? 0), 0);
+    party.forEach(a => pendingShifts.delete(a.id));
+    updatedCtx = { ...updatedCtx, pendingShifts };
+
     // Resolve outcome (transitions adventurer states, advances RNG)
-    const result = resolveQuest(quest, party, updatedCtx, 0);
+    const result = resolveQuest(quest, party, updatedCtx, diModifier);
     updatedCtx = result.ctx;
 
     // Generate beats (uses post-resolve RNG for deterministic continuation)
@@ -408,16 +416,20 @@ export function questResolutionSubscriber(ctx: SimulationContext): SimulationCon
       involvedIds: party.map(a => a.id),
     });
 
-    // Credit treasury on success
+    // Credit treasury on success; grant DI burst
     updatedCtx = { ...updatedCtx, treasury: updatedCtx.treasury + result.loot };
+    if (result.success) {
+      updatedCtx = grantDI(updatedCtx, 5);
+    }
 
-    // Append history events to surviving party members
+    // Append history events and quest milestones to surviving party members
     const updatedAdventurers = new Map(updatedCtx.adventurers);
     for (const origAdv of party) {
       const adv = updatedAdventurers.get(origAdv.id);
       if (!adv || result.deaths.includes(adv.id)) continue;
 
       let history = adv.history;
+      let goalProgress = adv.personalGoalProgress;
 
       // FIRST_KILL: quest succeeded, adventurer has no prior FIRST_KILL event
       if (result.success && !history.some(h => h.kind === 'FIRST_KILL')) {
@@ -445,10 +457,60 @@ export function questResolutionSubscriber(ctx: SimulationContext): SimulationCon
         history = appendHistoryEvent(history, { tick, kind: 'SAVED_BY', involvedIds: saverIds, weight: 1 });
       }
 
-      if (history !== adv.history) {
-        updatedAdventurers.set(adv.id, { ...adv, history });
+      // Quest milestones (success path only)
+      if (result.success) {
+        const goal = adv.identity.personalGoal;
+        const newMilestones: GoalMilestone[] = [];
+
+        if (goal === 'HEROISM') {
+          // Each dungeon/rescue success adds a milestone; HEROISM needs 3 total
+          if (quest.type === 'DUNGEON') {
+            newMilestones.push({ tick, description: 'DUNGEON_SUCCESS' });
+          }
+          if (quest.type === 'RESCUE') {
+            newMilestones.push({ tick, description: 'RESCUE_SUCCESS' });
+          }
+        }
+
+        if (goal === 'WEALTH') {
+          newMilestones.push({ tick, description: `GOLD_EARNED:${quest.reward}` });
+        }
+
+        if (newMilestones.length > 0) {
+          goalProgress = { ...goalProgress, milestones: [...goalProgress.milestones, ...newMilestones] };
+          for (const ms of newMilestones) {
+            updatedCtx = emitEvent(updatedCtx, {
+              kind: 'LIFECYCLE',
+              subtype: 'GOAL_MILESTONE',
+              involvedIds: [adv.id],
+            });
+            // Patch renderedText on the emitted event with the milestone description
+            const lastIdx = updatedCtx.eventLog.length - 1;
+            updatedCtx = {
+              ...updatedCtx,
+              eventLog: updatedCtx.eventLog.map((e, i) =>
+                i === lastIdx ? { ...e, renderedText: `${adv.identity.name}: ${ms.description}` } : e
+              ),
+            };
+          }
+        }
+      }
+
+      if (history !== adv.history || goalProgress !== adv.personalGoalProgress) {
+        updatedAdventurers.set(adv.id, { ...adv, history, personalGoalProgress: goalProgress });
       }
     }
+
+    // DI burst for unannounced deaths (deaths with no DEATH_IMMINENT pending decision)
+    for (const deadId of result.deaths) {
+      const hasMoment = updatedCtx.pendingDecisions.some(
+        d => d.kind === 'DEATH_IMMINENT' && d.subjectId === deadId,
+      );
+      if (!hasMoment) {
+        updatedCtx = grantDI(updatedCtx, 5);
+      }
+    }
+
     updatedCtx = { ...updatedCtx, adventurers: updatedAdventurers };
 
     // Update reputation

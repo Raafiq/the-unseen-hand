@@ -73,6 +73,11 @@ export class SimulationLoop {
     this._subscribers.push(subscriber);
   }
 
+  /** Inject an externally-modified context (e.g. after a dispatch call) between ticks. */
+  setContext(ctx: SimulationContext): void {
+    this._ctx = ctx;
+  }
+
   step(): void {
     this._tick();
   }

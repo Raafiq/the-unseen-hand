@@ -332,6 +332,7 @@ export type DecisionMoment = {
   situationText: string;
   options: DecisionOption[];
   expiresAt: number;
+  subjectId?: string; // adventurerId or questId the chosen option's shift applies to
 };
 
 // ---------------------------------------------------------------------------
@@ -388,6 +389,7 @@ export type ScenarioState = {
   failConditions: FailConditionState[];
   status: 'ACTIVE' | 'COMPLETE' | 'FAILED';
   treasuryNegativeSince: number | null; // tick when treasury first went negative (BANKRUPTCY tracking)
+  questPressure?: number; // copied from Scenario definition at start; added to weekly seeding formula
 };
 
 // ---------------------------------------------------------------------------
@@ -428,6 +430,7 @@ export type Scenario = {
   timeLimit?: number;
   startingRoster: AdventurerSeed[];
   startingDI: number;
+  questPressure?: number; // added to weekly board seeding formula: N = baseRate + questPressure - currentBoardSize
 };
 
 // ---------------------------------------------------------------------------
@@ -443,6 +446,7 @@ export type SimulationContext = {
   questBoard: QuestBoard;
   eventLog: SimulationEvent[];
   pendingDecisions: DecisionMoment[];
+  pendingShifts: Map<string, number>; // subjectId → probabilityShift; written by CHOOSE_OPTION, read+cleared by quest resolver
   divineInfluence: number; // 0–100
   activeRegions: Map<RegionId, Region>;
   scenario: ScenarioState | null;

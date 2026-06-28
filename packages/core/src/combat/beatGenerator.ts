@@ -132,16 +132,16 @@ function generatePersonalityNote(
   const edge = ally ? graph.get(actor.id)?.get(ally.id) : undefined;
   const edgeType = edge ? strengthToType(edge.strength) : undefined;
 
-  if (action === 'FLEE' && courage < 35) {
+  if ((action === 'FLEE' || action === 'HESITATE') && courage < 30) {
     return `courage ${courage} — breaks before the odds`;
   }
   if (action === 'ATTACK' && courage > 65 && losingFight) {
     return `courage ${courage} — refuses to yield`;
   }
-  if (action === 'DEFEND_ALLY' && loyalty > 65 && edgeType === 'STRANGER') {
+  if (action === 'DEFEND_ALLY' && loyalty > 70 && edgeType === 'STRANGER') {
     return `loyalty ${loyalty} — stands by a near-stranger without hesitation`;
   }
-  if (action !== 'DEFEND_ALLY' && empathy < 35 && edgeType === 'TRUSTED_COMPANION') {
+  if (action !== 'DEFEND_ALLY' && empathy < 20 && edgeType === 'TRUSTED_COMPANION') {
     return `empathy ${empathy} — cannot bring themselves to intervene`;
   }
   return undefined;

@@ -1,5 +1,5 @@
 ---
-status: planned
+status: in-progress
 depends: [p10a-narrative-voice]
 specs:
   - specs/behaviors/world-expansion.md

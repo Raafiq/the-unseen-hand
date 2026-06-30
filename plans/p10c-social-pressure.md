@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 depends: [p10a-narrative-voice, p9a-activity-system]
 specs:
   - specs/behaviors/social-system.md
@@ -96,17 +96,21 @@ names / `pairHour`.
 
 ## Validation
 
-- [ ] Enemy pairs accumulate zero pressure and never fire in a 24-tick run (no crisis flag).
-- [ ] A kept-apart pair's pressure decays toward 0 and never crosses THRESHOLD.
-- [ ] A sustained-proximity+strain pair's pressure rises monotonically to THRESHOLD (asserted on the accumulator).
-- [ ] After firing, pressure resets to 0 and the pair cannot fire again until `tick ≥ cooldown` (fixed seed).
-- [ ] `empathy ≥ 55` approacher always resolves JOIN.
-- [ ] SOLIDARITY +10, ARGUMENT −10, ESTRANGEMENT −22 on the edge; six social MoodFactors emitted.
-- [ ] BREAKTHROUGH ≤ 40% of qualifying encounters (`thresholdProb = 0.4`); 100% under crisis flag.
-- [ ] Group scene (3) emits one `SocialEvent` with 3 participant ids and 3 pair updates.
-- [ ] `pairHour` no longer exported; old four-outcome names gone from tests.
-- [ ] Encounter `renderedText` non-empty, slot-free, byte-for-byte replayable under fixed seed.
-- [ ] `tsc --noEmit` and `svelte-check` pass; all Vitest tests pass.
+- [x] Enemy pairs accumulate zero pressure and never fire in a 24-tick run (no crisis flag).
+- [x] A kept-apart pair's pressure decays toward 0 and never crosses THRESHOLD.
+- [x] A sustained-proximity+strain pair's pressure rises monotonically to THRESHOLD (asserted on the accumulator).
+- [x] After firing, pressure resets to 0 and the pair cannot fire again until `tick ≥ cooldown` (fixed seed).
+- [x] `empathy ≥ 55` approacher always resolves JOIN.
+- [x] SOLIDARITY +10, ARGUMENT −10, ESTRANGEMENT −22 on the edge; six social MoodFactors emitted.
+- [x] BREAKTHROUGH ≤ 40% of qualifying encounters (`thresholdProb = 0.4`); 100% under crisis flag.
+- [x] Group scene (3) emits one `SocialEvent` with 3 participant ids and 3 pair updates.
+- [x] `pairHour` no longer exported; old four-outcome names gone from tests.
+- [x] Encounter `renderedText` non-empty, slot-free, byte-for-byte replayable under fixed seed.
+- [x] `tsc --noEmit` and `svelte-check` pass; all Vitest tests pass.
+
+> All boxes verified by `packages/core/tests/social-pressure.test.ts` (21 tests) +
+> `narrative-voice.test.ts` (six-subtype beat-pool coverage). Full suite: 478 core Vitest green;
+> game-client `tsc` + `svelte-check` = 0 errors.
 
 ## Risks / unknowns
 
@@ -172,6 +176,40 @@ applied to all N-choose-2 pairs; one `SocialEvent` with N `participantIds`.
 10 pairs (inside the 3–7 band). Cheapest density levers if playtest reads off: `proximity 0.05→0.06`
 or `DECAY 0.015→0.012` (sparse), `COOLDOWN_BASE↑` (spammy).
 
+### Closeout — playtest reading (2026-06-30)
+
+Constants shipped **at the locked build-target values** (D1–D7 unchanged); the directive was to
+build to the signed-off numbers, not re-tune. A 30-day playtest on the live scenario is **not
+possible** — Scenario 1 ships with a roster of one (no pairs), so social density is unobservable
+in-game today (as D1 anticipated).
+
+A throwaway synthetic harness (5 adventurers / 10 pairs, full activity + mood subscribers, 720
+ticks × 5 seeds) was run to get *a* reading: **mean ≈ 1.7/day** with mood dynamics on (≈2.5/day
+with mood held static). Both sit **below** the 3–7/day target band. Caveats: synthetic roster,
+convergent moods (all seed at 50 with a single baseline factor → near-zero mood-gap strain), no
+recruitment feedback. So this is a rough lower bound, not a verdict.
+
+**Decision:** constants left as signed-off. The sparse reading is recorded but the locked numbers
+were **not** changed unilaterally — see Follow-ups for the recommended tuning lever, which is the
+user's call. The plan pre-authorised exactly this contingency ("Cheapest density levers if
+playtest reads off: `proximity 0.05→0.06` or `DECAY 0.015→0.012`").
+
 ## Follow-ups
 
-(Populated at closeout.)
+- **Density tuning (for user decision).** Synthetic playtest reads sparse (~1.7/day vs ~5 target).
+  If confirmed once recruitment exists, apply the pre-authorised levers (`PROXIMITY 0.05→0.06`,
+  `DECAY 0.015→0.012`, or lower `THRESHOLD`) in `socialResolver.ts`. Not changed now: numbers are
+  signed-off and the effect is unobservable in the single-adventurer shipping scenario.
+- **FEUD span on ESTRANGEMENT-under-crisis — descoped, blocked on p10b.** The span lifecycle p10c
+  would reuse does not exist yet (`p10b-world-event-durations` is still `planned`). The crisis-bypass
+  *logic* is built and tested (`resolveOutcome(..., crisis)`), but no FEUD span is opened and nothing
+  in-sim sets the crisis flag. Wire this once p10b lands. (None of the 11 Validation boxes needed it.)
+- **Join/interrupt side effects not wired.** `decideApproach` is implemented + tested (Validation
+  box 5), but the subscriber calls `resolveEncounter` directly without applying the spec §3 JOIN
+  duration-extension / INTERRUPT activity-termination. Outcome resolution is unaffected; wire the
+  approach side effects into the activity window as a follow-up.
+- **Group prose names only the first two participants.** `resolveEncounter` emits one `SocialEvent`
+  with all N ids, but the P10a beat pools (`{a}`/`{b}`) name only two. Add a group-subject grammar
+  (spec §6 "subject naming the group") so 3–4-person scenes read correctly.
+- **Crisis flag source remains a forward slot** (carried from Risks) — no in-sim condition sets it
+  yet; first real producer is the descoped FEUD path above.

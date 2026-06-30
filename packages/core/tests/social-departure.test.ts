@@ -1,16 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  computeInteractionProbability,
-  computeOutcomeWeights,
-  socialEventSubscriber,
-} from '../src/events/socialResolver.js';
-import {
   computeDepartureProbability,
   departureSubscriber,
 } from '../src/adventurers/departureSystem.js';
 import { createSimulationContext } from '../src/world/SimulationContext.js';
-import { createEdge } from '../src/relationships/graph.js';
-import type { Adventurer, RelationshipEdge, SimulationContext } from '../src/world/types.js';
+import type { Adventurer, SimulationContext } from '../src/world/types.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -28,130 +22,6 @@ function makeAdventurer(id: string, opts: Partial<{ mood: number; empathy: numbe
     currentQuestId: null,
   };
 }
-
-function makeEdge(strength: number): RelationshipEdge {
-  return { strength, type: 'ACQUAINTANCE', history: [] };
-}
-
-// ---------------------------------------------------------------------------
-// Social events — tracer bullet
-// ---------------------------------------------------------------------------
-
-describe('computeInteractionProbability', () => {
-  it('neutral pair with no edge returns base ~0.15', () => {
-    const a1 = makeAdventurer('a');
-    const a2 = makeAdventurer('b');
-    const prob = computeInteractionProbability(a1, a2, undefined);
-    expect(prob).toBeCloseTo(0.15 + 0.10, 1); // base + empathy 50+50/200*0.20
-  });
-
-  it('high-mood adventurer increases probability', () => {
-    const happy = makeAdventurer('a', { mood: 80 });
-    const base  = makeAdventurer('b', { mood: 50 });
-    const neutral = makeAdventurer('c', { mood: 50 });
-    const withHappy  = computeInteractionProbability(happy, base,   undefined);
-    const withNeutral = computeInteractionProbability(neutral, base, undefined);
-    expect(withHappy).toBeGreaterThan(withNeutral);
-  });
-
-  it('low-mood adventurer decreases probability', () => {
-    const sad    = makeAdventurer('a', { mood: 20 });
-    const neutral = makeAdventurer('b', { mood: 50 });
-    const neutral2 = makeAdventurer('c', { mood: 50 });
-    const withSad     = computeInteractionProbability(sad, neutral,  undefined);
-    const withNeutral = computeInteractionProbability(neutral2, neutral, undefined);
-    expect(withSad).toBeLessThan(withNeutral);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Outcome weights
-// ---------------------------------------------------------------------------
-
-describe('computeOutcomeWeights', () => {
-  it('SILENT_DISTANCE has higher weight for RIVAL pair than STRANGER pair', () => {
-    const a1 = makeAdventurer('a');
-    const a2 = makeAdventurer('b');
-    const rivalEdge   = makeEdge(-20); // RIVAL
-    const strangerEdge = makeEdge(0);   // STRANGER
-    const rivalW    = computeOutcomeWeights(a1, a2, rivalEdge);
-    const strangerW = computeOutcomeWeights(a1, a2, strangerEdge);
-    expect(rivalW.SILENT_DISTANCE).toBeGreaterThan(strangerW.SILENT_DISTANCE);
-  });
-
-  it('ARGUMENT has higher weight when adventurer is UNSATISFIED (mood < 25)', () => {
-    const unsatisfied = makeAdventurer('a', { mood: 15 });
-    const content     = makeAdventurer('b', { mood: 60 });
-    const other       = makeAdventurer('c', { mood: 60 });
-    const withBad  = computeOutcomeWeights(unsatisfied, other,   undefined);
-    const withGood = computeOutcomeWeights(content,     other,   undefined);
-    expect(withBad.ARGUMENT).toBeGreaterThan(withGood.ARGUMENT);
-  });
-
-  it('BREAKTHROUGH has higher weight for FRIEND pair', () => {
-    const a1 = makeAdventurer('a');
-    const a2 = makeAdventurer('b');
-    const friendEdge   = makeEdge(50); // FRIEND
-    const strangerEdge = makeEdge(0);  // STRANGER
-    const friendW    = computeOutcomeWeights(a1, a2, friendEdge);
-    const strangerW  = computeOutcomeWeights(a1, a2, strangerEdge);
-    expect(friendW.BREAKTHROUGH).toBeGreaterThan(strangerW.BREAKTHROUGH);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Social event subscriber
-// ---------------------------------------------------------------------------
-
-describe('socialEventSubscriber', () => {
-  function ctxWithPair(mood1 = 60, mood2 = 60): SimulationContext {
-    const base = createSimulationContext('social-sub');
-    const dayCtx = { ...base, worldTime: { tick: 24, day: 1, hour: 0 } };
-    const a1: Adventurer = makeAdventurer('a', { mood: mood1 });
-    const a2: Adventurer = makeAdventurer('b', { mood: mood2 });
-    const adventurers = new Map([['a', a1], ['b', a2]]);
-    // Give them a relationship edge (prerequisite for interaction)
-    const relationships = new Map([
-      ['a', new Map([['b', createEdge(20)]])],
-      ['b', new Map([['a', createEdge(20)]])],
-    ]);
-    return { ...dayCtx, adventurers, relationships };
-  }
-
-  it('pair (a,b) does not fire at hours other than its designated hour', () => {
-    // pairHour('a','b') = 7; pick a different hour to confirm the gate holds
-    const ctx = { ...ctxWithPair(), worldTime: { tick: 5, day: 0, hour: 5 } };
-    const result = socialEventSubscriber(ctx);
-    expect(result.eventLog).toHaveLength(0);
-  });
-
-  it('when interaction fires, a SOCIAL event is added to eventLog', () => {
-    // pairHour('a','b') = 7 — set hour to 7 so the pair's slot is reached.
-    // Run several seeds since interaction probability is probabilistic.
-    let fired = false;
-    for (let seed = 0; seed < 50; seed++) {
-      const base = createSimulationContext(`social-fire-${seed}`);
-      // tick 31 = day 1, hour 7 — the designated hour for pair (a, b)
-      const ctx = { ...base, worldTime: { tick: 31, day: 1, hour: 7 } };
-      const a1: Adventurer = makeAdventurer('a');
-      const a2: Adventurer = makeAdventurer('b');
-      const adventurers = new Map([['a', a1], ['b', a2]]);
-      const relationships = new Map([
-        ['a', new Map([['b', createEdge(20)]])],
-        ['b', new Map([['a', createEdge(20)]])],
-      ]);
-      const result = socialEventSubscriber({ ...ctx, adventurers, relationships });
-      if (result.eventLog.length > 0) {
-        const ev = result.eventLog[0]!;
-        expect(ev.kind).toBe('SOCIAL');
-        expect(ev.renderedText).toBeTruthy();
-        fired = true;
-        break;
-      }
-    }
-    expect(fired).toBe(true);
-  });
-});
 
 // ---------------------------------------------------------------------------
 // Departure system
@@ -236,9 +106,6 @@ describe('departureSubscriber', () => {
   });
 
   it('when departure fires, adventurer transitions to RETIRED and event is emitted', () => {
-    // With despairStreak=10 and loyalty=10, departure probability = min(0.40, 0.10+0.35)-0.10 = 0.25
-    // (loyalty ≤ 60 so no loyalty reduction here; loyalty=10 means no reduction)
-    // Run enough seeds to find a departure
     let departed = false;
     for (let seed = 0; seed < 50; seed++) {
       const base = createSimulationContext(`depart-fire-${seed}`);

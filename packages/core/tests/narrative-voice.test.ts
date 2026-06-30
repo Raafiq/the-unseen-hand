@@ -33,7 +33,7 @@ describe('narrative-voice — grammar variety', () => {
   });
 
   it('every current SOCIAL subtype yields ≥3 distinct lines, each naming both participants', () => {
-    const subtypes = ['POSITIVE_CHAT', 'ARGUMENT', 'BREAKTHROUGH', 'SILENT_DISTANCE'] as const;
+    const subtypes = ['BANTER', 'SOLIDARITY', 'BREAKTHROUGH', 'SILENT_DISTANCE', 'ARGUMENT', 'ESTRANGEMENT'] as const;
     for (const subtype of subtypes) {
       const variants = distinctRenderings(`voice-social-${subtype}`, {
         kind: 'SOCIAL', subtype, participantIds: ['alice', 'bob'], relationshipDelta: 0,
@@ -46,10 +46,10 @@ describe('narrative-voice — grammar variety', () => {
     }
   });
 
-  it('appends a colour fragment to some lines: SOCIAL/POSITIVE_CHAT yields more distinct forms than it has beats', () => {
+  it('appends a colour fragment to some lines: SOCIAL/BANTER yields more distinct forms than it has beats', () => {
     // 4 beats alone would cap distinct renderings at 4; an optional colour pool pushes it higher.
     const variants = distinctRenderings('voice-colour', {
-      kind: 'SOCIAL', subtype: 'POSITIVE_CHAT', participantIds: ['alice', 'bob'], relationshipDelta: 6,
+      kind: 'SOCIAL', subtype: 'BANTER', participantIds: ['alice', 'bob'], relationshipDelta: 6,
     }, 120);
     expect(variants.size).toBeGreaterThanOrEqual(6);
   });
@@ -131,7 +131,7 @@ describe('narrative-voice — grammar variety', () => {
 describe('narrative-voice — determinism & integrity', () => {
   // A representative input per slot-bearing family, sampled many times each.
   const sampleInputs: SimulationEventInput[] = [
-    { kind: 'SOCIAL', subtype: 'POSITIVE_CHAT', participantIds: ['alice', 'bob'], relationshipDelta: 5 },
+    { kind: 'SOCIAL', subtype: 'BANTER', participantIds: ['alice', 'bob'], relationshipDelta: 5 },
     { kind: 'QUEST', subtype: 'STARTED', questId: 'q1', partyIds: ['alice'] },
     { kind: 'LIFECYCLE', subtype: 'FRIENDSHIP_FORMED', involvedIds: ['alice', 'bob'] },
     { kind: 'WORLD', subtype: 'STORM' },

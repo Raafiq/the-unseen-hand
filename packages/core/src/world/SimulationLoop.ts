@@ -10,7 +10,7 @@ import type { SimulationContext } from './types.js';
 import { WorldClock, type SpeedMultiplier } from './WorldClock.js';
 import { moodSubscriber } from '../adventurers/mood.js';
 import { relationshipDecaySubscriber } from '../relationships/graph.js';
-import { socialEventSubscriber } from '../events/socialResolver.js';
+import { socialPressureSubscriber } from '../events/socialResolver.js';
 import { activitySubscriber } from '../events/activitySystem.js';
 import { departureSubscriber } from '../adventurers/departureSystem.js';
 import { diTrickleSubscriber } from '../divine/DivineInfluence.js';
@@ -58,7 +58,7 @@ export class SimulationLoop {
       partySelectionSubscriber,  // slot 6: autonomous party selection (day ticks)
       questResolutionSubscriber, // slot 7: quest outcome resolution
       activitySubscriber,        // slot 8: activity pool (runs before social escalation)
-      socialEventSubscriber,     // slot 8b: social interaction resolver (day ticks — TO BE REPLACED by P9b)
+      socialPressureSubscriber,  // slot 8b: per-tick social pressure accumulation + jittered discharge (social-system.md §4)
       personalGoalSubscriber,    // slot 9a: personal goal completion checks
       decisionMomentSubscriber,  // slot 9b: decision moment detector
       departureSubscriber,       // slot 10: departure system (day ticks)

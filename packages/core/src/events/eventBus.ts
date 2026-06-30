@@ -21,8 +21,8 @@ import type {
 
 export type SocialEventInput = {
   kind: 'SOCIAL';
-  subtype: 'POSITIVE_CHAT' | 'ARGUMENT' | 'BREAKTHROUGH' | 'SILENT_DISTANCE';
-  participantIds: [AdventurerId, AdventurerId];
+  subtype: import('../world/types.js').SocialOutcomeType;
+  participantIds: import('../world/types.js').ActorId[]; // 2–4 participants (group scenes)
   relationshipDelta: number;
 };
 
@@ -132,11 +132,17 @@ function fill(template: string, slots: Slots): string {
 
 /** Beat pools keyed by `${kind}:${subtype}` — ≥3 variants each (narrative-voice.md). */
 const BEAT_POOLS: Record<string, readonly string[]> = {
-  'SOCIAL:POSITIVE_CHAT': [
+  'SOCIAL:BANTER': [
     '{a} and {b} share a warm conversation over supper.',
     '{a} and {b} fall into easy talk by the fire.',
     '{a} swaps stories with {b} late into the evening.',
     '{a} and {b} pass an hour in good company.',
+  ],
+  'SOCIAL:SOLIDARITY': [
+    '{a} and {b} find real common cause, and the bond shows.',
+    '{a} stands shoulder to shoulder with {b} against the day\'s troubles.',
+    '{a} and {b} close ranks — whatever comes, they face it together.',
+    'A quiet loyalty hardens between {a} and {b}.',
   ],
   'SOCIAL:ARGUMENT': [
     '{a} and {b} clash in a heated argument.',
@@ -153,6 +159,12 @@ const BEAT_POOLS: Record<string, readonly string[]> = {
     '{a} and {b} drift apart in awkward silence.',
     '{a} and {b} sit together saying nothing, a gulf between them.',
     '{a} turns away from {b} without a word.',
+  ],
+  'SOCIAL:ESTRANGEMENT': [
+    'Something breaks for good between {a} and {b}.',
+    '{a} and {b} fall out bitterly, past any mending.',
+    '{a} writes {b} off entirely, and the cold sets in.',
+    'Whatever was left between {a} and {b} curdles into open estrangement.',
   ],
   'QUEST:STARTED': [
     'A party sets out on {label}.',
@@ -369,8 +381,10 @@ function questLabel(ctx: SimulationContext, questId: QuestId): string {
 function renderText(input: SimulationEventInput, ctx: SimulationContext): string {
   switch (input.kind) {
     case 'SOCIAL': {
-      const a = advName(ctx, input.participantIds[0]);
-      const b = advName(ctx, input.participantIds[1]);
+      // 2–4 participants; the beat pools name the first two ({a}/{b}). Group scenes (3–4)
+      // still fill both slots so the line is slot-free (3rd+ are carried on the event, not the prose).
+      const a = advName(ctx, input.participantIds[0] ?? 'someone');
+      const b = advName(ctx, input.participantIds[1] ?? 'another');
       const slots = { a, b };
       return compose(`SOCIAL:${input.subtype}`, slots, ctx, `${a} and ${b} share words.`, { colourKey: 'SOCIAL' });
     }

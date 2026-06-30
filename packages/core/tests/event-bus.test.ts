@@ -3,7 +3,7 @@ import { emitEvent, type SimulationEventInput } from '../src/events/eventBus.js'
 import { createSimulationContext } from '../src/world/SimulationContext.js';
 
 // ---------------------------------------------------------------------------
-// Tracer bullet — SOCIAL/POSITIVE_CHAT
+// Tracer bullet — SOCIAL/BANTER
 // ---------------------------------------------------------------------------
 
 describe('emitEvent — SOCIAL', () => {
@@ -11,7 +11,7 @@ describe('emitEvent — SOCIAL', () => {
     const ctx = createSimulationContext('bus-test');
     const result = emitEvent(ctx, {
       kind: 'SOCIAL',
-      subtype: 'POSITIVE_CHAT',
+      subtype: 'BANTER',
       participantIds: ['alice', 'bob'],
       relationshipDelta: 5,
     });
@@ -41,7 +41,7 @@ describe('emitEvent — SOCIAL', () => {
     const advanced = { ...ctx, worldTime: { tick: 5, day: 0, hour: 5 } };
     const result = emitEvent(advanced, {
       kind: 'SOCIAL',
-      subtype: 'POSITIVE_CHAT',
+      subtype: 'BANTER',
       participantIds: ['a', 'b'],
       relationshipDelta: 5,
     });
@@ -51,7 +51,7 @@ describe('emitEvent — SOCIAL', () => {
   it('does not mutate the prior eventLog — prior events are preserved', () => {
     const ctx = createSimulationContext('append-test');
     const ctx1 = emitEvent(ctx, {
-      kind: 'SOCIAL', subtype: 'POSITIVE_CHAT',
+      kind: 'SOCIAL', subtype: 'BANTER',
       participantIds: ['a', 'b'], relationshipDelta: 5,
     });
     const ctx2 = emitEvent(ctx1, {
@@ -67,7 +67,7 @@ describe('emitEvent — SOCIAL', () => {
   it('two events emitted in sequence get different IDs', () => {
     const ctx = createSimulationContext('id-test');
     const ctx1 = emitEvent(ctx, {
-      kind: 'SOCIAL', subtype: 'POSITIVE_CHAT',
+      kind: 'SOCIAL', subtype: 'BANTER',
       participantIds: ['a', 'b'], relationshipDelta: 5,
     });
     const ctx2 = emitEvent(ctx1, {
@@ -79,7 +79,7 @@ describe('emitEvent — SOCIAL', () => {
 
   it('same seed replays to same IDs (determinism)', () => {
     const input = {
-      kind: 'SOCIAL' as const, subtype: 'POSITIVE_CHAT' as const,
+      kind: 'SOCIAL' as const, subtype: 'BANTER' as const,
       participantIds: ['a', 'b'] as [string, string], relationshipDelta: 5,
     };
     const id1 = emitEvent(createSimulationContext('det-test'), input).eventLog[0].id;
@@ -97,7 +97,7 @@ describe('emitEvent — renderedText never empty', () => {
 
   const allInputs: SimulationEventInput[] = [
     // SOCIAL
-    { kind: 'SOCIAL', subtype: 'POSITIVE_CHAT',   participantIds: ['a', 'b'], relationshipDelta: 5 },
+    { kind: 'SOCIAL', subtype: 'BANTER',   participantIds: ['a', 'b'], relationshipDelta: 5 },
     { kind: 'SOCIAL', subtype: 'ARGUMENT',         participantIds: ['a', 'b'], relationshipDelta: -8 },
     { kind: 'SOCIAL', subtype: 'BREAKTHROUGH',     participantIds: ['a', 'b'], relationshipDelta: 15 },
     { kind: 'SOCIAL', subtype: 'SILENT_DISTANCE',  participantIds: ['a', 'b'], relationshipDelta: -3 },

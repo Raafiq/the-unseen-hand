@@ -20,6 +20,11 @@ export type WorldTime = {
 
 export type AdventurerId = string;
 
+/** A participant in a social encounter. Aliased to AdventurerId for p10c
+ *  (adventurer↔adventurer only); p10d widens this to include NPCs without an
+ *  event-shape change. */
+export type ActorId = AdventurerId;
+
 export type PersonalGoal =
   | 'HEROISM'
   | 'WEALTH'
@@ -166,6 +171,10 @@ export type RelationshipGraph = Map<AdventurerId, Map<AdventurerId, Relationship
 /** Keyed by sorted pair id "A-B"; value is the tick of last shared activity. */
 export type LastSharedActivity = Record<string, number>;
 
+/** Sorted pair id `"A-B"` — the canonical key for per-pair social state
+ *  (`socialPressure`, `socialCooldowns`). Build with `pairKey(a, b)`. */
+export type PairKey = string;
+
 // ---------------------------------------------------------------------------
 // Quests
 // ---------------------------------------------------------------------------
@@ -244,10 +253,18 @@ export type EventBase = {
   renderedText: string;
 };
 
+export type SocialOutcomeType =
+  | 'BANTER'
+  | 'SOLIDARITY'
+  | 'BREAKTHROUGH'
+  | 'SILENT_DISTANCE'
+  | 'ARGUMENT'
+  | 'ESTRANGEMENT';
+
 export type SocialEvent = EventBase & {
   kind: 'SOCIAL';
-  subtype: 'POSITIVE_CHAT' | 'ARGUMENT' | 'BREAKTHROUGH' | 'SILENT_DISTANCE';
-  participantIds: [AdventurerId, AdventurerId];
+  subtype: SocialOutcomeType;
+  participantIds: ActorId[]; // 2–4 participants (group scenes)
   relationshipDelta: number;
 };
 
@@ -480,6 +497,8 @@ export type SimulationContext = {
   pendingDecisions: DecisionMoment[];
   pendingShifts: Map<string, number>; // subjectId → probabilityShift; written by CHOOSE_OPTION, read+cleared by quest resolver
   decisionCooldowns: Map<string, number>; // cooldownKey → expiry tick; prevents re-fire after dismiss/expiry
+  socialPressure: Map<PairKey, number>;   // per-pair accumulated social tension; built up then discharged (social-system.md §4)
+  socialCooldowns: Map<PairKey, number>;  // per-pair post-fire / ESTRANGEMENT cooldown expiry tick; no accumulation while tick < value
   divineInfluence: number; // 0–100
   activeRegions: Map<RegionId, Region>;
   scenario: ScenarioState | null;

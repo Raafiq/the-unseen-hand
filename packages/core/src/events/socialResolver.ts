@@ -1,244 +1,457 @@
 /**
- * Social event resolver — daily idle-adventurer interaction system.
+ * Social pressure resolver — the accumulate-then-discharge social escalation engine.
  *
- * Spec: specs/behaviors/social-events.md
- * Runs on day ticks only. Each idle/resting pair rolls an interaction check,
- * then selects an outcome from weighted weights.
+ * Spec: specs/behaviors/social-system.md §4 (pressure trigger), §5 (six-outcome resolution).
+ * Plan: plans/p10c-social-pressure.md (constants frozen in its Notes block).
+ *
+ * Replaces the legacy memoryless `pairHour` per-tick coin-flip. Tension between two
+ * adventurers *builds* each tick (proximity + mood strain + relationship friction, gated by
+ * what they are each doing) and discharges at a jittered moment once it crosses THRESHOLD.
+ * After firing, the pair cools off. Encounters resolve to one of six outcomes on a
+ * valence × intensity grid and are rendered by the P10a template grammar (no per-scene LLM).
+ *
+ * Module shape: `socialPressureSubscriber` is a thin per-tick driver that decides which pairs
+ * accumulate / discharge; `resolveEncounter` is the deep write site that applies every side
+ * effect (relationship deltas, mood factors, threshold lifecycle events, pressure reset +
+ * cooldown, the single SocialEvent). Tests route encounter behaviour through `resolveEncounter`
+ * and accumulation/discharge through the subscriber (per CLAUDE.md's subscriber-test rule).
  */
 import type {
   SimulationContext,
   Adventurer,
   AdventurerId,
+  ActorId,
+  ActivityId,
+  PairKey,
   RelationshipEdge,
+  RelationshipGraph,
+  SocialOutcomeType,
+  PersonalityAxes,
+  MoodFactor,
 } from '../world/types.js';
-import { strengthToType, applyStrengthShift, detectThresholdEvents, createEdge } from '../relationships/graph.js';
+import {
+  strengthToType,
+  applyStrengthShift,
+  detectThresholdEvents,
+  createEdge,
+} from '../relationships/graph.js';
 import { upsertMoodFactor } from '../adventurers/mood.js';
 import { emitEvent } from './eventBus.js';
 import { updateReputation } from '../world/WorldExpansion.js';
 import { grantDI } from '../divine/DivineInfluence.js';
 
 // ---------------------------------------------------------------------------
-// Interaction probability
+// Tuning constants — frozen by the pressure-accumulator grill (plan Notes D1–D7).
+// Confirm/adjust against a 30-day playtest at closeout.
 // ---------------------------------------------------------------------------
 
-export function computeInteractionProbability(
-  a1: Adventurer,
-  a2: Adventurer,
-  edge: RelationshipEdge | undefined,
-): number {
-  let prob = 0.15;
-  // Sociability bonus from empathy
-  prob += (a1.personality.empathy + a2.personality.empathy) / 200 * 0.20;
-  // Mood modifiers
-  if (a1.mood > 70 || a2.mood > 70) prob += 0.05;
-  if (a1.mood < 25 || a2.mood < 25) prob -= 0.10;
-  return Math.max(0, Math.min(1, prob));
-}
+const PROXIMITY = 0.05;          // flat per-tick floor for being co-present & awake (D2)
+const DECAY = 0.015;             // net-flow decay floor; below public gain, above withdrawn gain (D3)
+const THRESHOLD = 1.0;           // pressure level at which an encounter becomes "due" (D4)
+const FIRE_BASE = 0.2;           // base per-tick discharge probability once due (D4)
+const OVERSHOOT_CAP = 2.0;       // overshoot multiplier cap → max fireProb 0.4 (D4)
+const COOLDOWN_BASE = 8;         // post-fire cooldown floor, ticks (D5)
+const COOLDOWN_JITTER = 16;      // post-fire cooldown jitter span → window [8, 24) (D5)
+const ESTRANGEMENT_COOLDOWN = 120; // 5-day approach lock after ESTRANGEMENT (D5)
+const THRESHOLD_PROB = 0.4;      // rare-outcome (BREAKTHROUGH/ESTRANGEMENT) escalation gate (D6)
+const ENEMY_FLOOR = -51;         // strength ≤ this never accumulates voluntarily (spec §4 step 1)
+const MAX_GROUP = 4;             // group scene participant cap (spec §3)
 
-// ---------------------------------------------------------------------------
-// Outcome weights
-// ---------------------------------------------------------------------------
-
-type SocialOutcomeType = 'POSITIVE_CHAT' | 'ARGUMENT' | 'BREAKTHROUGH' | 'SILENT_DISTANCE';
-
-export function computeOutcomeWeights(
-  a1: Adventurer,
-  a2: Adventurer,
-  edge: RelationshipEdge | undefined,
-): Record<SocialOutcomeType, number> {
-  const edgeType = edge ? strengthToType(edge.strength) : 'STRANGER';
-  const unsatisfied = a1.mood < 25 || a2.mood < 25;
-  const friendOrAbove = edgeType === 'FRIEND' || edgeType === 'TRUSTED_COMPANION';
-  const rivalOrEnemy = edgeType === 'RIVAL' || edgeType === 'ENEMY';
-
-  return {
-    POSITIVE_CHAT:   45,
-    ARGUMENT:        25 + (unsatisfied ? 20 : 0),
-    BREAKTHROUGH:    10 + (friendOrAbove ? 15 : 0),
-    SILENT_DISTANCE: 20 + (rivalOrEnemy ? 15 : 0),
-  };
-}
-
-function pickOutcome(weights: Record<SocialOutcomeType, number>, rng: SimulationContext['rng']): SocialOutcomeType {
-  const total = Object.values(weights).reduce((a, b) => a + b, 0);
-  const roll = rng.next() * total;
-  let cum = 0;
-  for (const [k, w] of Object.entries(weights) as [SocialOutcomeType, number][]) {
-    cum += w;
-    if (roll < cum) return k;
-  }
-  return 'POSITIVE_CHAT';
-}
-
-// ---------------------------------------------------------------------------
-// Template engine
-// ---------------------------------------------------------------------------
-
-const SOCIAL_TEMPLATES: Record<SocialOutcomeType, string[]> = {
-  POSITIVE_CHAT: [
-    '{A} and {B} share a quiet evening together.',
-    '{A} and {B} trade stories by the fire.',
-    '{A} spots {B} alone and pulls up a chair.',
-  ],
-  ARGUMENT: [
-    '{A} and {B} have a heated disagreement.',
-    '{A} and {B} clash over something petty that turns serious.',
-    'Tensions between {A} and {B} finally boil over.',
-  ],
-  BREAKTHROUGH: [
-    '{A} and {B} have an unexpected moment of understanding.',
-    '{A} and {B} find common ground they had not expected.',
-    'Something shifts between {A} and {B} tonight.',
-  ],
-  SILENT_DISTANCE: [
-    '{A} and {B} avoid each other\'s company.',
-    '{A} and {B} pass in the hall without a word.',
-    '{A} gives {B} a wide berth.',
-  ],
-};
-
-function renderSocialText(
-  outcome: SocialOutcomeType,
-  nameA: string,
-  nameB: string,
-  tick: number,
-): string {
-  const templates = SOCIAL_TEMPLATES[outcome];
-  const idx = (tick * 31 + nameA.charCodeAt(0)) % templates.length;
-  return templates[idx]!.replace('{A}', nameA).replace('{B}', nameB);
-}
-
-// ---------------------------------------------------------------------------
-// Effect application
-// ---------------------------------------------------------------------------
-
-type SocialOutcomeEffects = {
-  relationshipDelta: number;
-  moodFactorId?: string;
-  moodLabel?: string;
-  moodDecayRate?: number;
-  moodValue?: number;
-};
-
-const EFFECTS: Record<SocialOutcomeType, SocialOutcomeEffects> = {
-  POSITIVE_CHAT:   { relationshipDelta: +5,  moodFactorId: 'SOCIAL_POSITIVE', moodLabel: 'Social bond formed', moodDecayRate: 0.20, moodValue: +8 },
-  ARGUMENT:        { relationshipDelta: -8,  moodFactorId: 'SOCIAL_ARGUMENT',  moodLabel: 'Social conflict',   moodDecayRate: 0.25, moodValue: -10 },
-  BREAKTHROUGH:    { relationshipDelta: +15, moodFactorId: 'SOCIAL_POSITIVE', moodLabel: 'Social bond formed', moodDecayRate: 0.20, moodValue: +20 },
-  SILENT_DISTANCE: { relationshipDelta: -3 },
+/** Compatibility multiplier per solo activity (spec §4 table). Scales how readily proximity
+ *  becomes a scene. Unlisted activities (PATROL/HUNTING/GAMBLING/SLEEPING) take sensible
+ *  defaults; SLEEPING never accumulates anyway (frozen). */
+const COMPAT: Record<ActivityId, number> = {
+  DRINKING: 2.5,
+  COOKING: 2.0,
+  GOSSIPING: 1.8,
+  GAMBLING: 1.8,
+  EATING: 1.5,
+  BROODING: 1.2,
+  TRAINING: 1.0,
+  SPARRING: 1.0,
+  CRAFTING: 0.6,
+  PATROL: 0.5,
+  HUNTING: 0.3,
+  READING: 0.3,
+  PRAYING: 0.2,
+  RESTING: 0.15,
+  SLEEPING: 0.0,
 };
 
 // ---------------------------------------------------------------------------
-// Subscriber
+// Keys & small helpers
+// ---------------------------------------------------------------------------
+
+/** Canonical sorted pair key "A-B". */
+export function pairKey(idA: AdventurerId, idB: AdventurerId): PairKey {
+  return [idA, idB].sort().join('-');
+}
+
+function clamp(x: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, x));
+}
+
+/** Relationship strength inflection points; an edge within ±5 of one is "near boundary". */
+const BOUNDARIES = [70, 40, 11, -10, -50];
+function isNearBoundary(strength: number): boolean {
+  return BOUNDARIES.some(b => Math.abs(strength - b) <= 5);
+}
+
+function activityCompat(adv: Adventurer): number {
+  const act = adv.activityState?.current;
+  return act !== undefined ? COMPAT[act] : 1.0;
+}
+
+/** Pair compatibility = the more-withdrawn member gates the pair (min of the two). */
+function compatibilityFor(a: Adventurer, b: Adventurer): number {
+  return Math.min(activityCompat(a), activityCompat(b));
+}
+
+function isAwake(adv: Adventurer): boolean {
+  return adv.activityState?.current !== 'SLEEPING';
+}
+
+/** Present = available to socialise this tick (not away on a quest, not gone). */
+function isPresent(adv: Adventurer): boolean {
+  return adv.state !== 'ON_QUEST'
+    && adv.state !== 'IN_DUNGEON'
+    && adv.state !== 'DEAD'
+    && adv.state !== 'RETIRED';
+}
+
+// ---------------------------------------------------------------------------
+// Pressure gain (spec §4 step 3 / plan D2)
 // ---------------------------------------------------------------------------
 
 /**
- * Maps a pair of adventurer IDs to a stable hour of day (0–23).
- * Each pair has a dedicated hour so social events spread across the clock
- * while keeping the same daily rate (one interaction check per pair per day).
+ * Per-tick pressure gain (before the DECAY floor). Three commensurable additive terms
+ * (hundredths) scaled by empathy and activity compatibility:
+ *   gain = (proximity + moodStrain + relationshipTension) × compatibilityMult × empathyMult
  */
-export function pairHour(idA: string, idB: string): number {
-  const key = [idA, idB].sort().join('|');
-  let h = 0;
-  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
-  return h % 24;
+export function computePressureGain(
+  a: Adventurer,
+  b: Adventurer,
+  edge: RelationshipEdge | undefined,
+): number {
+  const proximity = PROXIMITY;
+
+  const moodGap = Math.abs(a.mood - b.mood);
+  const minMood = Math.min(a.mood, b.mood);
+  const moodStrain = 0.03 * (moodGap / 100) + 0.03 * clamp((40 - minMood) / 40, 0, 1);
+
+  const isRival = edge !== undefined && strengthToType(edge.strength) === 'RIVAL';
+  const nearBoundary = edge !== undefined && isNearBoundary(edge.strength);
+  const relationshipTension = 0.005 + (isRival ? 0.025 : 0) + (nearBoundary ? 0.015 : 0);
+
+  const empathyMult = 0.5 + Math.max(a.personality.empathy, b.personality.empathy) / 100;
+  const compatibilityMult = compatibilityFor(a, b);
+
+  return (proximity + moodStrain + relationshipTension) * compatibilityMult * empathyMult;
 }
 
-export function socialEventSubscriber(ctx: SimulationContext): SimulationContext {
-  const eligibleIds = [...ctx.adventurers.values()]
-    .filter(a => a.state === 'IDLE' || a.state === 'RESTING')
-    .map(a => a.id);
+// ---------------------------------------------------------------------------
+// Join vs interrupt (spec §3) — driven by the approaching character's personality
+// ---------------------------------------------------------------------------
 
-  if (eligibleIds.length < 2) return ctx;
+export type ApproachResult = 'JOIN' | 'INTERRUPT';
 
-  const visitedPairs = new Set<string>();
-  let updatedCtx = ctx;
+export function decideApproach(approacher: Adventurer, compatibility: number): ApproachResult {
+  const { empathy, courage } = approacher.personality;
+  if (empathy >= 55) return 'JOIN';
+  if (empathy < 40 && courage >= 60) return 'INTERRUPT';
+  return compatibility >= 1.5 ? 'JOIN' : 'INTERRUPT';
+}
 
-  for (let i = 0; i < eligibleIds.length; i++) {
-    for (let j = i + 1; j < eligibleIds.length; j++) {
-      const idA = eligibleIds[i]!;
-      const idB = eligibleIds[j]!;
-      const key = [idA, idB].sort().join('-');
-      if (visitedPairs.has(key)) continue;
-      visitedPairs.add(key);
+// ---------------------------------------------------------------------------
+// Outcome resolution (spec §5)
+// ---------------------------------------------------------------------------
 
-      const a1 = updatedCtx.adventurers.get(idA)!;
-      const a2 = updatedCtx.adventurers.get(idB)!;
-      const edge = updatedCtx.relationships.get(idA)?.get(idB);
+export type EncounterStats = {
+  moodAvg: number;
+  moodGap: number;   // max pairwise gap in a group
+  clashScore: number; // max pairwise personality-axis difference
+  strength: number;   // average pairwise relationship strength
+};
 
-      // Each pair fires at its own dedicated hour — same daily rate, spread across the clock.
-      if (ctx.worldTime.hour !== pairHour(idA, idB)) continue;
+/**
+ * Resolve a (post-approach) encounter to one of the six outcomes. Pure over
+ * `(stats, rng, crisis)`. The two rare outcomes (BREAKTHROUGH / ESTRANGEMENT) require a
+ * very-high gap AND pass an rng `THRESHOLD_PROB` gate — bypassed when a crisis flag is set.
+ */
+export function resolveOutcome(
+  stats: EncounterStats,
+  rng: SimulationContext['rng'],
+  crisis = false,
+): SocialOutcomeType {
+  const { moodAvg, moodGap, clashScore, strength } = stats;
 
-      // Eligibility: must have existing edge (shared quest before)
-      if (!edge) continue;
+  const valence: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL' =
+    moodAvg > 55 && strength > 10 ? 'POSITIVE'
+    : moodAvg < 25 || strength < -10 ? 'NEGATIVE'
+    : 'NEUTRAL';
 
-      const prob = computeInteractionProbability(a1, a2, edge);
-      if (updatedCtx.rng.next() > prob) continue;
+  const strong = moodGap > 35 || clashScore > 50;
+  const veryHighGap = moodGap > 50 || clashScore > 70; // always implies STRONG
 
-      const weights = computeOutcomeWeights(a1, a2, edge);
-      const outcome = pickOutcome(weights, updatedCtx.rng);
-      const effects = EFFECTS[outcome];
+  const escalate = (): boolean => crisis || rng.next() < THRESHOLD_PROB;
 
-      // Update relationship
-      let graph = updatedCtx.relationships;
-      const priorStrength = edge.strength;
-      graph = applyStrengthShift(graph, idA, idB, effects.relationshipDelta, ctx.worldTime.tick, outcome);
+  if (valence === 'POSITIVE') {
+    if (!strong) return 'BANTER';
+    if (veryHighGap && escalate()) return 'BREAKTHROUGH';
+    return 'SOLIDARITY';
+  }
+  if (valence === 'NEGATIVE') {
+    if (veryHighGap && escalate()) return 'ESTRANGEMENT';
+    return 'ARGUMENT';
+  }
+  return 'SILENT_DISTANCE';
+}
+
+// ---------------------------------------------------------------------------
+// Outcome effects (spec §5 table / plan D7)
+// ---------------------------------------------------------------------------
+
+type OutcomeEffect = {
+  relationshipDelta: number;
+  moodId?: string;
+  moodLabel?: string;
+  moodValue?: number;
+  moodDecay?: number;
+};
+
+const OUTCOME_EFFECTS: Record<SocialOutcomeType, OutcomeEffect> = {
+  BANTER:          { relationshipDelta: +3,  moodId: 'SOCIAL_BANTER',       moodLabel: 'Good company',      moodValue: +5,  moodDecay: 0.20 },
+  SOLIDARITY:      { relationshipDelta: +10, moodId: 'SOCIAL_SOLIDARITY',   moodLabel: 'Solidarity',        moodValue: +12, moodDecay: 0.15 },
+  BREAKTHROUGH:    { relationshipDelta: +18, moodId: 'SOCIAL_BREAKTHROUGH', moodLabel: 'A breakthrough',    moodValue: +22, moodDecay: 0.08 },
+  SILENT_DISTANCE: { relationshipDelta: -1 },
+  ARGUMENT:        { relationshipDelta: -10, moodId: 'SOCIAL_ARGUMENT',     moodLabel: 'A bitter argument', moodValue: -12, moodDecay: 0.25 },
+  ESTRANGEMENT:    { relationshipDelta: -22, moodId: 'SOCIAL_ESTRANGEMENT', moodLabel: 'Estrangement',      moodValue: -25, moodDecay: 0.07 },
+};
+
+// ---------------------------------------------------------------------------
+// Encounter resolution — the authoritative write site
+// ---------------------------------------------------------------------------
+
+function maxAxisDiff(pa: PersonalityAxes, pb: PersonalityAxes): number {
+  const axes: Array<keyof PersonalityAxes> = ['courage', 'greed', 'empathy', 'loyalty', 'ambition', 'stubborn'];
+  let max = 0;
+  for (const ax of axes) {
+    const diff = Math.abs((pa[ax] ?? 0) - (pb[ax] ?? 0));
+    if (diff > max) max = diff;
+  }
+  return max;
+}
+
+/** Aggregate per-encounter stats across 2–4 participants. */
+function computeStats(participants: Adventurer[], graph: RelationshipGraph): EncounterStats {
+  const moods = participants.map(p => p.mood);
+  const moodAvg = moods.reduce((s, m) => s + m, 0) / moods.length;
+
+  let moodGap = 0;
+  let clashScore = 0;
+  let strengthSum = 0;
+  let pairCount = 0;
+  for (let i = 0; i < participants.length; i++) {
+    for (let j = i + 1; j < participants.length; j++) {
+      const a = participants[i]!;
+      const b = participants[j]!;
+      moodGap = Math.max(moodGap, Math.abs(a.mood - b.mood));
+      clashScore = Math.max(clashScore, maxAxisDiff(a.personality, b.personality));
+      strengthSum += graph.get(a.id)?.get(b.id)?.strength ?? 0;
+      pairCount++;
+    }
+  }
+  return { moodAvg, moodGap, clashScore, strength: pairCount > 0 ? strengthSum / pairCount : 0 };
+}
+
+/** Ensure a symmetric edge exists for the pair (default STRANGER strength 0). */
+function ensureEdge(graph: RelationshipGraph, idA: AdventurerId, idB: AdventurerId): RelationshipGraph {
+  if (graph.get(idA)?.get(idB) && graph.get(idB)?.get(idA)) return graph;
+  const next = new Map(graph);
+  const a = new Map(next.get(idA) ?? []);
+  const b = new Map(next.get(idB) ?? []);
+  if (!a.get(idB)) a.set(idB, createEdge(0));
+  if (!b.get(idA)) b.set(idA, createEdge(0));
+  next.set(idA, a);
+  next.set(idB, b);
+  return next;
+}
+
+export type ResolveEncounterOptions = {
+  crisis?: boolean;
+  /** Override the rolled outcome (testing only). */
+  forceOutcome?: SocialOutcomeType;
+};
+
+/**
+ * Resolve one social encounter among 2–4 participants and apply every side effect:
+ * relationship deltas + threshold lifecycle events on all pairs, a mood factor per
+ * participant, the single SocialEvent, and a pressure reset + post-fire cooldown for every
+ * involved pair (ESTRANGEMENT extends the cooldown to its 5-day approach lock).
+ */
+export function resolveEncounter(
+  ctx: SimulationContext,
+  participantIds: ActorId[],
+  opts: ResolveEncounterOptions = {},
+): SimulationContext {
+  const ids = participantIds.slice(0, MAX_GROUP);
+  const participants = ids.map(id => ctx.adventurers.get(id)).filter((a): a is Adventurer => a !== undefined);
+  if (participants.length < 2) return ctx;
+
+  const tick = ctx.worldTime.tick;
+  const stats = computeStats(participants, ctx.relationships);
+  const outcome = opts.forceOutcome ?? resolveOutcome(stats, ctx.rng, opts.crisis);
+  const effect = OUTCOME_EFFECTS[outcome];
+
+  let next = ctx;
+  let graph = next.relationships;
+  const lastShared = { ...next.lastSharedActivity };
+  const pressure = new Map(next.socialPressure);
+  const cooldowns = new Map(next.socialCooldowns);
+
+  // Cooldown horizon for this fire (jittered); ESTRANGEMENT extends to its approach lock.
+  const baseCooldown = tick + COOLDOWN_BASE + Math.floor(next.rng.next() * COOLDOWN_JITTER);
+  const cooldownExpiry = outcome === 'ESTRANGEMENT'
+    ? Math.max(baseCooldown, tick + ESTRANGEMENT_COOLDOWN)
+    : baseCooldown;
+
+  // --- Relationship deltas + threshold events for every pair in the scene ---
+  for (let i = 0; i < participants.length; i++) {
+    for (let j = i + 1; j < participants.length; j++) {
+      const idA = participants[i]!.id;
+      const idB = participants[j]!.id;
+      const key = pairKey(idA, idB);
+
+      graph = ensureEdge(graph, idA, idB);
+      const priorStrength = graph.get(idA)!.get(idB)!.strength;
+      graph = applyStrengthShift(graph, idA, idB, effect.relationshipDelta, tick, outcome);
       const newStrength = graph.get(idA)!.get(idB)!.strength;
 
-      // Apply mood factors
-      const updatedAdventurers = new Map(updatedCtx.adventurers);
-      if (effects.moodFactorId && effects.moodValue !== undefined) {
-        const factor = {
-          id: effects.moodFactorId,
-          label: effects.moodLabel ?? effects.moodFactorId,
-          value: effects.moodValue,
-          decayRate: effects.moodDecayRate ?? 0.20,
-        };
-        updatedAdventurers.set(idA, { ...a1, moodFactors: upsertMoodFactor(a1.moodFactors, factor) });
-        updatedAdventurers.set(idB, { ...a2, moodFactors: upsertMoodFactor(a2.moodFactors, factor) });
-      }
+      lastShared[key] = tick;
+      pressure.set(key, 0);
+      cooldowns.set(key, cooldownExpiry);
 
-      // Update lastSharedActivity
-      const lastSharedActivity = { ...updatedCtx.lastSharedActivity, [key]: ctx.worldTime.tick };
+      next = { ...next, relationships: graph, lastSharedActivity: lastShared, socialPressure: pressure, socialCooldowns: cooldowns };
 
-      // Build updated context before emitting events
-      updatedCtx = { ...updatedCtx, adventurers: updatedAdventurers, relationships: graph, lastSharedActivity };
-
-      // Threshold events → lifecycle events; wire reputation and DI bursts on bond milestones
-      const thresholdEvents = detectThresholdEvents(idA, idB, priorStrength, newStrength);
-      for (const te of thresholdEvents) {
-        updatedCtx = emitEvent(updatedCtx, {
-          kind: 'LIFECYCLE',
-          subtype: te.type,
-          involvedIds: [te.adventurerId1, te.adventurerId2],
-        });
+      // Threshold lifecycle events (bond formed/broken etc.) — preserved from the legacy
+      // resolver so social outcomes still drive friendship/rivalry milestones, DI and reputation.
+      for (const te of detectThresholdEvents(idA, idB, priorStrength, newStrength)) {
+        next = emitEvent(next, { kind: 'LIFECYCLE', subtype: te.type, involvedIds: [te.adventurerId1, te.adventurerId2] });
         if (te.type === 'TRUSTED_COMPANION_BOND_FORMED') {
-          updatedCtx = { ...updatedCtx, reputation: updateReputation(updatedCtx.reputation, { event: 'BOND_FORMED' }) };
-          updatedCtx = grantDI(updatedCtx, 8);
+          next = { ...next, reputation: updateReputation(next.reputation, { event: 'BOND_FORMED' }) };
+          next = grantDI(next, 8);
         } else if (te.type === 'FRIENDSHIP_FORMED') {
-          updatedCtx = grantDI(updatedCtx, 8);
+          next = grantDI(next, 8);
         }
       }
-
-      // Social event
-      const nameA = a1.identity.name;
-      const nameB = a2.identity.name;
-      const renderedText = renderSocialText(outcome, nameA, nameB, ctx.worldTime.tick);
-      updatedCtx = emitEvent(updatedCtx, {
-        kind: 'SOCIAL',
-        subtype: outcome,
-        participantIds: [idA, idB],
-        relationshipDelta: effects.relationshipDelta,
-      });
-
-      // Override the renderedText since emitEvent generates it from the template engine
-      // (social has its own richer templates; override the last event)
-      const lastIdx = updatedCtx.eventLog.length - 1;
-      const overridden = updatedCtx.eventLog.map((e, i) =>
-        i === lastIdx ? { ...e, renderedText } : e
-      );
-      updatedCtx = { ...updatedCtx, eventLog: overridden };
     }
   }
 
-  return updatedCtx;
+  // --- Mood factor per participant ---
+  if (effect.moodId && effect.moodValue !== undefined) {
+    const updated = new Map(next.adventurers);
+    for (const id of ids) {
+      const adv = updated.get(id);
+      if (!adv) continue;
+      const factor: MoodFactor = {
+        id: effect.moodId,
+        label: effect.moodLabel ?? effect.moodId,
+        value: effect.moodValue,
+        decayRate: effect.moodDecay ?? 0.2,
+      };
+      updated.set(id, { ...adv, moodFactors: upsertMoodFactor(adv.moodFactors, factor) });
+    }
+    next = { ...next, adventurers: updated };
+  }
+
+  // --- The single SocialEvent (rendered by the P10a grammar via emitEvent) ---
+  next = emitEvent(next, {
+    kind: 'SOCIAL',
+    subtype: outcome,
+    participantIds: ids,
+    relationshipDelta: effect.relationshipDelta,
+  });
+
+  return next;
+}
+
+// ---------------------------------------------------------------------------
+// Group aggregation — union-find over pairs firing in the same tick
+// ---------------------------------------------------------------------------
+
+function groupFiringPairs(firing: Array<[AdventurerId, AdventurerId]>): AdventurerId[][] {
+  const parent = new Map<AdventurerId, AdventurerId>();
+  const find = (x: AdventurerId): AdventurerId => {
+    let r = x;
+    while (parent.get(r) !== undefined && parent.get(r) !== r) r = parent.get(r)!;
+    parent.set(x, r);
+    return r;
+  };
+  const union = (x: AdventurerId, y: AdventurerId): void => {
+    if (parent.get(x) === undefined) parent.set(x, x);
+    if (parent.get(y) === undefined) parent.set(y, y);
+    parent.set(find(x), find(y));
+  };
+  for (const [a, b] of firing) union(a, b);
+
+  const groups = new Map<AdventurerId, AdventurerId[]>();
+  const members = new Set<AdventurerId>();
+  for (const [a, b] of firing) { members.add(a); members.add(b); }
+  for (const m of members) {
+    const root = find(m);
+    const list = groups.get(root) ?? [];
+    list.push(m);
+    groups.set(root, list);
+  }
+  return [...groups.values()];
+}
+
+// ---------------------------------------------------------------------------
+// Subscriber — per-tick accumulation, decay, and jittered discharge
+// ---------------------------------------------------------------------------
+
+export function socialPressureSubscriber(ctx: SimulationContext): SimulationContext {
+  const present = [...ctx.adventurers.values()].filter(isPresent);
+  if (present.length < 2) return ctx;
+
+  const tick = ctx.worldTime.tick;
+  const pressure = new Map(ctx.socialPressure);
+  const firing: Array<[AdventurerId, AdventurerId]> = [];
+
+  for (let i = 0; i < present.length; i++) {
+    for (let j = i + 1; j < present.length; j++) {
+      const a = present[i]!;
+      const b = present[j]!;
+      const key = pairKey(a.id, b.id);
+
+      // Post-fire / ESTRANGEMENT cooldown — no accumulation while active.
+      if ((ctx.socialCooldowns.get(key) ?? 0) > tick) continue;
+
+      const edge = ctx.relationships.get(a.id)?.get(b.id);
+
+      // Enemy gate — enemies never accumulate pressure voluntarily (no crisis path yet).
+      if (edge && edge.strength <= ENEMY_FLOOR) continue;
+
+      // Frozen when either is asleep — sleep is a nightly pause, not a reset.
+      if (!isAwake(a) || !isAwake(b)) continue;
+
+      const gain = computePressureGain(a, b, edge);
+      const nextP = Math.max(0, (pressure.get(key) ?? 0) + gain - DECAY);
+      pressure.set(key, nextP);
+
+      if (nextP >= THRESHOLD) {
+        const fireProb = FIRE_BASE * Math.min(OVERSHOOT_CAP, nextP / THRESHOLD);
+        if (ctx.rng.next() < fireProb) firing.push([a.id, b.id]);
+      }
+    }
+  }
+
+  let next: SimulationContext = { ...ctx, socialPressure: pressure };
+  if (firing.length === 0) return next;
+
+  // Resolve each connected group of firing pairs as one encounter (≤ 4 participants).
+  for (const group of groupFiringPairs(firing)) {
+    next = resolveEncounter(next, group.slice(0, MAX_GROUP));
+  }
+  return next;
 }

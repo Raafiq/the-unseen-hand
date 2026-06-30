@@ -44,9 +44,12 @@ export type { NarratorPrompt } from './events/LLMNarrator.js';
 
 // Social events + departure
 export {
-  computeInteractionProbability,
-  computeOutcomeWeights,
-  socialEventSubscriber,
+  socialPressureSubscriber,
+  resolveEncounter,
+  resolveOutcome,
+  decideApproach,
+  computePressureGain,
+  pairKey,
 } from './events/socialResolver.js';
 export {
   computeDepartureProbability,

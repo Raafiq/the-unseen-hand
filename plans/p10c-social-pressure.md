@@ -1,5 +1,5 @@
 ---
-status: planned
+status: in-progress
 depends: [p10a-narrative-voice, p9a-activity-system]
 specs:
   - specs/behaviors/social-system.md

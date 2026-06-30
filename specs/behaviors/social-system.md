@@ -147,19 +147,27 @@ again. This is the same accumulate-then-cooldown shape used by decision moments
 #### Pressure accumulation
 
 The context carries `socialPressure: Map<PairKey, number>` (keyed by sorted pair id `"A-B"`,
-parallel to `lastSharedActivity`). Each tick, for each eligible pair:
+parallel to `lastSharedActivity`). Each tick, for each pair:
 
 1. **Relationship gate** — enemies (`strength ≤ −51`) never accumulate pressure voluntarily.
    Forced proximity (crisis event, shared mandatory activity) can override the enemy gate; no
    other condition can. A pair on an ESTRANGEMENT cooldown (§5) or a post-fire cooldown (below)
    accumulates no pressure.
 
-2. **Eligibility** — both adventurers are in IDLE or a non-Private activity (a Private activity
-   — READING, BROODING, PRAYING, etc. — contributes little or no proximity pressure; see the
-   compatibility table). If not eligible, the pair's pressure **decays** by `DECAY` (a small
-   bleed, e.g. −0.05/tick) toward 0 so stale tension does not persist forever.
+2. **Net-flow accumulation (no binary eligibility gate).** Pressure changes by
+   `Δpressure = gain − DECAY` on every tick where **both adventurers are awake and present**
+   (neither SLEEPING nor away on a quest), floored at 0. When either is SLEEPING or questing the
+   pair's pressure is **frozen** (no gain, no decay) — sleep is a nightly pause, not a reset.
+   `DECAY` is a small constant floor (`0.015`/tick) chosen to sit **below** a typical
+   public-activity gain but **above** the gain of a withdrawn (Private/RESTING) pairing. This
+   makes the compatibility table (step 3) double as the eligibility mechanism: a pair in public,
+   social activities nets positive and builds; a pair where one has withdrawn into a low-compat
+   Private activity (READING, BROODING, PRAYING, CRAFTING, RESTING) nets **negative** and decays
+   toward 0, so stale tension does not persist. No separate "ineligible" flag is needed — a
+   Private/RESTING pairing decays because its `gain` falls below the `DECAY` floor, not because a
+   gate flips.
 
-3. **Pressure gain** — if eligible, add to the pair's pressure:
+3. **Pressure gain** — the per-tick `gain` (before the `DECAY` floor in step 2) is:
    ```
    gain = (proximity + moodStrain + relationshipTension) × compatibilityMult × empathyMult
    ```
@@ -260,6 +268,11 @@ clashScore = |personalityAxisDiff|.max   // largest axis difference
 intensity = moodGap > 35 OR clashScore > 50  → STRONG
           = otherwise                          → MILD
 ```
+
+**Very high gap** — the precondition that makes the two rare outcomes (`BREAKTHROUGH`,
+`ESTRANGEMENT`) reachable — is the stricter `moodGap > 50 OR clashScore > 70`. A "very high gap"
+encounter is always also STRONG; the rare-outcome `thresholdProb` gate (below) then decides
+whether it escalates past SOLIDARITY/ARGUMENT.
 
 #### Outcome grid
 

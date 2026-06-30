@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P10c — Social Pressure Tuning Grill</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0f0d14;--surface:#1a1820;--surface2:#211e2a;--surface3:#28243a;
+    --border:#2e2a3a;--border2:#44405a;--text:#c8c0b4;--muted:#8a8398;--faint:#5a5468;
+    --accent:#7e57c2;--accent-lo:#1a1630;--teal:#26c6da;--orange:#ff9800;
+    --gold:#ffd54f;--red:#ef5350;--green:#66bb6a;--blue:#42a5f5;--mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;line-height:1.62;min-height:100vh}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px 120px}
+  header{position:sticky;top:0;z-index:50;background:rgba(15,13,20,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:16px 0;margin-bottom:8px}
+  header .wrap{padding-bottom:0;padding-top:0;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;min-width:0}
+  header h1{font-size:15px;font-weight:600;color:var(--accent);letter-spacing:.03em}
+  header .sub{font-size:11px;color:var(--muted)}
+  header .right{margin-left:auto;font-size:10px;color:var(--faint);font-variant:small-caps;letter-spacing:.08em}
+  .lead{font-size:13.5px;color:var(--muted);margin:18px 0 6px;max-width:80ch}
+  .lead b{color:var(--text)}
+
+  .facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0 26px}
+  .fact{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:11px 13px;min-width:0}
+  .fact .k{font-size:9.5px;font-variant:small-caps;letter-spacing:.09em;color:var(--faint);margin-bottom:4px}
+  .fact .v{font-size:13px;color:var(--text);font-weight:600}
+  .fact .v small{font-weight:400;color:var(--muted);font-size:11px}
+
+  .keyfind{background:linear-gradient(180deg,#1f1606,#1a1820);border:1px solid #5a4a1a;border-left:3px solid var(--gold);border-radius:8px;padding:18px 20px;margin:8px 0 30px}
+  .keyfind .kl{font-size:10px;font-variant:small-caps;letter-spacing:.1em;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .keyfind h3{font-size:15px;color:#fff;margin-bottom:8px;font-weight:600}
+  .keyfind p{font-size:13px;color:#cfc6b6;margin-bottom:8px}
+  .keyfind code{font-family:var(--mono);font-size:12px;background:#0c0a12;border:1px solid var(--border);border-radius:3px;padding:1px 6px;color:var(--gold)}
+
+  .sec-label{font-size:10px;font-variant:small-caps;letter-spacing:.12em;color:var(--faint);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  .sec-label::after{content:"";flex:1;height:1px;background:var(--border)}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:18px}
+  .ch{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:11px;min-width:0;flex-wrap:wrap}
+  .cnum{font-size:10px;font-variant:small-caps;letter-spacing:.07em;color:var(--accent);background:var(--accent-lo);padding:2px 8px;border-radius:3px;white-space:nowrap}
+  .ch h2{font-size:14.5px;font-weight:600;color:#fff;min-width:0}
+  .pill{font-size:9px;font-variant:small-caps;letter-spacing:.06em;padding:2px 7px;border-radius:3px;white-space:nowrap;margin-left:auto}
+  .pill.knob{background:#2e1a00;color:var(--orange)}
+  .pill.spec{background:#2e0a0a;color:var(--red)}
+  .pill.settled{background:#0c1a0c;color:var(--green)}
+  .cb{padding:18px}
+  .ctx{font-size:12.5px;color:var(--muted);margin-bottom:14px}
+  .ctx b{color:var(--text)}
+
+  .rec{background:#0c1a0c;border:1px solid #2a4a2a;border-left:3px solid var(--green);border-radius:5px;padding:13px 15px;margin:14px 0}
+  .rec .rl{font-size:9.5px;font-variant:small-caps;letter-spacing:.08em;color:var(--green);margin-bottom:7px;display:block}
+  .rec p{font-size:13px;color:#aec8ae}
+  .rec code,.ctx code,.note code{font-family:var(--mono);font-size:11.5px;background:#0c0a12;border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--teal)}
+
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12.5px}
+  th,td{text-align:left;padding:7px 11px;border-bottom:1px solid var(--border);min-width:0}
+  th{font-size:9.5px;font-variant:small-caps;letter-spacing:.07em;color:var(--faint);font-weight:600}
+  td{color:var(--text)}
+  td.mono,td .mono{font-family:var(--mono);font-size:11.5px;color:var(--teal)}
+  tr:last-child td{border-bottom:none}
+  .pos{color:var(--green)}.neg{color:var(--red)}.neu{color:var(--muted)}
+
+  .formula{font-family:var(--mono);font-size:12.5px;background:#0c0a12;border:1px solid var(--border);border-radius:6px;padding:13px 15px;margin:12px 0;color:var(--text);overflow-x:auto;line-height:1.7}
+  .formula .c{color:var(--faint)}
+  .formula .hl{color:var(--gold)}
+
+  .note{font-size:12px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:11px 14px;margin:12px 0}
+  .note b{color:var(--text)}
+
+  .grid6{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:14px 0}
+  .ocell{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:11px 12px;min-width:0}
+  .ocell.pos{border-top:2px solid var(--green)}
+  .ocell.neg{border-top:2px solid var(--red)}
+  .ocell.neu{border-top:2px solid var(--border2)}
+  .ocell .on{font-size:12px;font-weight:700;margin-bottom:3px;color:#fff}
+  .ocell .od{font-size:11px;color:var(--muted);line-height:1.4}
+  .ocell .os{font-size:10px;font-family:var(--mono);margin-top:6px}
+
+  /* sign-off control */
+  .signoff{border-top:1px dashed var(--border2);margin-top:16px;padding-top:14px}
+  .signoff .opts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .opt{flex:1;min-width:140px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:9px 12px;cursor:pointer;transition:.15s;display:flex;gap:8px;align-items:flex-start}
+  .opt:hover{border-color:var(--border2);background:var(--surface3)}
+  .opt input{margin-top:3px;accent-color:var(--accent)}
+  .opt>span{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .opt .ot{display:block;font-size:12px;font-weight:600;color:var(--text);line-height:1.3}
+  .opt .odd{display:block;font-size:10.5px;color:var(--muted);line-height:1.35}
+  .opt.sel{border-color:var(--accent);background:var(--accent-lo)}
+  .signoff textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12.5px;padding:9px 11px;resize:vertical;min-height:48px;font-family:inherit;line-height:1.5;margin-bottom:10px}
+  .signoff textarea:focus{outline:none;border-color:var(--accent)}
+  .signoff button{background:var(--accent);color:#fff;border:none;border-radius:5px;padding:8px 18px;font-size:12.5px;font-weight:600;cursor:pointer}
+  .signoff button:hover{background:#9c6fe0}
+  .signoff button:disabled{background:var(--border2);color:var(--muted);cursor:default}
+
+  .toast{position:fixed;bottom:22px;right:22px;background:var(--surface);border:1px solid var(--green);color:var(--green);border-radius:6px;padding:10px 18px;font-size:13px;font-weight:600;opacity:0;transform:translateY(8px);transition:.25s;z-index:999;pointer-events:none}
+  .toast.show{opacity:1;transform:none}
+  .foot{margin-top:36px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:8px;text-align:center}
+  .foot p{font-size:12.5px;color:var(--muted)}
+  .foot b{color:var(--text)}
+  @media(max-width:760px){.facts{grid-template-columns:repeat(2,minmax(0,1fr))}.grid6{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>P10c — Social Pressure Tuning</h1>
+    <span class="sub">pressure-accumulator · jitter · cooldown · six-outcome grid</span>
+    <span class="right">Grill → sign-off · pre-build</span>
+  </div>
+</header>
+
+<div class="wrap">
+  <p class="lead">
+    The plan freezes the <b>shape</b> of the social trigger (accumulate → discharge → cooldown) but leaves
+    the <b>numbers</b> as "tuned against a playtest." This artifact settles those numbers on paper so we can
+    build against a known target. Every recommendation below is mine — <b>annotate, override, or sign off</b>,
+    and the result becomes the plan's <i>Notes</i> + any spec amendments before a line of code is written.
+  </p>
+
+  <div class="facts">
+    <div class="fact"><div class="k">Clock</div><div class="v">1 tick = 1 hr <small>· 24/day</small></div></div>
+    <div class="fact"><div class="k">Playtest window</div><div class="v">720 ticks <small>· 30 days</small></div></div>
+    <div class="fact"><div class="k">Reference roster</div><div class="v">5 adv <small>· 10 pairs</small></div></div>
+    <div class="fact"><div class="k">Spatial model</div><div class="v">None <small>· activity-state only</small></div></div>
+  </div>
+
+  <div class="keyfind">
+    <div class="kl">⚑ Headline finding from the grill</div>
+    <h3>The spec's own example numbers can't make pressure rise.</h3>
+    <p>
+      Spec §4 suggests <code>proximity ≈ 0.04/tick</code> and <code>DECAY ≈ 0.05/tick</code>. But adventurers
+      sleep ~8h and drift through private/solo activities — so a pair is only mutually "in public" a fraction
+      of each day. If decay (0.05) outruns gain (0.04) on the majority of ticks, <b>pressure never reaches THRESHOLD</b>
+      and no encounter ever fires.
+    </p>
+    <p>
+      <b>The fix doubles as the eligibility mechanism.</b> Reframe decay as a constant <i>floor</i> subtracted every
+      awake tick: <code>Δpressure = gain − DECAY</code>. Set <code>DECAY</code> <i>below</i> a public-activity
+      gain but <i>above</i> a private-activity gain. Then a pair drinking together nets <b>positive</b> (builds);
+      a pair where one is off reading nets <b>negative</b> (decays toward 0) — automatically, with no separate
+      binary gate. This is decision <b>D3</b>, and it's the one place we touch the spec.
+    </p>
+  </div>
+
+  <!-- ============ DENSITY ============ -->
+  <div class="sec-label">The target everything serves</div>
+
+  <div class="card">
+    <div class="ch"><span class="cnum">D1</span><h2>Social-density target</h2><span class="pill knob">primary knob</span></div>
+    <div class="cb">
+      <p class="ctx">
+        Locked creative intent (prior grill Q1): <b>"sitcom, not scheduler" — voyeuristic intimacy</b>. Enough beats
+        that the guild feels alive and you always have something to watch; not a wall of social spam burying the
+        quest/divine layer. We must name a number and the roster it's measured at, or "0.04/tick" has no acceptance test.
+      </p>
+      <table>
+        <tr><th>Measure</th><th>Recommended target</th><th>Sanity band</th></tr>
+        <tr><td>Guild-wide encounters / day</td><td class="mono">≈ 5</td><td class="mono neu">3 – 7</td></tr>
+        <tr><td>Over the 30-day window</td><td class="mono">≈ 150</td><td class="mono neu">90 – 210</td></tr>
+        <tr><td>Per pair across the month</td><td class="mono">≈ 15</td><td class="mono neu">9 – 21</td></tr>
+        <tr><td>Stated at roster</td><td class="mono">5 adv → 10 pairs</td><td class="neu">scales ~n²</td></tr>
+      </table>
+      <div class="rec">
+        <span class="rl">My recommendation</span>
+        <p>
+          Tune to <b>≈5 encounters/day guild-wide at a 5-adventurer / 10-pair reference roster</b> (≈150 over 30 days).
+          The knob we hold is <b>guild-wide encounters/day</b> because the feed is the thing whose <i>feel</i> we're
+          tuning. <b>Note:</b> Scenario 1 ships with a roster of <i>one</i> (Kara) — there are no pairs to fire until
+          recruitment grows the guild, so density is honestly only observable at a fuller roster. The alternative is a
+          <i>per-pair cadence</i> target ("each pair ~every 2 days"), which is more robust to roster size but less tied
+          to what the player sees.
+        </p>
+      </div>
+      <div class="signoff" data-q="D1">
+        <div class="opts">
+          <label class="opt"><input type="radio" name="D1" value="accept"><span><span class="ot">Accept — ~5/day @ 10 pairs</span><span class="odd">guild-wide rate is the knob</span></span></label>
+          <label class="opt"><input type="radio" name="D1" value="perpair"><span><span class="ot">Per-pair cadence instead</span><span class="odd">roster-robust, less feed-tied</span></span></label>
+          <label class="opt"><input type="radio" name="D1" value="other"><span><span class="ot">Different density</span><span class="odd">sparser / denser — say so</span></span></label>
+        </div>
+        <textarea placeholder="Override or note (e.g. 'too dense, aim for 3/day' / 'state at 6 adv')…"></textarea>
+        <button type="button" disabled>Queue D1 answer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ GAIN FORMULA ============ -->
+  <div class="sec-label">How pressure is earned each tick</div>
+
+  <div class="card">
+    <div class="ch"><span class="cnum">D2</span><h2>Gain formula — term ranges &amp; commensurability</h2></div>
+    <div class="cb">
+      <p class="ctx">
+        Spec §4 gives the shape but not the ranges. Three additive terms get summed, then two multipliers scale the
+        sum. For the sum to mean anything the three terms must be the <b>same order of magnitude</b> — otherwise one
+        silently dominates. Here is my proposed range for each, all in "pressure units / tick" against
+        <code>THRESHOLD = 1.0</code>.
+      </p>
+      <div class="formula">
+gain = ( <span class="hl">proximity</span> + <span class="hl">moodStrain</span> + <span class="hl">relationshipTension</span> ) × <span class="hl">compatibilityMult</span> × <span class="hl">empathyMult</span>
+      </div>
+      <table>
+        <tr><th>Term</th><th>Proposed definition</th><th>Range</th><th>Typical</th></tr>
+        <tr>
+          <td><b>proximity</b></td>
+          <td>flat floor for being co-present &amp; awake</td>
+          <td class="mono">0.05</td><td class="mono">0.05</td>
+        </tr>
+        <tr>
+          <td><b>moodStrain</b></td>
+          <td><span class="mono">0.03·(gap/100) + 0.03·clamp((40−minMood)/40)</span><br><span class="neu">wide mood gap <i>or</i> low absolute mood → friction</span></td>
+          <td class="mono">0 – 0.06</td><td class="mono">~0.01</td>
+        </tr>
+        <tr>
+          <td><b>relationshipTension</b></td>
+          <td><span class="mono">0.005 + 0.025·isRival + 0.015·nearBoundary(±5)</span><br><span class="neu">RIVALs &amp; about-to-flip edges accrue faster than settled ones</span></td>
+          <td class="mono">0.005 – 0.045</td><td class="mono">~0.008</td>
+        </tr>
+        <tr style="border-top:2px solid var(--border2)">
+          <td><b>Σ additive</b></td><td class="neu">all three commensurable (hundredths)</td>
+          <td class="mono">0.05 – 0.16</td><td class="mono">~0.068</td>
+        </tr>
+        <tr>
+          <td><b>empathyMult</b></td>
+          <td><span class="mono">0.5 + max(empA,empB)/100</span> — warm pair closes faster</td>
+          <td class="mono">0.5 – 1.5</td><td class="mono">~1.0</td>
+        </tr>
+        <tr>
+          <td><b>compatibilityMult</b></td>
+          <td>spec §4 table, by what they're doing (DRINKING 2.5 … RESTING 0.15)</td>
+          <td class="mono">0.15 – 2.5</td><td class="mono">~1.5</td>
+        </tr>
+      </table>
+      <div class="rec">
+        <span class="rl">My recommendation</span>
+        <p>
+          Adopt the ranges above. The point is <b>proximity is the floor (0.05), moodStrain and relationshipTension are
+          modifiers that can roughly double it under strain</b> — none can dominate. A <b>typical public-activity tick
+          ≈ 0.068 × 1.0 × 1.5 ≈ 0.10/tick</b>; a withdrawn (RESTING/READING) tick falls to <code>~0.068×0.2 ≈ 0.014</code>,
+          which is the hook D3 uses.
+        </p>
+      </div>
+      <div class="signoff" data-q="D2">
+        <div class="opts">
+          <label class="opt"><input type="radio" name="D2" value="accept"><span><span class="ot">Accept the ranges</span><span class="odd">proximity floor + two modifiers</span></span></label>
+          <label class="opt"><input type="radio" name="D2" value="reweight"><span><span class="ot">Re-weight a term</span><span class="odd">say which dominates wrong</span></span></label>
+        </div>
+        <textarea placeholder="e.g. 'moodStrain should be able to dominate — bump to 0.12 cap' …"></textarea>
+        <button type="button" disabled>Queue D2 answer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- D3 ELIGIBILITY / DECAY -->
+  <div class="card">
+    <div class="ch"><span class="cnum">D3</span><h2>Eligibility &amp; decay — the net-flow model</h2><span class="pill spec">touches spec</span></div>
+    <div class="cb">
+      <p class="ctx">
+        Spec §4 describes two mechanisms that collide: (1) a <b>binary eligibility gate</b> — Private activity → "ineligible"
+        → decay; yet (2) a <b>compatibility table that lists those same Private activities with non-zero multipliers</b>
+        (READING 0.3, RESTING 0.15…), which implies they <i>do</i> accumulate. Both can't be literally true. The spec's own
+        validation test — <i>"a pair kept apart (one always in a Private activity) decays toward 0"</i> — forces a resolution.
+      </p>
+      <div class="formula">
+<span class="c">// every tick where BOTH are awake &amp; present (not SLEEPING, not questing):</span>
+Δpressure = gain − <span class="hl">DECAY</span>        <span class="c">// floored at 0</span>
+<span class="c">// SLEEPING or questing → FROZEN (no gain, no decay — sleep is a nightly pause, not a reset)</span>
+<span class="c">// enemy (≤ −51) w/o crisis, or on cooldown/estrangement → no accumulation</span>
+      </div>
+      <p class="ctx">
+        Choosing <code>DECAY</code> <b>between</b> the max private-activity gain (~0.014) and a typical public gain (~0.10)
+        makes the table and the gate the <i>same mechanism</i>: public activity nets positive, withdrawal nets negative.
+        No separate binary flag, and the spec's compat table survives intact.
+      </p>
+      <table>
+        <tr><th>Pair situation</th><th>gain/tick</th><th>− DECAY</th><th>net</th></tr>
+        <tr><td>Drinking together (compat 2.5)</td><td class="mono">~0.17</td><td class="mono">0.015</td><td class="mono pos">+0.155 builds</td></tr>
+        <tr><td>Both training (compat 1.0)</td><td class="mono">~0.068</td><td class="mono">0.015</td><td class="mono pos">+0.053 builds</td></tr>
+        <tr><td>One always READING (compat 0.3)</td><td class="mono">~0.020</td><td class="mono">0.015</td><td class="mono pos">+0.005 ~flat</td></tr>
+        <tr><td>One always RESTING (compat 0.15)</td><td class="mono">~0.010</td><td class="mono">0.015</td><td class="mono neg">−0.005 decays</td></tr>
+        <tr><td>Asleep / one on quest</td><td class="mono neu">frozen</td><td class="mono neu">—</td><td class="mono neu">held</td></tr>
+      </table>
+      <div class="note">
+        <b>Spec ripple:</b> §4 currently says Private → "ineligible → decay." Under net-flow we replace that with
+        "Private activities have low compat → net decay," deleting the binary-gate language while keeping every number
+        in the compat table. RESTING (0.15) is the one tuned to sit just below DECAY so the kept-apart test passes
+        cleanly. This is a <b>spec-first edit to <code>social-system.md §4</code></b> if you sign off.
+      </div>
+      <div class="rec">
+        <span class="rl">My recommendation</span>
+        <p>
+          Adopt <b>net-flow</b>: <code>Δ = gain − DECAY</code> each awake+present tick, frozen on sleep/quest,
+          <code>DECAY = 0.015</code>. Amend <code>social-system.md §4</code> to drop the binary-eligibility wording in
+          favour of the floor. <i>(Alternative: keep a hard binary gate and zero the Private rows from the table — simpler
+          to test, but discards the spec's graded compat values and the "tension half-life" feel.)</i>
+        </p>
+      </div>
+      <div class="signoff" data-q="D3">
+        <div class="opts">
+          <label class="opt"><input type="radio" name="D3" value="netflow"><span><span class="ot">Net-flow + amend spec</span><span class="odd">DECAY=0.015 as a floor</span></span></label>
+          <label class="opt"><input type="radio" name="D3" value="binary"><span><span class="ot">Hard binary gate</span><span class="odd">zero the Private rows</span></span></label>
+        </div>
+        <textarea placeholder="e.g. 'net-flow, but freeze on Private too — don't decay during reading' …"></textarea>
+        <button type="button" disabled>Queue D3 answer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CONSTANTS ============ -->
+  <div class="sec-label">Threshold, discharge &amp; cooldown constants</div>
+
+  <div class="card">
+    <div class="ch"><span class="cnum">D4</span><h2>THRESHOLD &amp; discharge — FIRE_BASE, the 2× cap</h2><span class="pill knob">primary knob</span></div>
+    <div class="cb">
+      <p class="ctx">
+        Once pressure crosses <code>THRESHOLD</code> the encounter is <i>due</i> but does not snap — each tick it rolls a
+        jittered fire chance that rises with overshoot, capped. This spreads the <i>moment</i> of discharge organically
+        across the ticks after threshold instead of firing the instant it's crossed.
+      </p>
+      <div class="formula">
+fireProb = <span class="hl">FIRE_BASE</span> × min( <span class="hl">2</span>, pressure / THRESHOLD )
+rng.next() &lt; fireProb  →  encounter fires this tick
+      </div>
+      <table>
+        <tr><th>Constant</th><th>Value</th><th>Why</th></tr>
+        <tr><td>THRESHOLD</td><td class="mono">1.0</td><td>normalised; ~10 public ticks of net gain to reach from 0</td></tr>
+        <tr><td>FIRE_BASE</td><td class="mono">0.2</td><td>at threshold → 0.2/tick → fires on average ~5 ticks later (geometric)</td></tr>
+        <tr><td>overshoot cap</td><td class="mono">2.0</td><td>max fireProb = 0.4; keeps discharge jittered even when wildly overdue (e.g. forced proximity) instead of snapping to near-certain</td></tr>
+      </table>
+      <div class="rec">
+        <span class="rl">My recommendation</span>
+        <p>
+          <code>THRESHOLD=1.0</code>, <code>FIRE_BASE=0.2</code>, <code>cap=2.0</code>. The firing tick is geometrically
+          distributed (memoryless per-tick Bernoulli) with mean ≈ 1/fireProb — that <i>is</i> the organic jitter, no
+          extra random offset needed. The cap at 2× is what stops a hugely-overdue pair from becoming deterministic;
+          without it, jitter collapses.
+        </p>
+      </div>
+      <div class="signoff" data-q="D4">
+        <div class="opts">
+          <label class="opt"><input type="radio" name="D4" value="accept"><span><span class="ot">Accept 1.0 / 0.2 / 2×</span><span class="odd">~5-tick mean discharge spread</span></span></label>
+          <label class="opt"><input type="radio" name="D4" value="snappier"><span><span class="ot">Snappier / slower</span><span class="odd">raise/lower FIRE_BASE</span></span></label>
+        </div>
+        <textarea placeholder="e.g. 'FIRE_BASE 0.35 — I want discharge within ~3 ticks' …"></textarea>
+        <button type="button" disabled>Queue D4 answer</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><span class="cnum">D5</span><h2>Cooldowns — post-fire jitter &amp; the ESTRANGEMENT lock</h2><span class="pill knob">primary knob</span></div>
+    <div class="cb">
+      <p class="ctx">
+        On firing, reset pressure to 0 and set a jittered cooldown during which the pair accumulates nothing and can't
+        re-fire — reusing the <code>decisionCooldowns</code> mechanism (CLAUDE.md per-tick-detector rule). ESTRANGEMENT
+        adds its own multi-day approach lock; the effective cooldown is the max of the two.
+      </p>
+      <table>
+        <tr><th>Constant</th><th>Value</th><th>Meaning</th></tr>
+        <tr><td>COOLDOWN_BASE</td><td class="mono">8 ticks</td><td>≥8h before tension can rebuild — blocks same-day re-fire</td></tr>
+        <tr><td>COOLDOWN_JITTER</td><td class="mono">+0–16</td><td><span class="mono">tick + 8 + floor(rng·16)</span> → window [8, 24) ticks</td></tr>
+        <tr><td>ESTRANGEMENT lock</td><td class="mono">120 ticks</td><td>5 days, both directions, regardless of strength (spec §5)</td></tr>
+      </table>
+      <div class="note">
+        With ~0.05/day net build to THRESHOLD taking ~2 days, and an 8–24h post-fire lock on top, an average pair
+        cycles roughly <b>once every ~2–2.5 days</b>. Across 10 pairs that lands at <b>~4–5 encounters/day</b> — the D1 target.
+        The arithmetic closes.
+      </div>
+      <div class="rec">
+        <span class="rl">My recommendation</span>
+        <p>
+          <code>COOLDOWN_BASE=8</code>, <code>COOLDOWN_JITTER=16</code>, <code>ESTRANGEMENT=120</code>. The post-fire
+          cooldown's main job is preventing a single pair from spamming the feed on consecutive ticks; the threshold
+          rebuild time does most of the pacing. This is a top playtest knob if density comes out wrong.
+        </p>
+      </div>
+      <div class="signoff" data-q="D5">
+        <div class="opts">
+          <label class="opt"><input type="radio" name="D5" value="accept"><span><span class="ot">Accept 8 / +16 / 120</span><span class="odd">~2–2.5 day pair cycle</span></span></label>
+          <label class="opt"><input type="radio" name="D5" value="longer"><span><span class="ot">Longer cooldown</span><span class="odd">space pairs out more</span></span></label>
+        </div>
+        <textarea placeholder="e.g. 'base 16 — a pair shouldn't re-fire same day at all' …"></textarea>
+        <button type="button" disabled>Queue D5 answer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- worked density -->
+  <div class="card">
+    <div class="ch"><span class="cnum">✓</span><h2>Worked density check — does it hit D1?</h2><span class="pill settled">arithmetic</span></div>
+    <div class="cb">
+      <table>
+        <tr><th>Step</th><th>Value</th><th>Source</th></tr>
+        <tr><td>Net build, typical public tick</td><td class="mono">~0.085 /tick</td><td class="neu">0.10 gain − 0.015 decay (D2/D3)</td></tr>
+        <tr><td>Mutual awake-&amp;-present ticks/day</td><td class="mono">~12</td><td class="neu">16 waking − quest/offset</td></tr>
+        <tr><td>…of which net-positive (public)</td><td class="mono">~6</td><td class="neu">rest withdrawn → ~flat/decay</td></tr>
+        <tr><td>Pressure gained/day</td><td class="mono">~0.45</td><td class="neu">6 × 0.085 − small bleed</td></tr>
+        <tr><td>Ticks to THRESHOLD=1.0</td><td class="mono">~2.2 days</td><td class="neu">+ ~5-tick discharge (D4)</td></tr>
+        <tr><td>+ post-fire cooldown</td><td class="mono">~0.5 day</td><td class="neu">D5</td></tr>
+        <tr style="border-top:2px solid var(--border2)"><td><b>Per-pair fire cycle</b></td><td class="mono">~2.5 days</td><td class="neu">→ 0.4 fires/pair/day</td></tr>
+        <tr><td><b>Guild-wide @ 10 pairs</b></td><td class="mono pos">~4 / day</td><td class="neu">inside the 3–7 band ✓</td></tr>
+      </table>
+      <div class="note">
+        Lands slightly under the 5/day midpoint — comfortable, since real rosters cluster (drinking buddies fire faster).
+        If a playtest reads sparse, the cheapest single lever is <b>proximity 0.05 → 0.06</b> or <b>DECAY 0.015 → 0.012</b>;
+        if spammy, raise <b>COOLDOWN_BASE</b>. These are the recorded knobs for closeout Notes.
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ RESOLUTION ============ -->
+  <div class="sec-label">Outcome resolution — the six-grid</div>
+
+  <div class="card">
+    <div class="ch"><span class="cnum">D6</span><h2>Six-outcome mapping &amp; the rare-outcome gate</h2></div>
+    <div class="cb">
+      <p class="ctx">
+        Post-discharge, every encounter resolves to a <b>valence × intensity</b> cell. Valence from mood + relationship;
+        intensity from mood-gap + personality clash. Two cells (BREAKTHROUGH, ESTRANGEMENT) are <b>rare by default</b> —
+        gated behind a probability roll, bypassed only under a crisis flag.
+      </p>
+      <div class="grid6">
+        <div class="ocell pos"><div class="on">BANTER</div><div class="od">Positive · Mild</div><div class="os pos">edge +3 · mood +5</div></div>
+        <div class="ocell pos"><div class="on">SOLIDARITY</div><div class="od">Positive · Strong</div><div class="os pos">edge +10 · mood +12</div></div>
+        <div class="ocell pos"><div class="on">BREAKTHROUGH</div><div class="od">Positive · Strong · very-high gap <i>· gated</i></div><div class="os pos">edge +18 · mood +22</div></div>
+        <div class="ocell neu"><div class="on">SILENT_DISTANCE</div><div class="od">Neutral · any intensity</div><div class="os neu">edge −1 · no mood</div></div>
+        <div class="ocell neg"><div class="on">ARGUMENT</div><div class="od">Negative · any intensity</div><div class="os neg">edge −10 · mood −12</div></div>
+        <div class="ocell neg"><div class="on">ESTRANGEMENT</div><div class="od">Negative · Strong · very-high gap <i>· gated</i></div><div class="os neg">edge −22 · mood −25</div></div>
+      </div>
+      <table>
+        <tr><th>Axis</th><th>Rule (spec §5)</th></tr>
+        <tr><td><b>valence</b></td><td class="mono">POSITIVE: moodAvg&gt;55 &amp; strength&gt;10 · NEGATIVE: moodAvg&lt;25 or strength&lt;−10 · else NEUTRAL</td></tr>
+        <tr><td><b>intensity</b></td><td class="mono">STRONG: moodGap&gt;35 or clashScore&gt;50 · else MILD</td></tr>
+        <tr><td><b>very-high gap</b></td><td class="mono">moodGap&gt;50 or clashScore&gt;70  <span class="neu">(precondition for the two rare cells)</span></td></tr>
+        <tr><td><b>rare gate</b></td><td class="mono">thresholdProb = 0.40 → else falls back to SOLIDARITY / ARGUMENT</td></tr>
+        <tr><td><b>crisis bypass</b></td><td class="mono">crisis flag present → gate skipped → rare outcome fires at 100%</td></tr>
+      </table>
+      <div class="note">
+        <b>One conflict to resolve:</b> spec §5 says the gate is <code>0.40</code> ("≤40% of qualifying"); the plan's
+        Validation says <code>≤~45%</code>. I recommend <b>0.40 (spec wins)</b> and tightening the plan's wording to match.
+        "very-high gap" thresholds (50 / 70) are <i>my</i> proposed concrete values — the spec only says "very high."
+      </div>
+      <div class="rec">
+        <span class="rl">My recommendation</span>
+        <p>
+          Adopt the grid and rules as shown. Set <code>thresholdProb = 0.40</code>, <code>very-high-gap = moodGap&gt;50 ∨ clashScore&gt;70</code>.
+          Crisis flag is still a forward slot — for p10c only <b>ESTRANGEMENT-under-crisis</b> opens a FEUD span; nothing
+          sets the flag yet otherwise.
+        </p>
+      </div>
+      <div class="signoff" data-q="D6">
+        <div class="opts">
+          <label class="opt"><input type="radio" name="D6" value="accept"><span><span class="ot">Accept grid + 0.40 gate</span><span class="odd">align plan wording to spec</span></span></label>
+          <label class="opt"><input type="radio" name="D6" value="adjust"><span><span class="ot">Adjust a threshold</span><span class="odd">gate / very-high-gap values</span></span></label>
+        </div>
+        <textarea placeholder="e.g. 'very-high gap too lax — moodGap>60' / 'gate 0.30, rarer' …"></textarea>
+        <button type="button" disabled>Queue D6 answer</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><span class="cnum">D7</span><h2>Delta table &amp; group aggregation</h2><span class="pill settled">spec-settled</span></div>
+    <div class="cb">
+      <p class="ctx">
+        The six-outcome delta table is already fully specified in <code>social-system.md §5</code> and mirrored in
+        <code>relationship-graph.md</code> — I'm surfacing it for <b>confirmation</b>, not as an open choice. (The handoff
+        flagged "fill the other three," but all six are present; the legacy 4-outcome values like ARGUMENT −8 are the
+        ones being replaced.)
+      </p>
+      <table>
+        <tr><th>Outcome</th><th>edge Δ</th><th>mood factor</th><th>mood value</th><th>decay</th></tr>
+        <tr><td>BANTER</td><td class="mono pos">+3</td><td class="mono">SOCIAL_BANTER</td><td class="mono pos">+5</td><td class="mono">0.20</td></tr>
+        <tr><td>SOLIDARITY</td><td class="mono pos">+10</td><td class="mono">SOCIAL_SOLIDARITY</td><td class="mono pos">+12</td><td class="mono">0.15</td></tr>
+        <tr><td>BREAKTHROUGH</td><td class="mono pos">+18</td><td class="mono">SOCIAL_BREAKTHROUGH</td><td class="mono pos">+22</td><td class="mono">0.08</td></tr>
+        <tr><td>SILENT_DISTANCE</td><td class="mono neg">−1</td><td class="neu">—</td><td class="neu">—</td><td class="neu">—</td></tr>
+        <tr><td>ARGUMENT</td><td class="mono neg">−10</td><td class="mono">SOCIAL_ARGUMENT</td><td class="mono neg">−12</td><td class="mono">0.25</td></tr>
+        <tr><td>ESTRANGEMENT</td><td class="mono neg">−22</td><td class="mono">SOCIAL_ESTRANGEMENT</td><td class="mono neg">−25</td><td class="mono">0.07</td></tr>
+      </table>
+      <p class="ctx" style="margin-top:14px">
+        <b>Group scenes:</b> when ≥2 approaches fire on the same target in the same tick → one scene, <b>≤4 participants</b>,
+        one outcome computed on group-avg mood &amp; max pairwise gap, applied to <b>all</b> N-choose-2 pairs. One
+        <code>SocialEvent</code> with N <code>participantIds</code>; a 3-person scene → 3 edge updates (A-B, A-C, B-C).
+      </p>
+      <div class="rec">
+        <span class="rl">My recommendation</span>
+        <p>
+          Lock the table as the spec already states it; no change. Confirm group aggregation: single outcome → all pairs.
+          Add the two missing beat pools (<code>SOLIDARITY</code>, <code>ESTRANGEMENT</code>) and split
+          <code>POSITIVE_CHAT → BANTER</code> in the P10a grammar at build time.
+        </p>
+      </div>
+      <div class="signoff" data-q="D7">
+        <div class="opts">
+          <label class="opt"><input type="radio" name="D7" value="accept"><span><span class="ot">Confirm — table is right</span><span class="odd">build to these values</span></span></label>
+          <label class="opt"><input type="radio" name="D7" value="change"><span><span class="ot">Change a delta</span><span class="odd">also amends both specs</span></span></label>
+        </div>
+        <textarea placeholder="e.g. 'ESTRANGEMENT −22 too harsh, −16' (will ripple to relationship-graph.md) …"></textarea>
+        <button type="button" disabled>Queue D7 answer</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <p>
+      <b>Sign off each card above</b> (or annotate any element / select text to comment). Once D1–D7 are settled I'll
+      fold the numbers into <code>plans/p10c-social-pressure.md → Notes</code>, apply the <b>D3 + D6</b> spec amendments
+      to <code>social-system.md</code> spec-first, then build via <code>/tdd</code> — one failing test per Validation box.
+      <b>No code until you sign off.</b>
+    </p>
+  </div>
+</div>
+
+<div class="toast" id="toast">Queued ✓</div>
+
+<script>
+  // local selection state only; queue exactly once on button press
+  document.querySelectorAll('.signoff').forEach(box=>{
+    const q=box.dataset.q;
+    const opts=box.querySelectorAll('.opt');
+    const radios=box.querySelectorAll('input[type=radio]');
+    const ta=box.querySelector('textarea');
+    const btn=box.querySelector('button');
+    function refresh(){
+      opts.forEach(o=>o.classList.toggle('sel',o.querySelector('input').checked));
+      btn.disabled = !([...radios].some(r=>r.checked) || ta.value.trim());
+    }
+    radios.forEach(r=>r.addEventListener('change',refresh));
+    ta.addEventListener('input',refresh);
+    btn.addEventListener('click',()=>{
+      const choice=[...radios].find(r=>r.checked)?.value || 'free-text';
+      const note=ta.value.trim();
+      let msg=`${q} sign-off: ${choice}`;
+      if(note) msg+=` — note: ${note}`;
+      if(window.lavish&&window.lavish.queuePrompt){
+        window.lavish.queuePrompt(msg,{tag:q,text:msg,queueKey:q,element:box,data:{question:q,choice,note}});
+      }
+      const t=document.getElementById('toast');
+      t.classList.add('show');
+      setTimeout(()=>t.classList.remove('show'),2200);
+      btn.disabled=true;btn.textContent=`${q} queued ✓`;
+    });
+  });
+</script>
+</body>
+</html>

@@ -90,7 +90,7 @@ names / `pairHour`.
 - Post-fire: pressure reset to 0, cooldown set, no re-fire until `tick ≥ cooldown` (deterministic).
 - Empathic approacher → always JOIN.
 - Six-outcome deltas (SOLIDARITY +10, ARGUMENT −10, ESTRANGEMENT −22) on `RelationshipEdge`.
-- BREAKTHROUGH fires ≤ ~45% of qualifying (statistical); 100% under crisis flag.
+- BREAKTHROUGH fires ≤ 40% of qualifying (statistical, `thresholdProb = 0.4`); 100% under crisis flag.
 - Group scene of 3 → one `SocialEvent`, 3 pair updates.
 - `renderedText` non-empty, slot-free, replayable under fixed seed.
 
@@ -102,7 +102,7 @@ names / `pairHour`.
 - [ ] After firing, pressure resets to 0 and the pair cannot fire again until `tick ≥ cooldown` (fixed seed).
 - [ ] `empathy ≥ 55` approacher always resolves JOIN.
 - [ ] SOLIDARITY +10, ARGUMENT −10, ESTRANGEMENT −22 on the edge; six social MoodFactors emitted.
-- [ ] BREAKTHROUGH ≤ ~45% of qualifying encounters; 100% under crisis flag.
+- [ ] BREAKTHROUGH ≤ 40% of qualifying encounters (`thresholdProb = 0.4`); 100% under crisis flag.
 - [ ] Group scene (3) emits one `SocialEvent` with 3 participant ids and 3 pair updates.
 - [ ] `pairHour` no longer exported; old four-outcome names gone from tests.
 - [ ] Encounter `renderedText` non-empty, slot-free, byte-for-byte replayable under fixed seed.
@@ -118,7 +118,59 @@ names / `pairHour`.
 
 ## Notes
 
-(Populated at closeout.)
+### Tuning model — settled by the pressure-accumulator grill (user sign-off 2026-06-30)
+
+Rendered and signed off via `.lavish/social-pressure-tuning.html` (all 7 decisions accepted, no
+overrides). These are the **build-target** constants; confirm/adjust against a 30-day playtest at
+closeout. Clock: **1 tick = 1 in-game hour, 24 ticks/day**; reference roster **5 adv → 10 pairs**.
+
+**D1 — density target.** ~5 social encounters/day guild-wide at the 5-adv/10-pair reference roster
+(~150 over a 720-tick/30-day run); sanity band 3–7/day. The knob held is guild-wide encounters/day.
+(Scenario 1 ships with a roster of one — density is only observable once recruitment grows the guild.)
+
+**D2 — gain formula** `gain = (proximity + moodStrain + relationshipTension) × compatibilityMult × empathyMult`:
+| term | definition | range | typical |
+|---|---|---|---|
+| `proximity` | flat floor, co-present & awake | `0.05` | 0.05 |
+| `moodStrain` | `0.03·(gap/100) + 0.03·clamp((40−minMood)/40, 0, 1)` | 0–0.06 | ~0.01 |
+| `relationshipTension` | `0.005 + 0.025·isRival + 0.015·nearBoundary(±5)` | 0.005–0.045 | ~0.008 |
+| `empathyMult` | `0.5 + max(empA,empB)/100` | 0.5–1.5 | ~1.0 |
+| `compatibilityMult` | spec §4 table (DRINKING 2.5 … RESTING 0.15) | 0.15–2.5 | ~1.5 |
+
+The three additive terms are deliberately commensurable (hundredths): `proximity` is the floor,
+`moodStrain`/`relationshipTension` are modifiers that can ~double it. Typical public-activity tick
+≈ `0.068 × 1.0 × 1.5 ≈ 0.10/tick`.
+
+**D3 — net-flow decay (amended `social-system.md §4`).** `Δpressure = gain − DECAY` each tick where
+both are awake & present, floored at 0; **frozen** (no gain/decay) when either is SLEEPING or
+questing. `DECAY = 0.015` — set below typical public gain (~0.10) and above max withdrawn gain
+(~0.014), so the compat table doubles as the eligibility gate (no binary flag). RESTING (compat
+0.15 → gain ~0.010) nets negative → kept-apart pair decays toward 0, satisfying the spec test.
+
+**D4 — threshold & discharge.** `THRESHOLD = 1.0`; `fireProb = FIRE_BASE × min(2, pressure/THRESHOLD)`
+with `FIRE_BASE = 0.2`, overshoot cap `2.0` (max fireProb 0.4). Firing tick is geometrically
+distributed (mean ~5 ticks past threshold) — that is the organic jitter; cap prevents a wildly
+overdue pair from becoming deterministic.
+
+**D5 — cooldowns.** Post-fire: reset pressure to 0, `socialCooldowns.set(key, tick + 8 + floor(rng·16))`
+→ window `[8, 24)` ticks (`COOLDOWN_BASE = 8`, `COOLDOWN_JITTER = 16`). ESTRANGEMENT approach lock
+`= 120 ticks` (5 days), effective cooldown = max of the two. Reuses the `decisionCooldowns` mechanism.
+
+**D6 — outcome resolution.** Six-grid + thresholds per `social-system.md §5`. `thresholdProb = 0.40`
+(spec wins over the plan's prior "~45%" wording — now reconciled). Very-high-gap precondition for
+the two rare cells = `moodGap > 50 OR clashScore > 70` (added to spec §5). Crisis flag bypasses the
+gate (rare outcome at 100%); for p10c only ESTRANGEMENT-under-crisis opens a FEUD span — nothing
+else sets the flag yet.
+
+**D7 — deltas & groups (spec-settled, no change).** Six-outcome edge/mood table per `social-system.md §5`
++ `relationship-graph.md` (BANTER +3 · SOLIDARITY +10 · BREAKTHROUGH +18 · SILENT_DISTANCE −1 ·
+ARGUMENT −10 · ESTRANGEMENT −22). Group scene ≤4: one outcome on group-avg mood & max pairwise gap,
+applied to all N-choose-2 pairs; one `SocialEvent` with N `participantIds`.
+
+**Worked density check:** ~6 net-positive public ticks/day × ~0.085 net ≈ 0.45 pressure/day →
+~2.2 days to THRESHOLD + ~0.5 day cooldown ≈ 2.5-day pair cycle → ~0.4 fires/pair/day → ~4/day at
+10 pairs (inside the 3–7 band). Cheapest density levers if playtest reads off: `proximity 0.05→0.06`
+or `DECAY 0.015→0.012` (sparse), `COOLDOWN_BASE↑` (spammy).
 
 ## Follow-ups
 

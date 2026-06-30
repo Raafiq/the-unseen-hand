@@ -62,7 +62,16 @@ export function departureSubscriber(ctx: SimulationContext): SimulationContext {
     if (adv.despairStreak < 3) continue;
 
     const prob = computeDepartureProbability(adv);
-    if (updatedCtx.rng.next() >= prob) continue;
+
+    const diBoost = updatedCtx.pendingShifts.get(id) ?? 0;
+    if (diBoost > 0) {
+      const pendingShifts = new Map(updatedCtx.pendingShifts);
+      pendingShifts.delete(id);
+      updatedCtx = { ...updatedCtx, pendingShifts };
+    }
+
+    const effectiveProb = Math.max(0, prob - diBoost);
+    if (updatedCtx.rng.next() >= effectiveProb) continue;
 
     // Departure fires
     const top2 = topMoodFactors(adv.moodFactors.filter(f => f.value < 0), 2);

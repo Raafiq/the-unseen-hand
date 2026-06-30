@@ -118,18 +118,21 @@ describe('socialEventSubscriber', () => {
     return { ...dayCtx, adventurers, relationships };
   }
 
-  it('only runs on day ticks (hour === 0)', () => {
+  it('pair (a,b) does not fire at hours other than its designated hour', () => {
+    // pairHour('a','b') = 7; pick a different hour to confirm the gate holds
     const ctx = { ...ctxWithPair(), worldTime: { tick: 5, day: 0, hour: 5 } };
     const result = socialEventSubscriber(ctx);
     expect(result.eventLog).toHaveLength(0);
   });
 
   it('when interaction fires, a SOCIAL event is added to eventLog', () => {
-    // Run many seeds until one fires (interaction probability ~0.25 for default pair)
+    // pairHour('a','b') = 7 — set hour to 7 so the pair's slot is reached.
+    // Run several seeds since interaction probability is probabilistic.
     let fired = false;
-    for (let seed = 0; seed < 20; seed++) {
+    for (let seed = 0; seed < 50; seed++) {
       const base = createSimulationContext(`social-fire-${seed}`);
-      const ctx = { ...base, worldTime: { tick: 24, day: 1, hour: 0 } };
+      // tick 31 = day 1, hour 7 — the designated hour for pair (a, b)
+      const ctx = { ...base, worldTime: { tick: 31, day: 1, hour: 7 } };
       const a1: Adventurer = makeAdventurer('a');
       const a2: Adventurer = makeAdventurer('b');
       const adventurers = new Map([['a', a1], ['b', a2]]);
@@ -208,6 +211,28 @@ describe('departureSubscriber', () => {
     const adv: Adventurer = { ...makeAdventurer('a', { despairStreak: 10 }), state: 'IDLE' };
     const result = departureSubscriber({ ...ctx, adventurers: new Map([['a', adv]]) });
     expect(result.adventurers.get('a')!.state).toBe('IDLE');
+  });
+
+  it('pendingShift >= departure probability prevents departure from firing', () => {
+    // despairStreak=20, loyalty=10 → prob = 0.40 (capped)
+    // pendingShift of 0.40 → effectiveProb = 0 → rng.next() is always >= 0 → never departs
+    for (let seed = 0; seed < 50; seed++) {
+      const base = createSimulationContext(`depart-shift-${seed}`);
+      const ctx = { ...base, worldTime: { tick: 24, day: 1, hour: 0 } };
+      const adv: Adventurer = { ...makeAdventurer('a', { despairStreak: 20, loyalty: 10 }), state: 'IDLE' };
+      const pendingShifts = new Map([['a', 0.40]]);
+      const result = departureSubscriber({ ...ctx, adventurers: new Map([['a', adv]]), pendingShifts });
+      expect(result.adventurers.get('a')!.state).toBe('IDLE');
+    }
+  });
+
+  it('pendingShift is consumed from context after subscriber runs', () => {
+    const base = createSimulationContext('depart-consume');
+    const ctx = { ...base, worldTime: { tick: 24, day: 1, hour: 0 } };
+    const adv: Adventurer = { ...makeAdventurer('a', { despairStreak: 20 }), state: 'IDLE' };
+    const pendingShifts = new Map([['a', 0.40]]);
+    const result = departureSubscriber({ ...ctx, adventurers: new Map([['a', adv]]), pendingShifts });
+    expect(result.pendingShifts.has('a')).toBe(false);
   });
 
   it('when departure fires, adventurer transitions to RETIRED and event is emitted', () => {

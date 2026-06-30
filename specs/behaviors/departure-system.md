@@ -52,9 +52,15 @@ Probability: `0.10 + (despairStreak - 3) * 0.05`, capped at 0.40.
 
 ### DI opportunity
 
-When the departure roll **succeeds**, a `DecisionMomentEvent` is briefly surfaced (expiry: 12 ticks / 30 minutes real time at 1×) offering the player a chance to spend DI to boost the adventurer's mood before the departure is finalised. The departure is not finalised until the decision moment expires or is resolved.
+When `despairStreak >= 3`, `decisionMomentSubscriber` fires a `DEPARTURE` decision moment (expiry: 12 ticks). The player may choose **MOOD_LIFT** (cost: 8 DI), which writes a `+0.30` shift to `ctx.pendingShifts[adventurerId]`.
 
-If the player boosts mood above 10 via this intervention, departure is cancelled and `despairStreak` is reset to 0.
+`departureSubscriber` reads and **consumes** any `pendingShifts` entry for the adventurer before rolling departure. The effective departure probability is:
+
+```
+effectiveProb = max(0, computeDepartureProbability(adv) − pendingShift)
+```
+
+If `effectiveProb <= 0` the departure roll cannot succeed. The shift is removed from `pendingShifts` regardless of whether departure fires, so it applies exactly once per day tick.
 
 ## Validation
 
@@ -64,6 +70,8 @@ If the player boosts mood above 10 via this intervention, departure is cancelled
 - `loyalty: 80` reduces departure probability by 0.10 compared to `loyalty: 30` at the same despairing day count.
 - Retired adventurer's edges are preserved on surviving adventurers after retirement.
 - `AdventurerDeparted` event has a non-empty `renderedText` with a contextual departure reason.
+- A `pendingShift >= computeDepartureProbability(adv)` in `ctx.pendingShifts` prevents departure from firing entirely.
+- After `departureSubscriber` runs, the consumed `pendingShift` is removed from `ctx.pendingShifts`.
 
 ## Principles
 

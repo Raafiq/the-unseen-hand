@@ -7,3 +7,10 @@ coverage/
 .env
 .env.local
 *.tsbuildinfo
+
+# Playwright output
+test-results/
+playwright-report/
+
+# Stray agent worktrees
+.claude/worktrees/

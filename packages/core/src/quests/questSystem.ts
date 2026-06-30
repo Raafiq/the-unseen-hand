@@ -21,7 +21,7 @@ import { questVolunteerWeight } from '../adventurers/personality.js';
 import { emitEvent } from '../events/eventBus.js';
 import { appendHistoryEvent } from '../adventurers/HistoryLayer.js';
 import { generateBeats } from '../combat/beatGenerator.js';
-import { updateReputation } from '../world/WorldExpansion.js';
+import { updateReputation, monsterSurgeThreatBonus } from '../world/WorldExpansion.js';
 import { grantDI } from '../divine/DivineInfluence.js';
 
 // ---------------------------------------------------------------------------
@@ -85,7 +85,8 @@ function pickDifficulty(roll: number): number {
 }
 
 function generateQuest(ctx: SimulationContext, index: number): Quest {
-  const difficulty = Math.max(1, Math.min(10, pickDifficulty(ctx.rng.next())));
+  // A live MONSTER_SURGE span raises the region's effective threat (world-expansion.md consumers).
+  const difficulty = Math.max(1, Math.min(10, pickDifficulty(ctx.rng.next()) + monsterSurgeThreatBonus(ctx)));
   const type = QUEST_TYPES[Math.floor(ctx.rng.next() * QUEST_TYPES.length)]!;
   const id = `q-${ctx.worldTime.tick}-${index}`;
   return {

@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 depends: [p10a-narrative-voice]
 specs:
   - specs/behaviors/world-expansion.md
@@ -74,13 +74,13 @@ Keep effects modest and spec-faithful.
 
 ## Validation
 
-- [ ] STORM span adds one `WorldEventInstance` with duration in [6,18] and emits `phase:'START'`.
-- [ ] Span removed and exactly one `phase:'END'` emitted on first tick `≥ expiresAt`; no events while live.
-- [ ] RUMOUR/WINDFALL emit a single phase-less event and never enter `activeWorldEvents`.
-- [ ] A second STORM for a region with a live STORM is suppressed.
-- [ ] Live MONSTER_SURGE raises measured quest threat/difficulty; reverts on END.
-- [ ] Span durations reproducible under a fixed seed; no `Math.random()` (grep clean).
-- [ ] `tsc --noEmit` and `svelte-check` pass; all Vitest tests pass.
+- [x] STORM span adds one `WorldEventInstance` with duration in [6,18] and emits `phase:'START'`.
+- [x] Span removed and exactly one `phase:'END'` emitted on first tick `≥ expiresAt`; no events while live.
+- [x] RUMOUR/WINDFALL emit a single phase-less event and never enter `activeWorldEvents`.
+- [x] A second STORM for a region with a live STORM is suppressed.
+- [x] Live MONSTER_SURGE raises measured quest threat/difficulty; reverts on END.
+- [x] Span durations reproducible under a fixed seed; no `Math.random()` (grep clean).
+- [x] `tsc --noEmit` and `svelte-check` pass; all Vitest tests pass.
 
 ## Risks / unknowns
 
@@ -92,8 +92,51 @@ Keep effects modest and spec-faithful.
 
 ## Notes
 
-(Populated at closeout.)
+Shipped the shared span lifecycle and all 7 Validation boxes. 15 new tests in
+`tests/world-event-durations.test.ts`; full core suite 493 green; `tsc` (core + client)
+and `svelte-check` (0/0) clean; no `Math.random()`.
+
+**Design decisions settled during the build:**
+
+- **Region selection (the open decision step 4 flagged).** Each spanning seed attaches to
+  a **single rng-picked *unlocked* region** (`pickUnlockedRegion`). Instant types stay
+  region-less, as before. Early game this is always THORNVALE; ASHWOOD/STORMPASS join the
+  pool as they unlock. Chosen over "all unlocked regions" because the spec phrases the
+  lifecycle per-region ("when a spanning event is seeded *for a region*") and same-type
+  suppression is per-region — one region per roll keeps spans sparse and legible.
+- **END-sweep ordering.** `sweepExpiredSpans` runs unconditionally at the top of
+  `worldEventSeedingSubscriber`, *before* the ~1/24 seed-roll early-return, so spans expire
+  on every tick rather than only on seeding ticks. (The single biggest trap the handoff
+  flagged.)
+- **PLAGUE → departure uses the probability-shift pathway**, not a forced outcome:
+  `computeDepartureProbability(adv, worldStrain)` adds `PLAGUE_DEPARTURE_STRAIN = 0.05` to
+  the probability *value* while a PLAGUE span is live (departure testing rule). Tests assert
+  the value rises, not that anyone departs.
+- **MONSTER_SURGE → quest threat**: `monsterSurgeThreatBonus(ctx)` adds
+  `MONSTER_SURGE_THREAT_BONUS = 2` to each newly-seeded quest's rolled difficulty (clamped
+  ≤10) while a surge is live in any unlocked region.
+- **Narrative colour tint**: `compose` appends a span-weather fragment
+  (`SPAN_COLOUR_POOLS`, `SPAN_TINT_CHANCE = 0.35`) to non-WORLD feed lines while a span is
+  live. Critically, the tint branch **only consumes rng when a span is actually live**, so
+  spanless feeds (every existing narrative-voice test) are byte-for-byte unchanged.
+- **START/END grammar**: `renderText`'s WORLD case keys on `phase`
+  (`WORLD:<type>:START` / `:END`); phase-less `WORLD:<type>` pools are retained so the
+  existing narrative-voice phase-less WORLD test still resolves.
 
 ## Follow-ups
 
-(Populated at closeout.)
+- **Deferred to a later plan — remaining span consumers.** The Scope lists two softer
+  consumer reads that are *not* in the Validation boxes and were intentionally not shipped:
+  - *STORM suppresses new departures and travel-type quests.* Departure suppression is a
+    trivial symmetric negative `worldStrain`; "travel-type quests" has no concept in the
+    current `QuestType` enum. Defer until that's wanted.
+  - *TRAVELLING_MERCHANT enables trade/restock quest variants.* **Blocked**: `QuestType`
+    (`BOUNTY|ESCORT|FETCH|DUNGEON|INVESTIGATION|RESCUE|POLITICAL`) has no trade/restock
+    variant — needs a quest-type expansion first.
+- **Deferred to p10c/p10d — FEUD/FESTIVAL spans.** The shared lifecycle (`openSpan` /
+  `sweepExpiredSpans` / `hasActiveSpan` / `rollSpanDuration` / `SPAN_DURATIONS`) is written
+  to be reused. Wiring FEUD requires adding `FEUD`/`FESTIVAL` to the code's `WorldEvent` /
+  `WorldEventInput` subtype unions (spec `event-bus.md:132` already lists them — pre-existing
+  drift, out of scope here) and a duration entry, then opening a span from
+  `resolveEncounter` on ESTRANGEMENT+crisis (p10c follow-up #2).
+- **None blocking.** Tree green; p10b done.

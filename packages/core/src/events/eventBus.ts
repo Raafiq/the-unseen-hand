@@ -72,6 +72,7 @@ export type WorldEventInput = {
     | 'SCENARIO_COMPLETE'
     | 'SCENARIO_FAILED'
     | 'INTERNAL_ERROR';
+  phase?: 'START' | 'END';       // present on spanning subtypes (world-expansion.md)
   regionId?: RegionId;
   goalId?: string;
 };
@@ -266,6 +267,47 @@ const BEAT_POOLS: Record<string, readonly string[]> = {
     'Whispers pass from table to table in the taverns.',
     'A strange tale is making the rounds — none can say if it\'s true.',
   ],
+  // Spanning world events — START (the span opens) vs END (the span passes). Spec: world-expansion.md.
+  'WORLD:STORM:START': [
+    'A storm rolls in, black and sudden.',
+    'The sky darkens and a storm breaks over the land.',
+    'Thunder cracks as a storm sets in.',
+  ],
+  'WORLD:STORM:END': [
+    'The storm passes, and the skies clear.',
+    'The last of the rain blows over; the roads begin to dry.',
+    'The storm spends itself at last.',
+  ],
+  'WORLD:PLAGUE:START': [
+    'A plague takes hold across the region.',
+    'Sickness begins to spread, house to house.',
+    'A wasting fever sets in among the people.',
+  ],
+  'WORLD:PLAGUE:END': [
+    'The plague finally burns itself out.',
+    'The sickness recedes; the healers can rest.',
+    'The fever loosens its grip on the region.',
+  ],
+  'WORLD:MONSTER_SURGE:START': [
+    'Beasts begin pressing in from the wilds in unnatural numbers.',
+    'A surge of monsters breaks against the borderlands.',
+    'Something has stirred the dark places, and the roads turn deadly.',
+  ],
+  'WORLD:MONSTER_SURGE:END': [
+    'The monster surge subsides; the wilds fall quiet again.',
+    'The beasts thin out at last, and the roads grow safer.',
+    'Whatever stirred the dark places settles, and the surge ends.',
+  ],
+  'WORLD:TRAVELLING_MERCHANT:START': [
+    'A travelling merchant arrives and sets up shop.',
+    'A laden caravan rolls into town to stay a while.',
+    'A pedlar opens a stall, and trade picks up.',
+  ],
+  'WORLD:TRAVELLING_MERCHANT:END': [
+    'The travelling merchant packs up and moves on.',
+    'The caravan rolls out of town, its trading done.',
+    'The pedlar strikes the stall and departs.',
+  ],
   'WORLD:QUEST_DROUGHT': [
     'Work dries up across the region.',
     'The flow of work thins to nothing.',
@@ -344,6 +386,52 @@ const COLOUR_POOLS: Record<string, readonly string[]> = {
 };
 
 /**
+ * Span tint pools (P10b): while a world-event span is live in a region, unrelated feed
+ * lines pick up the region's current weather/mood. Keyed by WorldEventType.
+ */
+const SPAN_COLOUR_POOLS: Record<string, readonly string[]> = {
+  STORM: [
+    'Rain hammers the roofs outside.',
+    'Wind rattles the shutters as they speak.',
+    'The storm howls on beyond the walls.',
+  ],
+  PLAGUE: [
+    'A sick-house bell tolls somewhere across town.',
+    'The air is thick with the tang of fever-herbs.',
+    'Fewer faces than usual fill the room — the sickness keeps them home.',
+  ],
+  MONSTER_SURGE: [
+    'The watch has been doubled on the walls.',
+    'Talk keeps drifting to the things stirring in the wilds.',
+    'Every traveller comes in with another rumour of beasts.',
+  ],
+  TRAVELLING_MERCHANT: [
+    'Market-day clamour drifts in from the square.',
+    'The smell of strange spices hangs in the air.',
+    'A pedlar\'s cry carries faintly from outside.',
+  ],
+};
+
+/** Chance a live span tints an unrelated feed line. */
+const SPAN_TINT_CHANCE = 0.35;
+
+/** Collect tint lines for every span currently live in an unlocked region. */
+function activeSpanColours(ctx: SimulationContext): readonly string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const region of ctx.activeRegions.values()) {
+    if (!region.unlocked) continue;
+    for (const span of region.activeWorldEvents) {
+      if (seen.has(span.type)) continue;
+      seen.add(span.type);
+      const pool = SPAN_COLOUR_POOLS[span.type];
+      if (pool) out.push(...pool);
+    }
+  }
+  return out;
+}
+
+/**
  * Compose a feed line: pick a beat for `familyKey`, fill its slots, and on an
  * rng roll append a colour fragment. Falls back to the provided `fallback`
  * string when no beat pool exists yet (families ported incrementally).
@@ -361,6 +449,14 @@ function compose(
   const colours = COLOUR_POOLS[opts?.colourKey ?? familyKey];
   if (colours && ctx.rng.next() < (opts?.colourChance ?? 0.5)) {
     line += ' ' + fill(pick(colours, ctx), slots);
+  }
+  // Span tint: an active world span colours unrelated lines (not the world announcements
+  // themselves). rng is only consumed when a span is live, so spanless feeds are unchanged.
+  if (!familyKey.startsWith('WORLD')) {
+    const spanColours = activeSpanColours(ctx);
+    if (spanColours.length > 0 && ctx.rng.next() < SPAN_TINT_CHANCE) {
+      line += ' ' + pick(spanColours, ctx);
+    }
   }
   return line;
 }
@@ -409,7 +505,9 @@ function renderText(input: SimulationEventInput, ctx: SimulationContext): string
         SCENARIO_FAILED: `The scenario has ended in failure.`,
         INTERNAL_ERROR: `[Simulation error — prior state restored.]`,
       };
-      return compose(`WORLD:${input.subtype}`, {}, ctx, FIXED[input.subtype] ?? 'The world turns.');
+      // Spanning subtypes carry a phase → key on it ("A storm rolls in" vs "The storm passes").
+      const phaseKey = input.phase ? `:${input.phase}` : '';
+      return compose(`WORLD:${input.subtype}${phaseKey}`, {}, ctx, FIXED[input.subtype] ?? 'The world turns.');
     }
     case 'DECISION_MOMENT':
       return input.situationText;

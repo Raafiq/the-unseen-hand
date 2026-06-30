@@ -314,6 +314,7 @@ export type WorldEvent = EventBase & {
     | 'SCENARIO_COMPLETE'
     | 'SCENARIO_FAILED'
     | 'INTERNAL_ERROR';
+  phase?: 'START' | 'END';       // present on spanning subtypes; absent on instant/announcement events
   regionId?: RegionId;
   goalId?: string;
 };

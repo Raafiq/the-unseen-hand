@@ -9,6 +9,7 @@ import type { SimulationContext, Adventurer } from '../world/types.js';
 import { transitionState } from './stateMachine.js';
 import { topMoodFactors } from './mood.js';
 import { emitEvent } from '../events/eventBus.js';
+import { hasActiveSpan } from '../world/WorldExpansion.js';
 
 // ---------------------------------------------------------------------------
 // Departure probability
@@ -17,15 +18,23 @@ import { emitEvent } from '../events/eventBus.js';
 /**
  * Probability of departure at the current despairStreak.
  * Only meaningful when despairStreak >= 3.
+ *
+ * `worldStrain` is a standing mood-strain input from active world spans (e.g. a live
+ * PLAGUE), added through the probability-shift pathway — it raises the departure
+ * probability VALUE rather than forcing an outcome (departure-system.md).
  */
-export function computeDepartureProbability(adventurer: Adventurer): number {
+export function computeDepartureProbability(adventurer: Adventurer, worldStrain = 0): number {
   const { despairStreak, personality } = adventurer;
   if (despairStreak < 3) return 0;
   let prob = 0.10 + (despairStreak - 3) * 0.05;
   prob = Math.min(0.40, prob);
   if (personality.loyalty > 60) prob -= 0.10;
+  prob += worldStrain;
   return Math.max(0, prob);
 }
+
+/** Mood-strain added to departure probability while a PLAGUE span is live. */
+export const PLAGUE_DEPARTURE_STRAIN = 0.05;
 
 // ---------------------------------------------------------------------------
 // Departure reason rendering
@@ -55,13 +64,16 @@ export function departureSubscriber(ctx: SimulationContext): SimulationContext {
 
   let updatedCtx = ctx;
 
+  // Standing world strain: a live PLAGUE span weighs on everyone while active.
+  const worldStrain = hasActiveSpan(ctx, 'PLAGUE') ? PLAGUE_DEPARTURE_STRAIN : 0;
+
   for (const [id, adv] of ctx.adventurers) {
     if (!DEPARTURE_ELIGIBLE.has(adv.state)) continue;
 
     // despairStreak is maintained by moodSubscriber; check it here
     if (adv.despairStreak < 3) continue;
 
-    const prob = computeDepartureProbability(adv);
+    const prob = computeDepartureProbability(adv, worldStrain);
 
     const diBoost = updatedCtx.pendingShifts.get(id) ?? 0;
     if (diBoost > 0) {

@@ -9,7 +9,13 @@
  *
  * Unlock is idempotent: already-unlocked regions are not re-fired.
  */
-import type { SimulationContext, Region, RegionId } from './types.js';
+import type {
+  SimulationContext,
+  Region,
+  RegionId,
+  WorldEventType,
+  WorldEventInstance,
+} from './types.js';
 import { emitEvent } from '../events/eventBus.js';
 
 // ---------------------------------------------------------------------------
@@ -102,7 +108,7 @@ function unlock(ctx: SimulationContext, regionId: RegionId): SimulationContext {
 // ---------------------------------------------------------------------------
 
 // Weighted table for autonomous world event selection.
-const WORLD_EVENT_TABLE: { subtype: string; weight: number }[] = [
+const WORLD_EVENT_TABLE: { subtype: WorldEventType; weight: number }[] = [
   { subtype: 'RUMOUR',              weight: 35 },
   { subtype: 'TRAVELLING_MERCHANT', weight: 25 },
   { subtype: 'MONSTER_SURGE',       weight: 20 },
@@ -113,18 +119,135 @@ const WORLD_EVENT_TABLE: { subtype: string; weight: number }[] = [
 const WORLD_EVENT_TOTAL_WEIGHT = WORLD_EVENT_TABLE.reduce((s, e) => s + e.weight, 0);
 const WORLD_EVENT_TRIGGER_PROB = 1 / 24; // ~1 flavour event per in-game day on average
 
-/** Fires autonomous world flavour events spread across the clock. Register before worldExpansion. */
+/**
+ * Span duration ranges in ticks (24 ticks = 1 day), inclusive. `null` = instant
+ * (single flavour line, no span). Spec: world-expansion.md (Spanning vs instant).
+ */
+export const SPAN_DURATIONS: Record<WorldEventType, [number, number] | null> = {
+  STORM: [6, 18],
+  TRAVELLING_MERCHANT: [24, 72],
+  MONSTER_SURGE: [48, 120],
+  PLAGUE: [72, 192],
+  RUMOUR: null,
+  WINDFALL: null,
+};
+
+/** Roll a span duration via ctx.rng over the inclusive range; null for instant types. */
+export function rollSpanDuration(type: WorldEventType, ctx: SimulationContext): number | null {
+  const range = SPAN_DURATIONS[type];
+  if (range === null) return null;
+  const [lo, hi] = range;
+  return lo + Math.floor(ctx.rng.next() * (hi - lo + 1));
+}
+
+/** All live span instances across the unlocked regions. */
+export function activeSpans(ctx: SimulationContext): WorldEventInstance[] {
+  const spans: WorldEventInstance[] = [];
+  for (const region of ctx.activeRegions.values()) {
+    if (!region.unlocked) continue;
+    spans.push(...region.activeWorldEvents);
+  }
+  return spans;
+}
+
+/** True if any unlocked region currently hosts a live span of `type`. */
+export function hasActiveSpan(ctx: SimulationContext, type: WorldEventType): boolean {
+  return activeSpans(ctx).some(s => s.type === type);
+}
+
+/** Difficulty bonus applied to newly-seeded quests while a MONSTER_SURGE span is live. */
+export const MONSTER_SURGE_THREAT_BONUS = 2;
+
+/** Quest-threat modifier (consumer of active spans): live MONSTER_SURGE raises difficulty. */
+export function monsterSurgeThreatBonus(ctx: SimulationContext): number {
+  return hasActiveSpan(ctx, 'MONSTER_SURGE') ? MONSTER_SURGE_THREAT_BONUS : 0;
+}
+
+/** rng-pick a single unlocked region id; null if none are unlocked. */
+function pickUnlockedRegion(ctx: SimulationContext): RegionId | null {
+  const unlocked = [...ctx.activeRegions.values()].filter(r => r.unlocked);
+  if (unlocked.length === 0) return null;
+  return unlocked[Math.floor(ctx.rng.next() * unlocked.length)]!.id;
+}
+
+/**
+ * END-sweep: drop every instance whose span has elapsed (`tick >= expiresAt`) and
+ * emit exactly one `phase:'END'` per dropped instance. Runs every tick, BEFORE the
+ * seed-roll early-return — otherwise spans would never expire on the ~96% of ticks
+ * that don't seed.
+ */
+function sweepExpiredSpans(ctx: SimulationContext): SimulationContext {
+  const tick = ctx.worldTime.tick;
+  const ended: { regionId: RegionId; type: WorldEventType }[] = [];
+  const regions = new Map(ctx.activeRegions);
+
+  for (const [regionId, region] of ctx.activeRegions) {
+    const expired = region.activeWorldEvents.filter(s => tick >= s.expiresAt);
+    if (expired.length === 0) continue;
+    regions.set(regionId, {
+      ...region,
+      activeWorldEvents: region.activeWorldEvents.filter(s => tick < s.expiresAt),
+    });
+    for (const s of expired) ended.push({ regionId, type: s.type });
+  }
+
+  if (ended.length === 0) return ctx;
+
+  let next: SimulationContext = { ...ctx, activeRegions: regions };
+  for (const { regionId, type } of ended) {
+    next = emitEvent(next, { kind: 'WORLD', subtype: type, phase: 'END', regionId });
+  }
+  return next;
+}
+
+/** Open a span: roll duration, push a WorldEventInstance, and emit `phase:'START'`. */
+function openSpan(ctx: SimulationContext, type: WorldEventType, regionId: RegionId): SimulationContext {
+  const duration = rollSpanDuration(type, ctx)!; // caller guarantees a spanning type
+  const startedAt = ctx.worldTime.tick;
+  const instance: WorldEventInstance = { type, startedAt, expiresAt: startedAt + duration };
+
+  const regions = new Map(ctx.activeRegions);
+  const region = regions.get(regionId)!;
+  regions.set(regionId, { ...region, activeWorldEvents: [...region.activeWorldEvents, instance] });
+
+  const next: SimulationContext = { ...ctx, activeRegions: regions };
+  return emitEvent(next, { kind: 'WORLD', subtype: type, phase: 'START', regionId });
+}
+
+/**
+ * Fires autonomous world events spread across the clock and drives the span lifecycle.
+ * Register before worldExpansion. Each tick: (1) sweep expired spans, (2) on the ~1/24
+ * seed roll, either open a span (spanning type, region with no live instance of that type)
+ * or emit a single phase-less flavour line (instant type).
+ */
 export function worldEventSeedingSubscriber(ctx: SimulationContext): SimulationContext {
-  if (ctx.rng.next() >= WORLD_EVENT_TRIGGER_PROB) return ctx;
-  const pick = ctx.rng.next() * WORLD_EVENT_TOTAL_WEIGHT;
+  // (1) Span END-sweep runs unconditionally, before the seed-roll early-return.
+  let next = sweepExpiredSpans(ctx);
+
+  // (2) Seed roll.
+  if (next.rng.next() >= WORLD_EVENT_TRIGGER_PROB) return next;
+  const pick = next.rng.next() * WORLD_EVENT_TOTAL_WEIGHT;
   let cum = 0;
+  let subtype: WorldEventType | null = null;
   for (const entry of WORLD_EVENT_TABLE) {
     cum += entry.weight;
-    if (pick < cum) {
-      return emitEvent(ctx, { kind: 'WORLD', subtype: entry.subtype as any });
-    }
+    if (pick < cum) { subtype = entry.subtype; break; }
   }
-  return ctx;
+  if (subtype === null) return next;
+
+  // Instant types: single phase-less line, no instance.
+  if (SPAN_DURATIONS[subtype] === null) {
+    return emitEvent(next, { kind: 'WORLD', subtype });
+  }
+
+  // Spanning types: attach to one rng-picked unlocked region.
+  const regionId = pickUnlockedRegion(next);
+  if (regionId === null) return next; // no unlocked region to host the span
+  const region = next.activeRegions.get(regionId)!;
+  // Same-type suppression: no duplicate stacking of a type already live in that region.
+  if (region.activeWorldEvents.some(s => s.type === subtype)) return next;
+
+  return openSpan(next, subtype, regionId);
 }
 
 // ---------------------------------------------------------------------------

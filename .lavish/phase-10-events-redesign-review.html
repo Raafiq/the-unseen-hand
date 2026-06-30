@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Unseen Hand — Phase 10 Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --parch-1:#efe2c2; --parch-2:#e4d2a8; --parch-3:#d8c08a;
+    --ink:#33240f; --ink-soft:#5c4423; --ink-faint:#8a6b3c;
+    --wood-1:#3a2414; --wood-2:#52331c; --wood-edge:#241308;
+    --gold:#bd8b2a; --gold-bright:#e3b54c; --gold-glow:#f4d684;
+    --wine:#79202f; --wine-soft:#9a3142;
+    --moss:#415a2f; --moss-soft:#5b7842;
+    --shadow:rgba(30,16,4,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'EB Garamond',Georgia,serif;
+    color:var(--ink);
+    font-size:17px; line-height:1.5;
+    background-color:#241308;
+    background-image:
+      radial-gradient(circle at 18% 12%, rgba(243,214,132,.10), transparent 30%),
+      radial-gradient(circle at 82% 78%, rgba(189,139,42,.08), transparent 35%),
+      repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0 2px, transparent 2px 7px),
+      linear-gradient(180deg,#3a2414,#241308);
+    padding:32px 18px 80px;
+  }
+  .scroll{
+    max-width:1080px; margin:0 auto;
+    background:
+      radial-gradient(circle at 0 0, rgba(120,80,30,.18), transparent 40%),
+      radial-gradient(circle at 100% 100%, rgba(120,80,30,.16), transparent 42%),
+      linear-gradient(155deg,var(--parch-1),var(--parch-2) 55%,var(--parch-3));
+    border:2px solid var(--wood-2);
+    border-radius:10px;
+    box-shadow:0 22px 60px rgba(0,0,0,.55), inset 0 0 80px rgba(120,80,30,.12);
+    padding:0;
+    overflow:hidden;
+  }
+  .scroll::before,.scroll::after{
+    content:""; display:block; height:14px;
+    background:repeating-linear-gradient(90deg,var(--wood-1) 0 18px,var(--wood-2) 18px 36px);
+    border-bottom:2px solid var(--wood-edge); box-shadow:0 2px 8px var(--shadow);
+  }
+  .scroll::after{border-bottom:none;border-top:2px solid var(--wood-edge);}
+  .pad{padding:30px 34px;}
+  @media(max-width:640px){ .pad{padding:22px 18px;} body{font-size:16px;} }
+
+  /* ---------- headings ---------- */
+  .sign{ text-align:center; padding:34px 24px 26px; position:relative;}
+  .sign .lantern{font-size:30px; filter:drop-shadow(0 0 10px var(--gold-glow)); animation:flicker 3.4s infinite ease-in-out;}
+  @keyframes flicker{0%,100%{opacity:1;} 45%{opacity:.78;} 70%{opacity:.92;}}
+  h1{
+    font-family:'Cinzel',serif; font-weight:700;
+    color:var(--wood-1); margin:.25em 0 .12em;
+    font-size:clamp(26px,4.4vw,40px); letter-spacing:.02em;
+    text-shadow:0 1px 0 rgba(255,245,210,.5);
+  }
+  .sub{font-style:italic; color:var(--ink-soft); font-size:1.05em; margin:0;}
+  .ribbon{
+    display:inline-block; margin-top:14px; padding:6px 20px;
+    background:linear-gradient(180deg,var(--wine-soft),var(--wine));
+    color:#f6e3c8; font-family:'Cinzel',serif; font-size:.82em; letter-spacing:.14em;
+    border-radius:3px; box-shadow:0 4px 10px var(--shadow);
+    text-transform:uppercase;
+  }
+  h2{
+    font-family:'Cinzel',serif; color:var(--wood-1); font-weight:600;
+    font-size:1.45em; margin:0 0 4px; display:flex; align-items:center; gap:12px;
+  }
+  h2 .num{
+    flex:0 0 auto; width:34px; height:34px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,var(--gold-bright),var(--gold));
+    color:var(--wood-1); font-size:.66em; display:grid; place-items:center;
+    box-shadow:0 2px 6px var(--shadow), inset 0 0 6px rgba(255,245,210,.5);
+    border:1px solid var(--wood-2);
+  }
+  .section{padding:26px 34px; border-top:1px dashed rgba(90,60,28,.4);}
+  .section > .lede{color:var(--ink-soft); margin:.2em 0 18px; font-size:1.02em;}
+  @media(max-width:640px){ .section{padding:22px 18px;} }
+
+  /* ---------- rulings (comparison) ---------- */
+  .fork{
+    background:rgba(255,250,235,.5);
+    border:1px solid rgba(90,60,28,.35);
+    border-left:5px solid var(--gold);
+    border-radius:7px; padding:18px 20px; margin-bottom:18px;
+    box-shadow:0 3px 10px rgba(60,40,15,.12);
+  }
+  .fork h3{font-family:'Cinzel',serif; margin:0 0 12px; color:var(--wood-1); font-size:1.12em;}
+  .fork h3 .tag{font-family:'EB Garamond',serif; font-style:italic; color:var(--ink-faint); font-size:.78em; letter-spacing:0; font-weight:400;}
+  .vs{ display:grid; grid-template-columns:1fr auto 1fr; gap:14px; align-items:stretch;}
+  @media(max-width:680px){ .vs{grid-template-columns:1fr;} .vs .arrow{transform:rotate(90deg);} }
+  .side{min-width:0; border-radius:6px; padding:13px 15px;}
+  .side.old{ background:repeating-linear-gradient(135deg,rgba(121,32,47,.07) 0 8px,rgba(121,32,47,.03) 8px 16px); border:1px solid rgba(121,32,47,.3);}
+  .side.new{ background:repeating-linear-gradient(135deg,rgba(65,90,47,.09) 0 8px,rgba(65,90,47,.04) 8px 16px); border:1px solid rgba(65,90,47,.35);}
+  .side .lbl{font-family:'Cinzel',serif; font-size:.72em; letter-spacing:.1em; text-transform:uppercase; display:block; margin-bottom:6px;}
+  .side.old .lbl{color:var(--wine);}
+  .side.new .lbl{color:var(--moss);}
+  .side .lbl .seal{font-style:italic; font-family:'EB Garamond',serif; letter-spacing:0; text-transform:none; font-size:1.05em;}
+  .side p{margin:0; font-size:.97em; color:var(--ink);}
+  .side code{font-family:'JetBrains Mono',monospace; font-size:.82em; background:rgba(60,40,15,.1); padding:1px 5px; border-radius:3px; word-break:break-word;}
+  .arrow{display:grid; place-items:center; color:var(--gold); font-size:1.5em;}
+  .why{margin:11px 0 0; font-size:.9em; color:var(--ink-soft); font-style:italic;}
+  .why b{font-style:normal; color:var(--wood-1);}
+
+  /* ---------- consequence notices ---------- */
+  .notices{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; padding:5px 6px;}
+  @media(max-width:680px){ .notices{grid-template-columns:1fr;} }
+  .notice{
+    position:relative; min-width:0;
+    background:linear-gradient(170deg,#f3e8cb,#e7d4a6);
+    border:1px solid var(--wood-2); border-radius:5px; padding:16px 18px 16px;
+    box-shadow:0 6px 16px var(--shadow);
+  }
+  .notice::before{ content:"✦"; position:absolute; top:7px; left:50%; transform:translateX(-50%); color:var(--wine); font-size:.9em;}
+  .notice h4{font-family:'Cinzel',serif; margin:10px 0 6px; font-size:1em; color:var(--wood-1);}
+  .notice .badge{display:inline-block; font-size:.7em; letter-spacing:.08em; padding:2px 9px; border-radius:20px; font-family:'Cinzel',serif; margin-bottom:4px;}
+  .badge.drop{background:var(--wine); color:#f6e3c8;}
+  .badge.keep{background:var(--moss); color:#f1f3e4;}
+  .notice p{margin:0; font-size:.92em; color:var(--ink-soft);}
+
+  /* ---------- spec table / cards ---------- */
+  .spec{
+    display:grid; grid-template-columns:auto 1fr auto; gap:14px; align-items:start;
+    background:rgba(255,250,235,.45); border:1px solid rgba(90,60,28,.3);
+    border-radius:6px; padding:13px 16px; margin-bottom:11px;
+    transition:box-shadow .15s,transform .15s;
+  }
+  .spec:hover{box-shadow:0 5px 14px rgba(60,40,15,.18); transform:translateY(-1px);}
+  .spec .glyph{
+    flex:0 0 auto; width:40px; height:40px; border-radius:7px; display:grid; place-items:center;
+    font-size:1.2em; border:1px solid var(--wood-2);
+    background:radial-gradient(circle at 35% 30%,#f6ead0,#e0cda2);
+  }
+  .spec.isnew .glyph{background:radial-gradient(circle at 35% 30%,var(--gold-glow),var(--gold-bright)); }
+  .spec .body{min-width:0;}
+  .spec .fname{font-family:'JetBrains Mono',monospace; font-size:.86em; color:var(--wood-1); font-weight:500; word-break:break-word;}
+  .spec .what{font-size:.93em; color:var(--ink-soft); margin-top:3px;}
+  .spec .tags{display:flex; flex-direction:column; gap:5px; align-items:flex-end; flex:0 0 auto;}
+  .pill{font-family:'Cinzel',serif; font-size:.64em; letter-spacing:.06em; padding:3px 9px; border-radius:20px; white-space:nowrap; border:1px solid transparent;}
+  .pill.newp{background:var(--gold); color:var(--wood-1);}
+  .pill.editp{background:transparent; color:var(--ink-faint); border-color:rgba(138,107,60,.5);}
+  .dec{font-family:'Cinzel',serif; font-size:.62em; letter-spacing:.05em; padding:2px 8px; border-radius:20px; white-space:nowrap;}
+  .dec.d1{background:rgba(189,139,42,.22); color:#6e4e15; border:1px solid rgba(189,139,42,.5);}
+  .dec.d2{background:rgba(121,32,47,.16); color:var(--wine); border:1px solid rgba(121,32,47,.4);}
+  .dec.d3{background:rgba(65,90,47,.18); color:var(--moss); border:1px solid rgba(65,90,47,.45);}
+  .dec.d4{background:rgba(60,40,90,.14); color:#4a3a6b; border:1px solid rgba(74,58,107,.4);}
+
+  /* ---------- quest board DAG ---------- */
+  .board{
+    position:relative; margin-top:8px;
+    background:
+      radial-gradient(circle at 30% 20%, rgba(120,80,30,.12), transparent 40%),
+      linear-gradient(160deg,#4a331f,#3a2414);
+    background-color:#3a2414;
+    border:3px solid var(--wood-edge); border-radius:8px;
+    padding:26px 22px; box-shadow:inset 0 0 50px rgba(0,0,0,.5);
+  }
+  .board-legend{display:flex; flex-wrap:wrap; gap:14px; justify-content:center; margin-bottom:8px; color:#e9d7ad; font-size:.82em;}
+  .board-legend span{display:inline-flex; align-items:center; gap:6px;}
+  .dot{width:11px; height:11px; border-radius:50%; display:inline-block;}
+  .dag-grid{position:relative; display:grid; grid-template-columns:1fr 1fr; gap:18px 26px; z-index:2;}
+  @media(max-width:680px){ .dag-grid{grid-template-columns:1fr;} }
+  .dag-grid .span2{grid-column:1 / -1;}
+  .pin{
+    position:relative; min-width:0;
+    background:linear-gradient(170deg,#f3e8cb,#e6d3a4);
+    border:1px solid var(--wood-2); border-radius:6px; padding:14px 16px;
+    box-shadow:0 7px 16px rgba(0,0,0,.4);
+  }
+  .pin::before{content:"●"; position:absolute; top:-7px; left:50%; transform:translateX(-50%); color:var(--wine); font-size:1.1em; text-shadow:0 1px 3px rgba(0,0,0,.5);}
+  .pin.ready{border:2px solid var(--gold); box-shadow:0 0 0 3px rgba(189,139,42,.25),0 7px 16px rgba(0,0,0,.4);}
+  .pin.cancelled{filter:grayscale(.55) opacity(.82); background:linear-gradient(170deg,#ddd0b6,#cabf9e);}
+  .pin .slug{font-family:'JetBrains Mono',monospace; font-weight:500; font-size:.9em; color:var(--wood-1); word-break:break-word;}
+  .pin.cancelled .slug{text-decoration:line-through; text-decoration-color:var(--wine);}
+  .pin .scope{font-size:.88em; color:var(--ink-soft); margin-top:5px;}
+  .pin .meta{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; align-items:center;}
+  .stat{font-family:'Cinzel',serif; font-size:.62em; letter-spacing:.07em; padding:2px 8px; border-radius:3px;}
+  .stat.ready{background:var(--gold); color:var(--wood-1);}
+  .stat.blocked{background:rgba(60,40,15,.16); color:var(--ink-soft); border:1px solid rgba(90,60,28,.4);}
+  .stat.cancel{background:var(--wine); color:#f6e3c8;}
+  .dep{font-family:'JetBrains Mono',monospace; font-size:.72em; color:var(--ink-faint);}
+  .flow-note{text-align:center; color:#e9d7ad; font-style:italic; margin:18px 0 0; font-size:.92em; z-index:2; position:relative;}
+  .flow-note b{color:var(--gold-bright); font-style:normal;}
+
+  /* ---------- verdict form ---------- */
+  .verdict{ background:linear-gradient(160deg,#f1e6c8,#e3d0a2); border:2px solid var(--wood-2); border-radius:8px; padding:22px 24px; box-shadow:0 8px 22px var(--shadow);}
+  .verdict h2{margin-bottom:6px;}
+  .opts{display:grid; gap:10px; margin:14px 0 16px;}
+  .opt{display:flex; gap:11px; align-items:flex-start; background:rgba(255,250,235,.5); border:1px solid rgba(90,60,28,.35); border-radius:6px; padding:11px 14px; cursor:pointer; transition:border-color .15s,background .15s;}
+  .opt:hover{border-color:var(--gold);}
+  .opt input{margin-top:4px; accent-color:var(--wine); transform:scale(1.2);}
+  .opt .ot{font-family:'Cinzel',serif; font-size:.92em; color:var(--wood-1);}
+  .opt .od{font-size:.88em; color:var(--ink-soft);}
+  .verdict textarea{width:100%; min-height:78px; resize:vertical; font-family:'EB Garamond',serif; font-size:1em; padding:11px 13px; border:1px solid var(--wood-2); border-radius:6px; background:rgba(255,252,242,.7); color:var(--ink);}
+  .verdict .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:14px;}
+  .seal-btn{ font-family:'Cinzel',serif; font-size:.92em; letter-spacing:.05em; padding:11px 26px; border:none; border-radius:5px; cursor:pointer; color:#f6e3c8; background:linear-gradient(180deg,var(--wine-soft),var(--wine)); box-shadow:0 5px 14px var(--shadow); transition:transform .12s,filter .12s;}
+  .seal-btn:hover{transform:translateY(-1px); filter:brightness(1.08);}
+  .hint{font-size:.86em; color:var(--ink-faint); font-style:italic;}
+  .annotate-tip{ margin-top:8px; font-size:.9em; color:var(--ink-soft); background:rgba(189,139,42,.12); border:1px dashed rgba(189,139,42,.5); border-radius:6px; padding:10px 14px;}
+  .annotate-tip b{color:var(--wood-1);}
+  .foot{text-align:center; color:#caa86a; font-size:.82em; padding:18px; font-style:italic;}
+</style>
+</head>
+<body>
+<div class="scroll">
+  <div class="sign">
+    <div class="lantern">🏮</div>
+    <h1>The Unseen Hand</h1>
+    <p class="sub">Phase 10 — Events Redesign · Spec &amp; Plan Review</p>
+    <span class="ribbon">Posted to the Guild Board · Awaiting Your Seal</span>
+  </div>
+
+  <!-- RULINGS -->
+  <div class="section">
+    <h2><span class="num">I</span> The Two Rulings</h2>
+    <p class="lede">Two forks where the fresh <i>/lavish</i> direction collided with the older, still-unbuilt P9 social plans. You ruled on both; here is what each ruling actually changes.</p>
+
+    <div class="fork">
+      <h3>Narrator &amp; Voice <span class="tag">— decision #1 vs the cancelled P9c</span></h3>
+      <div class="vs">
+        <div class="side old">
+          <span class="lbl">Rejected <span class="seal">(P9c)</span></span>
+          <p>The LLM writes text for <b>every social scene</b> (batched Haiku calls). Each character carries a <code>CharacterContextCard</code> that persists memory. The day-summary narrator is <b>deleted</b>.</p>
+        </div>
+        <div class="arrow">➜</div>
+        <div class="side new">
+          <span class="lbl">Chosen <span class="seal">(decision #1)</span></span>
+          <p>A deterministic <code>subject + beat + colour</code> template grammar renders the feed. The LLM is reserved for <b>three set-pieces</b> only. The day-summary narrator is <b>kept</b>.</p>
+        </div>
+      </div>
+      <p class="why"><b>Why:</b> per-event LLM cost &amp; latency — and it would break feed replay determinism. Templates are load-bearing; the LLM is a spotlight, not the stage lighting.</p>
+    </div>
+
+    <div class="fork">
+      <h3>Social Timing <span class="tag">— decision #2 vs the cancelled P9b</span></h3>
+      <div class="vs">
+        <div class="side old">
+          <span class="lbl">Rejected <span class="seal">(P9b)</span></span>
+          <p>A <b>memoryless per-tick coin-flip</b>: <code>p = BASE × empathyMult × relationshipMult × compatibilityMult</code>, rolled fresh every tick.</p>
+        </div>
+        <div class="arrow">➜</div>
+        <div class="side new">
+          <span class="lbl">Chosen <span class="seal">(decision #2)</span></span>
+          <p>A <b>pressure accumulator</b>: tension builds from proximity + mood-strain + relationship-friction, discharges at a jittered moment past a threshold, then a post-fire cooldown.</p>
+        </div>
+      </div>
+      <p class="why"><b>Why:</b> tension that is "due" releases organically instead of snapping randomly; reuses the existing <code>decisionCooldowns</code> pattern.</p>
+    </div>
+  </div>
+
+  <!-- CONSEQUENCES -->
+  <div class="section">
+    <h2><span class="num">II</span> Two Deliberate Consequences</h2>
+    <p class="lede">Both follow directly from ruling #1 — flagging them so nothing is a surprise later.</p>
+    <div class="notices">
+      <div class="notice">
+        <span class="badge drop">Dropped</span>
+        <h4>The character cards are gone</h4>
+        <p><code>CharacterContextCard</code> is removed <i>entirely</i>. No per-character LLM memory. Continuity is the history layer + the day summary. The panel's "Last Day Events" now reads the deterministic event/history record instead of a card.</p>
+      </div>
+      <div class="notice">
+        <span class="badge keep">Kept</span>
+        <h4>The day-summary narrator survives</h4>
+        <p><code>llm-narrator.md</code> is un-superseded and reframed as set-piece #1 (with decision-moment framing &amp; quest-climax). Per-event / per-scene LLM is now explicitly <b>forbidden</b> in <code>packages/core</code>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPEC BATCH -->
+  <div class="section">
+    <h2><span class="num">III</span> The Spec Batch — 8 Changes</h2>
+    <p class="lede">Two new scrolls, six amended. Each carries the decision(s) it serves. <i>Click any row to pin a note to it.</i></p>
+
+    <div class="spec isnew">
+      <div class="glyph">✒️</div>
+      <div class="body">
+        <div class="fname">behaviors/narrative-voice.md <span class="pill newp">NEW</span></div>
+        <div class="what">The anchor. <code>subject + beat + colour</code> grammar (≥3 beat variants per event subtype, all via <code>ctx.rng</code>); the templates-vs-LLM-set-piece contract; determinism + "no LLM in core renderText".</div>
+      </div>
+      <div class="tags"><span class="dec d1">Voice #1</span></div>
+    </div>
+
+    <div class="spec isnew">
+      <div class="glyph">🪙</div>
+      <div class="body">
+        <div class="fname">behaviors/npc-system.md <span class="pill newp">NEW</span></div>
+        <div class="what">Two-tier town NPCs. Tier A notable NPCs become honorary graph actors (<code>ActorId</code>, <code>NotableNpc</code>); Tier B nameless roles are pure grammar flavour (<code>NPCEvent</code>); festivals as town spans.</div>
+      </div>
+      <div class="tags"><span class="dec d4">Town #4</span></div>
+    </div>
+
+    <div class="spec">
+      <div class="glyph">🍺</div>
+      <div class="body">
+        <div class="fname">behaviors/social-system.md <span class="pill editp">EDIT</span></div>
+        <div class="what">§4 rewritten to the pressure model; §6/§7/§8 to grammar rendering + no cards + retained narrator; header, Rule, Validation &amp; Principles all reconciled.</div>
+      </div>
+      <div class="tags"><span class="dec d2">Timing #2</span><span class="dec d1">Voice #1</span></div>
+    </div>
+
+    <div class="spec">
+      <div class="glyph">📜</div>
+      <div class="body">
+        <div class="fname">behaviors/event-bus.md <span class="pill editp">EDIT</span></div>
+        <div class="what">Stale 4-outcome <code>SocialEvent</code> fixed to the 6-outcome grid + <code>ActorId[]</code> participants; <code>WorldEvent.phase</code> START/END spans + FEUD/FESTIVAL; new <code>NPCEvent</code>; <code>renderedText</code> → grammar.</div>
+      </div>
+      <div class="tags"><span class="dec d1">Voice #1</span><span class="dec d3">Dur #3</span><span class="dec d4">Town #4</span></div>
+    </div>
+
+    <div class="spec">
+      <div class="glyph">⛈️</div>
+      <div class="body">
+        <div class="fname">behaviors/world-expansion.md <span class="pill editp">EDIT</span></div>
+        <div class="what">Stateful world-event spans: rng-rolled durations, START/live/END lifecycle, populating the long-empty <code>Region.activeWorldEvents</code>, and the consumer read-contracts (quests, colour, departures).</div>
+      </div>
+      <div class="tags"><span class="dec d3">Durations #3</span></div>
+    </div>
+
+    <div class="spec">
+      <div class="glyph">🕯️</div>
+      <div class="body">
+        <div class="fname">behaviors/llm-narrator.md <span class="pill editp">EDIT</span></div>
+        <div class="what">Un-superseded — status note that the day summary is retained as LLM set-piece #1, additive and outside the deterministic replay record.</div>
+      </div>
+      <div class="tags"><span class="dec d1">Voice #1</span></div>
+    </div>
+
+    <div class="spec">
+      <div class="glyph">🔗</div>
+      <div class="body">
+        <div class="fname">behaviors/relationship-graph.md <span class="pill editp">EDIT</span></div>
+        <div class="what">Graph keys widen to <code>ActorId</code>; Tier A NPC ids are first-class nodes using the same strength/threshold/decay machinery — co-quest deltas excluded.</div>
+      </div>
+      <div class="tags"><span class="dec d4">Town #4</span></div>
+    </div>
+
+    <div class="spec">
+      <div class="glyph">🗺️</div>
+      <div class="body">
+        <div class="fname">screens/character-detail.md <span class="pill editp">EDIT</span></div>
+        <div class="what">"Last Day Events" repointed off the deleted card onto the prior-day significant events from <code>eventLog</code>/history.</div>
+      </div>
+      <div class="tags"><span class="dec d1">Voice #1</span></div>
+    </div>
+  </div>
+
+  <!-- PLAN DAG -->
+  <div class="section">
+    <h2><span class="num">IV</span> The Quest Board — Plan DAG</h2>
+    <p class="lede">A fresh <b>Phase 10</b> supersedes the old social-LLM plans. Build order: <b>Voice → Durations / Timing → Town</b>. <i>Click a pinned quest to annotate it.</i></p>
+
+    <div class="board">
+      <div class="board-legend">
+        <span><i class="dot" style="background:var(--gold-bright)"></i> Ready</span>
+        <span><i class="dot" style="background:#9d8a5e"></i> Blocked by deps</span>
+        <span><i class="dot" style="background:var(--wine)"></i> Cancelled</span>
+      </div>
+      <div class="dag-grid">
+        <div class="pin ready span2">
+          <div class="slug">p10a · narrative-voice</div>
+          <div class="scope">Lift <code>renderText</code> to the grammar; author beat/colour pools for every event family; lock the set-piece boundary. <b>Foundational — everything renders through it.</b></div>
+          <div class="meta"><span class="stat ready">READY</span><span class="dec d1">Voice #1</span><span class="dep">depends: —</span></div>
+        </div>
+
+        <div class="pin">
+          <div class="slug">p10b · world-event-durations</div>
+          <div class="scope">Spans for STORM / PLAGUE / SURGE / MERCHANT; durations, START/END, span consumers.</div>
+          <div class="meta"><span class="stat blocked">BLOCKED</span><span class="dec d3">Dur #3</span><span class="dep">depends: p10a</span></div>
+        </div>
+
+        <div class="pin">
+          <div class="slug">p10c · social-pressure</div>
+          <div class="scope">Pressure trigger + 6-outcome resolution + group scenes. <i>Supersedes p9b.</i></div>
+          <div class="meta"><span class="stat blocked">BLOCKED</span><span class="dec d2">Timing #2</span><span class="dep">depends: p10a, p9a</span></div>
+        </div>
+
+        <div class="pin span2">
+          <div class="slug">p10d · npc-system</div>
+          <div class="scope">Two-tier NPCs; Tier A graph actors + Tier B flavour; <code>NPCEvent</code>; EventFeed's 3 updates; festivals.</div>
+          <div class="meta"><span class="stat blocked">BLOCKED</span><span class="dec d4">Town #4</span><span class="dep">depends: p10c, p10a</span></div>
+        </div>
+
+        <div class="pin cancelled">
+          <div class="slug">p9b · social-escalation</div>
+          <div class="scope">Probability-trigger escalation. Content carried into p10c; trigger replaced.</div>
+          <div class="meta"><span class="stat cancel">CANCELLED</span><span class="dep">→ p10c</span></div>
+        </div>
+
+        <div class="pin cancelled">
+          <div class="slug">p9c · llm-inline-cards</div>
+          <div class="scope">Per-scene LLM + character cards. Direction rejected.</div>
+          <div class="meta"><span class="stat cancel">CANCELLED</span><span class="dep">→ p10a</span></div>
+        </div>
+      </div>
+      <p class="flow-note">Flow: <b>p10a</b> unblocks <b>p10b</b> &amp; <b>p10c</b> (parallel) → <b>p10c</b> unblocks <b>p10d</b>. &nbsp;CLI confirms: 1 ready · 3 blocked-by-deps · 2 cancelled · 0 hygiene warnings.</p>
+    </div>
+  </div>
+
+  <!-- VERDICT -->
+  <div class="section">
+    <div class="verdict">
+      <h2><span class="num">V</span> Your Verdict</h2>
+      <p class="lede" style="margin-bottom:2px;">How shall we proceed? Pick one, add any marginalia, and seal it back to me.</p>
+      <form id="verdictForm" data-lavish-question="verdict" onsubmit="return submitVerdict(event)">
+        <div class="opts">
+          <label class="opt"><input type="radio" name="verdict" value="approve-proceed" required />
+            <span><span class="ot">Approve — proceed to p10a</span><br /><span class="od">Specs &amp; plans look right. Begin implementation at narrative-voice via /tdd.</span></span></label>
+          <label class="opt"><input type="radio" name="verdict" value="approve-notes" />
+            <span><span class="ot">Approve with notes</span><br /><span class="od">Good overall — apply my annotations/notes first, then proceed.</span></span></label>
+          <label class="opt"><input type="radio" name="verdict" value="request-changes" />
+            <span><span class="ot">Request changes</span><br /><span class="od">Something needs rework before I'll sign off — see my notes/annotations.</span></span></label>
+          <label class="opt"><input type="radio" name="verdict" value="discuss" />
+            <span><span class="ot">Let's discuss first</span><br /><span class="od">I have questions before ruling — talk it through with me.</span></span></label>
+        </div>
+        <textarea id="verdictNotes" placeholder="Marginalia — overall notes, or which spec/plan to revisit (you can also pin notes directly to any row above)…"></textarea>
+        <div class="row">
+          <button type="submit" class="seal-btn">⚜ Seal &amp; Send Verdict</button>
+          <span class="hint">Sends one message back to me.</span>
+        </div>
+      </form>
+      <div class="annotate-tip">✦ <b>Tip:</b> for targeted feedback, click directly on any <b>spec row</b> or <b>quest pin</b> above to attach a note to that exact item — then send your verdict to wrap it all up.</div>
+    </div>
+  </div>
+
+  <div class="foot">— The Unseen Hand · Phase 10 Events Redesign · drafted for your review —</div>
+</div>
+
+<script>
+  function submitVerdict(e){
+    e.preventDefault();
+    var form = e.currentTarget;
+    var choice = new FormData(form).get('verdict');
+    if(!choice){ return false; }
+    var notes = document.getElementById('verdictNotes').value.trim();
+    var labels = {
+      'approve-proceed':'Approve — proceed to implementation at p10a-narrative-voice via /tdd',
+      'approve-notes':'Approve with notes — apply my notes/annotations first, then proceed',
+      'request-changes':'Request changes before sign-off — see my notes/annotations',
+      'discuss':'Discuss before ruling — I have questions'
+    };
+    var msg = 'Phase 10 review verdict: ' + labels[choice];
+    if(notes){ msg += '\n\nNotes: ' + notes; }
+    if(window.lavish && window.lavish.queuePrompt){
+      window.lavish.queuePrompt(msg, { tag:'verdict', text: labels[choice], element: form, data:{ question:'verdict', answer:choice, notes:notes } });
+      var btn = form.querySelector('.seal-btn');
+      btn.textContent = '✓ Verdict sealed — press Send to Agent';
+      btn.disabled = true; btn.style.filter='grayscale(.3)';
+    } else {
+      alert('Verdict recorded: ' + labels[choice] + (notes? '\n\nNotes: '+notes : '') + '\n\n(Open via lavish-axi to send it back.)');
+    }
+    return false;
+  }
+</script>
+</body>
+</html>

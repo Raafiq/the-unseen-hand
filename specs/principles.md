@@ -70,6 +70,6 @@ Death must be permanent unless the player spends DI to resist it. No automatic s
 
 ## The event feed is the game
 
-Every meaningful simulation event must produce a typed event with a rendered narrative string. If something happened and the player cannot read about it in the event feed, it effectively did not happen. Template coverage is not optional — every `BeatAction`, `SocialOutcome`, and `LifecycleEvent` must have at least 3 template variants.
+Every meaningful simulation event must produce a typed event with a rendered narrative string. If something happened and the player cannot read about it in the event feed, it effectively did not happen. Template coverage is not optional — every `BeatAction`, `SocialOutcome`, and `LifecycleEvent` must have at least 3 template variants that serve as fallbacks when LLM generation is unavailable.
 
-> **Why:** The event feed is the primary interface with the world. The LLM narrator (Phase 6) is additive and gracefully disabled — templates are the load-bearing narrative layer.
+> **Why:** The event feed is the primary interface with the world. For social events, LLM-generated text is the primary narrative layer (see `behaviors/social-system.md`); templates are the graceful fallback. For non-social events (combat beats, lifecycle events), templates remain the load-bearing layer. Either way: if it happened and it isn't in the feed, it didn't happen.

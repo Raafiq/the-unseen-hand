@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Social Interaction System — Design Grill</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#0f0d14;--surface:#1a1820;--surface2:#211e2a;--border:#2e2a3a;--border2:#44405a;--text:#c8c0b4;--muted:#888;--faint:#555;--accent:#7e57c2;--accent-lo:#1a1630;--teal:#26c6da;--orange:#ff9800;--gold:#ffd54f;--red:#ef5350;--green:#66bb6a;--blue:#42a5f5}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
+  .shell{display:grid;grid-template-columns:240px minmax(0,1fr);grid-template-rows:auto 1fr;min-height:100vh}
+  header{grid-column:1/-1;background:var(--surface);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:baseline;gap:14px}
+  header h1{font-size:15px;font-weight:600;color:var(--accent);letter-spacing:.04em}
+  .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:20px 0;overflow-y:auto}
+  .stitle{font-size:10px;font-variant:small-caps;letter-spacing:.1em;color:var(--faint);padding:0 18px 10px}
+  .qn{display:flex;align-items:flex-start;gap:8px;padding:7px 18px;border-left:2px solid transparent}
+  .qn.active{border-left-color:var(--accent);background:var(--accent-lo)}
+  .qn.done{opacity:.4}.qn.locked{opacity:.25}
+  .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px;background:var(--border2)}
+  .qn.active .dot{background:var(--accent);box-shadow:0 0 6px var(--accent)}
+  .qn.done .dot{background:var(--green)}
+  .ql{font-size:11px;color:var(--muted);line-height:1.4}.qn.active .ql{color:var(--text)}
+  .main{padding:24px 28px;overflow-y:auto}
+  .pb-wrap{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+  .pb{flex:1;height:3px;background:var(--border);border-radius:2px}
+  .pb-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent),var(--teal));transition:width .4s}
+  .settled{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:8px;opacity:.45;pointer-events:none}
+  .sh{padding:9px 16px;display:flex;align-items:center;gap:10px;min-width:0}
+  .sb{padding:7px 16px;font-size:11px;color:var(--muted);border-top:1px solid var(--border)}
+  .bd{font-size:10px;font-variant:small-caps;letter-spacing:.08em;background:#0c1a0c;color:var(--green);padding:2px 8px;border-radius:3px;white-space:nowrap}
+  .settled-label{font-size:12px;color:var(--muted);white-space:nowrap}
+  .settled-val{margin-left:auto;font-size:11px;color:var(--green);text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .q-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:20px}
+  .qch{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+  .qnum{font-size:10px;font-variant:small-caps;letter-spacing:.08em;color:var(--accent);background:var(--accent-lo);padding:2px 8px;border-radius:3px}
+  .qch h2{font-size:15px;font-weight:600;color:#fff}
+  .qb{padding:20px}
+  .ctx{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--border2);border-radius:4px;padding:12px 16px;margin-bottom:18px;font-size:12px;color:var(--muted)}
+  .ctx strong{color:var(--text);display:block;margin-bottom:5px;font-size:11px;font-variant:small-caps;letter-spacing:.06em}
+  .rec{background:#0c1a0c;border:1px solid #2a4a2a;border-left:3px solid var(--green);border-radius:4px;padding:14px 16px;margin-bottom:22px}
+  .rl{font-size:10px;font-variant:small-caps;letter-spacing:.08em;color:var(--green);margin-bottom:8px;display:block}
+  .rec p{font-size:13px;color:#a8c8a8;line-height:1.6}
+  .ol{font-size:11px;font-variant:small-caps;letter-spacing:.07em;color:var(--faint);margin-bottom:12px;display:block}
+  .og{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+  .oc{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px;cursor:pointer;transition:border-color .15s,background .15s}
+  .oc:hover{border-color:var(--border2);background:#28243a}.oc.selected{border-color:var(--accent);background:var(--accent-lo)}
+  .oc input[type=radio]{display:none}
+  .ot{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px}.od{font-size:12px;color:var(--muted);line-height:1.45}
+  .oc.selected .ot{color:var(--accent)}
+  .ow{margin-bottom:18px}.ow label{font-size:11px;color:var(--faint);display:block;margin-bottom:6px}
+  .ow textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:13px;padding:10px 12px;resize:vertical;min-height:60px;font-family:inherit;line-height:1.5}
+  .ow textarea:focus{outline:none;border-color:var(--accent)}
+  .sbtn{background:var(--accent);color:#fff;border:none;border-radius:5px;padding:10px 22px;font-size:13px;font-weight:600;cursor:pointer}
+  .sbtn:hover{background:#9c6fe0}.sbtn:disabled{background:var(--border2);color:var(--muted);cursor:default}
+  .tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:3px;font-weight:600;margin:1px;white-space:nowrap}
+  .t-teal{background:#0a2e2e;color:var(--teal)}.t-orange{background:#2e1a00;color:var(--orange)}
+  .t-purple{background:#1a1030;color:#9575cd}.t-red{background:#2e0a0a;color:var(--red)}
+  .t-green{background:#0c1a0c;color:var(--green)}
+  .feed{display:flex;flex-direction:column;gap:5px}
+  .fr{display:flex;gap:10px;align-items:baseline;min-width:0}
+  .ft{font-size:10px;color:var(--faint);min-width:40px;flex-shrink:0}
+  .fx{font-size:12px;color:var(--muted);font-style:italic;min-width:0;word-break:break-word}
+  .panel2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+  .panel2 .pane{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px;min-width:0}
+  .pane-title{font-size:10px;font-variant:small-caps;letter-spacing:.07em;margin-bottom:8px}
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--green);color:var(--green);border-radius:6px;padding:10px 18px;font-size:13px;font-weight:600;display:none;z-index:999}
+  .toast.show{display:block}
+  .grid6{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px}
+  .outcome-cell{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;min-width:0}
+  .oc-name{font-size:11px;font-weight:700;margin-bottom:3px}
+  .oc-sub{font-size:11px;color:var(--muted);line-height:1.4}
+  .oc-shift{font-size:10px;margin-top:6px;font-variant:small-caps;letter-spacing:.05em}
+  @media(max-width:700px){.shell{grid-template-columns:1fr}.sidebar{display:none}.og,.panel2,.grid6{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<header>
+  <h1>Social Interaction System — Design Grill</h1>
+  <span style="font-size:12px;color:var(--muted)">One question at a time · Resolve dependencies before building</span>
+</header>
+
+<nav class="sidebar">
+  <div class="stitle">Question Tree</div>
+  <div class="qn done"><span class="dot"></span><span class="ql">1. Core emotional experience ✓</span></div>
+  <div class="qn done"><span class="dot"></span><span class="ql">2. Unit of individual behaviour ✓</span></div>
+  <div class="qn done"><span class="dot"></span><span class="ql">3. Activity vocabulary ✓</span></div>
+  <div class="qn done"><span class="dot"></span><span class="ql">4. Personality → activity weights ✓</span></div>
+  <div class="qn done"><span class="dot"></span><span class="ql">5. Transient conditions ✓</span></div>
+  <div class="qn done"><span class="dot"></span><span class="ql">6. Activity duration & transitions ✓</span></div>
+  <div class="qn done"><span class="dot"></span><span class="ql">7. Social escalation trigger ✓</span></div>
+  <div class="qn done"><span class="dot"></span><span class="ql">8. Social outcome types ✓</span></div>
+  <div class="qn done"><span class="dot"></span><span class="ql">9. Player agency ✓</span></div>
+  <div class="qn done"><span class="dot"></span><span class="ql">10. Event text quality ✓</span></div>
+  <div class="qn done"><span class="dot"></span><span class="ql">11. LLM narrator integration ✓</span></div>
+</nav>
+
+<main class="main">
+
+  <div class="pb-wrap">
+    <div class="pb"><div class="pb-fill" style="width:100%"></div></div>
+    <span style="font-size:11px;color:var(--faint);white-space:nowrap">Question 11 of 11</span>
+  </div>
+
+  <!-- settled strips Q1–Q7 -->
+  <div class="settled"><div class="sh"><span class="bd">Q1 ✓</span><span class="settled-label">Core emotional experience</span><span class="settled-val">Voyeuristic intimacy — sitcom, not scheduler</span></div></div>
+  <div class="settled"><div class="sh"><span class="bd">Q2 ✓</span><span class="settled-label">Unit of behaviour</span><span class="settled-val">Activity pool + micro-events (two levels)</span></div></div>
+  <div class="settled"><div class="sh"><span class="bd">Q3 ✓</span><span class="settled-label">Activity vocabulary</span><span class="settled-val">Physical · Social spaces · Private (13 activities)</span></div></div>
+  <div class="settled"><div class="sh"><span class="bd">Q4 ✓</span><span class="settled-label">Activity weights</span><span class="settled-val">Affinity table × mood × history modifier + stubborn overrides</span></div></div>
+  <div class="settled"><div class="sh"><span class="bd">Q5 ✓</span><span class="settled-label">Transient conditions</span><span class="settled-val">Extended moodFactors with activityWeights + stubbornOverride</span></div></div>
+  <div class="settled">
+    <div class="sh"><span class="bd">Q6 ✓</span><span class="settled-label">Activity duration & transitions</span><span class="settled-val">Scaled ranges + mood-exit trigger + two extensions</span></div>
+    <div class="sb">Social encounters can extend an ongoing activity. Rest quality affects next-day capacity (short-sleeper trait as personality override).</div>
+  </div>
+  <div class="settled">
+    <div class="sh"><span class="bd">Q7 ✓</span><span class="settled-label">Social escalation trigger</span><span class="settled-val">Initiative-based — personality drives join vs interrupt</span></div>
+    <div class="sb">Approach probability = base × empathy × relationship × compatibility. Approacher's personality decides join-vs-interrupt (not activity pairing). Enemies never voluntarily approach — only crisis or forced proximity triggers. Strangers: very low base probability.</div>
+  </div>
+
+  <div class="settled">
+    <div class="sh"><span class="bd">Q8 ✓</span><span class="settled-label">Social outcome types</span><span class="settled-val">Valence × intensity grid — 6 named outcomes</span></div>
+    <div class="sb">BANTER / SOLIDARITY / BREAKTHROUGH (positive) · SILENT DISTANCE / ARGUMENT / ESTRANGEMENT (negative). Threshold makes strong outcomes rarer but not impossible — event content (e.g. insulting a loved one) can push to ESTRANGEMENT regardless of relationship level. Context-driven intensity variance to expand in future.</div>
+  </div>
+
+  <div class="settled">
+    <div class="sh"><span class="bd">Q9 ✓</span><span class="settled-label">Player agency</span><span class="settled-val">Pure observer — no intervention</span></div>
+    <div class="sb">Social encounters are fully autonomous. Player influence is indirect only — guild composition, moods shaped upstream, DI spent on quests. The unseen hand does not reach into individual scenes.</div>
+  </div>
+
+  <div class="settled">
+    <div class="sh"><span class="bd">Q10 ✓</span><span class="settled-label">Event text quality</span><span class="settled-val">LLM-generated inline at game-time</span></div>
+    <div class="sb">High individuality per event, character-voiced. Group scenes (not just pairs) supported. Per-character agent.md context files as cost optimisation — smaller prompts, richer personality signal. Q11 settles the architecture of how this all works.</div>
+  </div>
+
+  <div class="settled">
+    <div class="sh"><span class="bd">Q11 ✓</span><span class="settled-label">LLM narrator integration</span><span class="settled-val">Context cards + batched calls + card persistence</span></div>
+    <div class="sb">Character context cards (~200 tok) in every inline prompt. Events batched 4–6 per API call. No separate day-summary narrator — replaced by card persistence: significant daily events appended to the character card at end of day, shaping future interactions. Player-visible as "last day events" in character detail panel.</div>
+  </div>
+
+  <!-- Grill complete -->
+  <div style="background:var(--surface);border:1px solid var(--green);border-radius:8px;padding:20px;text-align:center;margin-top:8px;">
+    <div style="font-size:18px;color:var(--green);font-weight:700;margin-bottom:8px;">Grill complete — all 11 questions settled</div>
+    <div style="font-size:13px;color:var(--muted);">Ready to write specs and plans. Run <code style="background:var(--surface2);padding:2px 6px;border-radius:3px;">/specops</code> to begin.</div>
+  </div>
+
+  <!-- placeholder to satisfy form reference -->
+  <div style="display:none">
+  <div class="q-card" style="border-color:var(--accent);">
+    <div class="qch" style="border-bottom-color:var(--accent);">
+      <span class="qnum">Q11</span>
+      <h2>How does the LLM integration actually work?</h2>
+      <span style="margin-left:auto;font-size:10px;font-variant:small-caps;letter-spacing:.07em;color:var(--gold)">Final question</span>
+    </div>
+    <div class="qb">
+
+      <div class="ctx">
+        <strong>Dependency: Q10 → Q11 — LLM is now generating game-time event text; how does the architecture work?</strong>
+        Q10 locked in LLM inline for all social events — not just the day-summary narrator. That means we need
+        to decide: how are character voices encoded (the <em>agent.md</em> idea), how are group scenes
+        composed, how do we gate calls to control cost, and how does the existing day-summary narrator (already
+        wired in <code>LLMNarrator.ts</code>) relate to the new inline layer? This is the final architectural
+        question that makes everything else buildable.
+      </div>
+
+      <div class="rec">
+        <span class="rl">My recommendation — character context cards + batched inline calls + day-summary as editorial layer</span>
+        <p style="margin-bottom:14px;">
+          Three interlocking pieces:
+        </p>
+
+        <!-- three pieces -->
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+          <div style="background:#0c1a0c;border:1px solid #1a3a1a;border-radius:4px;padding:12px;">
+            <div style="color:var(--green);font-size:10px;font-variant:small-caps;letter-spacing:.06em;margin-bottom:6px;">Piece 1 — Character context cards (the agent.md idea)</div>
+            <div style="font-size:12px;color:#a8c8a8;line-height:1.5;">Each adventurer has a <strong>compact context card</strong> (~200 tokens): name, voice descriptor (terse / warm / sardonic), personality axes snapshot, 2–3 defining relationship notes, current mood tag. Card is regenerated when personality or key relationships shift substantially. Included verbatim in every prompt involving that character. Group scenes include all N cards.</div>
+          </div>
+          <div style="background:#0c1a2e;border:1px solid #1a3a4a;border-radius:4px;padding:12px;">
+            <div style="color:var(--blue);font-size:10px;font-variant:small-caps;letter-spacing:.06em;margin-bottom:6px;">Piece 2 — Batched inline calls (cost gate)</div>
+            <div style="font-size:12px;color:#a8b8c8;line-height:1.5;">Social events are queued in a buffer (max 4–6 events) and sent as a single batched prompt: "Generate a 1–2 sentence event line for each of these encounters." One API call per batch instead of per event. At fast-forward speed, events are queued silently; the batch fires when the player slows to 1× or pauses. At 1× speed, flush after each event or after 30s — whichever comes first.</div>
+          </div>
+          <div style="background:#1a0c1a;border:1px solid #3a1a3a;border-radius:4px;padding:12px;">
+            <div style="color:var(--accent);font-size:10px;font-variant:small-caps;letter-spacing:.06em;margin-bottom:6px;">Piece 3 — Day-summary as editorial layer</div>
+            <div style="font-size:12px;color:#b8a8c8;line-height:1.5;">The existing <code>LLMNarrator.ts</code> stays. It reads the raw event log (including inline-generated lines) and writes the day-summary as an omniscient narrator who notices patterns — "Bran's been reaching out more since the quest." Two layers: inline = scene text; day-summary = thematic reflection. They don't share a prompt — the summary reads finished events, not the inline context.</div>
+          </div>
+        </div>
+
+        <!-- group scene prompt example -->
+        <span style="font-size:10px;font-variant:small-caps;letter-spacing:.07em;color:var(--faint);display:block;margin-bottom:8px;">Example — group scene prompt shape (SOLIDARITY × DRINKING, 3 characters)</span>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:10px 14px;font-size:11px;color:#888;font-family:monospace;line-height:1.6;overflow-x:auto;">
+          <span style="color:var(--muted)">Characters: [Bran — terse, stubborn, haunted] [Mira — warm, pragmatic] [Kira — sardonic, loyal]</span><br>
+          <span style="color:var(--muted)">Activity: DRINKING · Outcome: SOLIDARITY · Time: 21:00</span><br>
+          <span style="color:var(--muted)">Relationship context: Bran+Mira: growing trust · Bran+Kira: tense · Mira+Kira: old friends</span><br>
+          <br>
+          <span style="color:#a8c8a8;">Write 1–2 sentences of scene text for this moment. Show, don't tell. No outcome labels. Character voices should be distinct.</span>
+        </div>
+      </div>
+
+      <span class="ol">Which architecture fits?</span>
+
+      <form id="q11-form" data-lavish-question="q11-trigger">
+        <div class="og">
+          <label class="oc">
+            <input type="radio" name="q11" value="context-cards-batched-editorial">
+            <div class="ot">Context cards + batched calls + editorial day-summary (my rec)</div>
+            <div class="od">Character cards (~200 tok each) in every prompt. Events batched (4–6) into one call. Day-summary stays as a separate editorial layer. Speed gate defers batches at fast-forward.</div>
+          </label>
+          <label class="oc">
+            <input type="radio" name="q11" value="per-event-no-batch">
+            <div class="ot">Per-event calls, no batching</div>
+            <div class="od">One LLM call per social event as it fires. Maximum immediacy; event text appears in real-time at 1× speed. Higher cost; fast-forward must either skip LLM or queue aggressively.</div>
+          </label>
+          <label class="oc">
+            <input type="radio" name="q11" value="inline-replaces-summary">
+            <div class="ot">Inline replaces the day-summary</div>
+            <div class="od">No separate day-summary narrator. Inline event text is rich enough; the player reads the event feed directly. One LLM budget, not two. Simpler but loses the thematic reflection layer.</div>
+          </label>
+          <label class="oc">
+            <input type="radio" name="q11" value="shared-session-context">
+            <div class="ot">Shared session context window</div>
+            <div class="od">A persistent LLM "session" for the guild, accumulating context across events. Inline and summary share the same rolling context. Most coherent voice; highest token cost and stateful complexity.</div>
+          </label>
+        </div>
+
+        <div class="ow">
+          <label for="q11-override">Refinements — what goes into the character context card? Should the player be able to see the raw character card? How should fast-forward handle queued events — show them all when slowing down, or silently drop some?</label>
+          <textarea id="q11-override" name="override" placeholder="e.g. &quot;Character cards should include: name, 3-word voice tag, top 2 personality axes, 2 most recent significant interactions, current mood. Player can inspect the card in the character detail panel. Fast-forward queues all events; show them in accelerated scroll when slowing down — don't drop any.&quot;"></textarea>
+        </div>
+
+        <button type="submit" class="sbtn" id="q11-submit">Queue answer →</button>
+      </form>
+
+    </div>
+  </div>
+  </div><!-- end hidden placeholder -->
+
+</main>
+</div>
+
+<div class="toast" id="toast">Answer queued</div>
+<script>
+  document.querySelectorAll('.oc input[type=radio]').forEach(r=>{
+    r.addEventListener('change',()=>{
+      const form=r.closest('form');
+      form.querySelectorAll('.oc').forEach(c=>c.classList.remove('selected'));
+      r.closest('.oc').classList.add('selected');
+    });
+  });
+  document.getElementById('q11-form').addEventListener('submit',e=>{
+    e.preventDefault();
+    const fd=new FormData(e.currentTarget);
+    const choice=fd.get('q11');
+    const override=(fd.get('override')||'').toString().trim();
+    const labels={
+      'context-cards-batched-editorial':'Character context cards (~200 tok each) + batched calls (4–6 events/call) + day-summary as separate editorial layer',
+      'per-event-no-batch':'Per-event LLM calls, no batching — maximum immediacy at 1× speed',
+      'inline-replaces-summary':'Inline event text replaces the day-summary narrator entirely — one LLM budget',
+      'shared-session-context':'Shared persistent session context window — inline and summary share rolling context',
+    };
+    let prompt=choice?`Q11 answer: ${labels[choice]||choice}`:'Q11: no selection';
+    if(override) prompt+=`. Notes: ${override}`;
+    if(window.lavish) window.lavish.queuePrompt(prompt,{tag:'q11-trigger',text:prompt,element:e.currentTarget,data:{question:'q11',answer:choice||'free-text',override}});
+    document.getElementById('toast').classList.add('show');
+    setTimeout(()=>document.getElementById('toast').classList.remove('show'),3000);
+    document.getElementById('q11-submit').disabled=true;
+    document.getElementById('q11-submit').textContent='Queued ✓';
+  });
+</script>
+</body>
+</html>

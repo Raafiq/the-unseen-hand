@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="luxury">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Making Events Feel Alive — Design Discussion</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :where(.grid, .flex) > * { min-width: 0; }
+    :where(p, h1, h2, h3, h4, li, dd, td, th, .badge, code, span) { overflow-wrap: anywhere; }
+    :where(code) { white-space: normal; }
+    :where(img, svg) { max-width: 100%; height: auto; }
+    body { font-feature-settings: "liga" 1, "calt" 1; }
+    .ink { font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif; }
+    .narr { font-style: italic; }
+    .vrule { border-left: 2px solid color-mix(in srgb, var(--color-primary) 35%, transparent); }
+    .pierre-wrap { font-size: 0.8rem; border-radius: 0.75rem; overflow: hidden; border: 1px solid color-mix(in srgb, var(--color-base-content) 12%, transparent); }
+    .tag-cur { color: var(--color-error); }
+    .tag-new { color: var(--color-success); }
+    .mermaid { background: transparent; }
+    .lead-cap::first-letter { font-size: 2.6rem; line-height: 1; float: left; padding-right: 0.5rem; color: var(--color-primary); font-family: Georgia, serif; }
+  </style>
+</head>
+<body class="bg-base-100 text-base-content">
+
+<main class="mx-auto max-w-5xl px-5 py-10 lg:px-8">
+
+  <!-- HERO -->
+  <header class="mb-10">
+    <div class="flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-primary/80 mb-3">
+      <span>The Unseen Hand</span><span class="opacity-40">·</span><span>Event System · Design Discussion</span>
+    </div>
+    <h1 class="ink text-4xl lg:text-5xl font-bold leading-tight mb-4">Making events feel <span class="text-primary">alive</span>, not scheduled.</h1>
+    <p class="text-base-content/75 max-w-3xl text-lg leading-relaxed">
+      You asked for four things: a <strong>terse DnD-narrator voice</strong>, events that feel
+      <strong>organic instead of clockwork</strong>, <strong>varying durations</strong> instead of fixed hours, and a
+      <strong>living town</strong> where adventurers interact with more than just each other. This is a map of where the
+      current system fights those goals — and four concrete directions to fix it. Annotate anything; decisions form at the bottom.
+    </p>
+  </header>
+
+  <!-- DIAGNOSIS -->
+  <section class="mb-14">
+    <h2 class="ink text-2xl font-bold mb-1">Why it feels fake right now</h2>
+    <p class="text-base-content/60 mb-5 text-sm">Four root causes, each traced to real code.</p>
+    <div class="grid gap-4 sm:grid-cols-2">
+
+      <div class="card card-border bg-base-200/60">
+        <div class="card-body p-5">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="badge badge-error badge-sm">Clockwork</span>
+            <code class="text-xs opacity-70">socialResolver.ts · pairHour()</code>
+          </div>
+          <h3 class="font-semibold">Every pair talks at the same hour, every day</h3>
+          <p class="text-sm text-base-content/70">Each pair is hashed to a fixed hour (0–23). Bree &amp; Cole will <em>always</em> chat at 14:00, forever. That deterministic cadence is the "scheduled and fake" smell.</p>
+        </div>
+      </div>
+
+      <div class="card card-border bg-base-200/60">
+        <div class="card-body p-5">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="badge badge-error badge-sm">Instant</span>
+            <code class="text-xs opacity-70">eventBus · WORLD / SOCIAL</code>
+          </div>
+          <h3 class="font-semibold">World &amp; social events have zero duration</h3>
+          <p class="text-sm text-base-content/70">A storm is one log line, then gone. Only <em>activities</em> have real spans (<code>DURATION_RANGE</code>). <code>Region.activeWorldEvents</code> exists in the type — but is never populated.</p>
+        </div>
+      </div>
+
+      <div class="card card-border bg-base-200/60">
+        <div class="card-body p-5">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="badge badge-error badge-sm">Empty town</span>
+            <code class="text-xs opacity-70">socialResolver · adventurer pairs only</code>
+          </div>
+          <h3 class="font-semibold">The only people who exist are adventurers</h3>
+          <p class="text-sm text-base-content/70">All interaction is adventurer↔adventurer. The "travelling merchant" is a sentence, not someone you can deal with. The town is painted scenery.</p>
+        </div>
+      </div>
+
+      <div class="card card-border bg-base-200/60">
+        <div class="card-body p-5">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="badge badge-error badge-sm">Flat voice</span>
+            <code class="text-xs opacity-70">eventBus · renderText()</code>
+          </div>
+          <h3 class="font-semibold">Mechanical one-liners for the big beats</h3>
+          <p class="text-sm text-base-content/70">"A party sets out on X." The activity/social pools already read nicely — but quest/world/lifecycle text is bare. The LLM only writes a retrospective <em>day summary</em>, never the live feed.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- THREAD 1 -->
+  <section class="mb-16 vrule pl-5">
+    <div class="flex items-baseline gap-3 mb-2">
+      <span class="text-primary text-sm font-mono">01</span>
+      <h2 class="ink text-2xl font-bold">Kill the schedule — trigger on pressure, not the clock</h2>
+    </div>
+    <p class="text-base-content/75 mb-6 max-w-3xl">
+      The fix isn't randomising the hour — it's changing <em>what causes</em> an event. Events should fire when state
+      builds up enough to demand it, plus a jittered roll, then go quiet on a cooldown. Same average rate; organic texture.
+    </p>
+
+    <div class="grid gap-4 lg:grid-cols-2 mb-6">
+      <div class="card card-border bg-error/5 border-error/30">
+        <div class="card-body p-5">
+          <div class="tag-cur text-xs font-mono uppercase tracking-wider mb-1">Current</div>
+          <h3 class="font-semibold mb-2">Fixed hashed hour</h3>
+          <ul class="text-sm text-base-content/75 space-y-1.5 list-disc pl-4">
+            <li>Pair → deterministic hour via string hash.</li>
+            <li>Day-ticks only; one check per pair per day.</li>
+            <li>Repeats identically every day → reads as a timetable.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card card-border bg-success/5 border-success/30">
+        <div class="card-body p-5">
+          <div class="tag-new text-xs font-mono uppercase tracking-wider mb-1">Proposed</div>
+          <h3 class="font-semibold mb-2">Pressure accumulator + jitter + cooldown</h3>
+          <ul class="text-sm text-base-content/75 space-y-1.5 list-disc pl-4">
+            <li>Pressure rises from proximity, mood strain, relationship tension.</li>
+            <li>Above threshold, a low per-tick roll decides the exact moment.</li>
+            <li>After firing, a randomised cooldown — no machine-gun repeats.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-box bg-base-200/40 p-5 mb-6">
+      <h4 class="text-sm font-semibold mb-3 text-base-content/80">The trigger loop</h4>
+      <pre class="mermaid">
+flowchart LR
+    S["State signals<br/>proximity · mood · tension"] --> P["Pressure +="]
+    P --> T{"pressure ≥<br/>threshold?"}
+    T -- no --> P
+    T -- yes --> R{"jitter roll<br/>(low p/tick)"}
+    R -- miss --> P
+    R -- hit --> E["Emit event<br/>(variable lead-in)"]
+    E --> C["Cooldown<br/>(randomised)"]
+    C --> Z["pressure = 0"]
+    Z --> P
+      </pre>
+      <p class="text-xs text-base-content/55 mt-2">Reuses the existing <code>decisionCooldowns</code> pattern (see CLAUDE.md "per-tick detectors need a cooldown key"). Pressure replaces the fixed-hour gate.</p>
+    </div>
+
+    <p class="text-sm text-base-content/60 mb-2 font-mono">Sketch — the gate that changes:</p>
+    <div id="diff-trigger" class="pierre-wrap mb-2"></div>
+    <p class="text-xs text-base-content/55">Illustrative, not a literal patch — the point is replacing a clock equality check with an accumulated-pressure check.</p>
+  </section>
+
+  <!-- THREAD 2 -->
+  <section class="mb-16 vrule pl-5">
+    <div class="flex items-baseline gap-3 mb-2">
+      <span class="text-primary text-sm font-mono">02</span>
+      <h2 class="ink text-2xl font-bold">Give events duration — stateful spans, not instants</h2>
+    </div>
+    <p class="text-base-content/75 mb-6 max-w-3xl">
+      Activities already do this well. Promote <strong>world events</strong> (and the weightier social ones) into the same
+      shape: a start tick, a randomised end tick, and effects that hold <em>while active</em>. The home already exists and is empty:
+      <code>Region.activeWorldEvents</code>.
+    </p>
+
+    <div class="overflow-x-auto rounded-box border border-base-content/10 bg-base-100 mb-5">
+      <table class="table table-sm">
+        <thead>
+          <tr class="text-base-content/60">
+            <th>Event</th><th>Today</th><th>Proposed span</th><th>While active…</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="font-medium">Storm</td><td><span class="badge badge-ghost badge-xs">instant line</span></td><td>6–18h</td><td>quest difficulty ↑, patrols curtailed</td></tr>
+          <tr><td class="font-medium">Travelling merchant</td><td><span class="badge badge-ghost badge-xs">instant line</span></td><td>1–3 days</td><td>shop NPC present, rare goods, haggling beats</td></tr>
+          <tr><td class="font-medium">Monster surge</td><td><span class="badge badge-ghost badge-xs">instant line</span></td><td>2–5 days</td><td>more/harder quests seed, tension rises</td></tr>
+          <tr><td class="font-medium">Plague</td><td><span class="badge badge-ghost badge-xs">instant line</span></td><td>3–8 days</td><td>mood drag, departure pressure ↑</td></tr>
+          <tr><td class="font-medium">Festival <span class="badge badge-soft badge-primary badge-xs">new</span></td><td>—</td><td>1–2 days</td><td>social pressure ↑, positive-outcome weights ↑</td></tr>
+          <tr><td class="font-medium">Feud (social)</td><td><span class="badge badge-ghost badge-xs">instant line</span></td><td>until reconciled / decays</td><td>repeat friction beats between the pair</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-3 text-sm">
+      <div class="card card-border bg-base-200/50"><div class="card-body p-4">
+        <span class="badge badge-success badge-xs mb-1">START</span>
+        <p class="text-base-content/75">"Black clouds roll in over Thornvale." Effects switch on.</p>
+      </div></div>
+      <div class="card card-border bg-base-200/50"><div class="card-body p-4">
+        <span class="badge badge-info badge-xs mb-1">DURING</span>
+        <p class="text-base-content/75">Optional sparse mid-beats; other systems read <code>activeWorldEvents</code>.</p>
+      </div></div>
+      <div class="card card-border bg-base-200/50"><div class="card-body p-4">
+        <span class="badge badge-warning badge-xs mb-1">END</span>
+        <p class="text-base-content/75">"The skies clear by dawn." Effects switch off; span removed.</p>
+      </div></div>
+    </div>
+    <p class="text-xs text-base-content/55 mt-3">End tick is rolled at start via <code>ctx.rng</code> (no <code>Math.random()</code>), exactly like <code>scheduleDuration()</code>.</p>
+  </section>
+
+  <!-- THREAD 3 -->
+  <section class="mb-16 vrule pl-5">
+    <div class="flex items-baseline gap-3 mb-2">
+      <span class="text-primary text-sm font-mono">03</span>
+      <h2 class="ink text-2xl font-bold">The town is alive — nameless NPCs as targets &amp; sources</h2>
+    </div>
+    <p class="text-base-content/75 mb-6 max-w-3xl">
+      Adventurers aren't the only people in town. The town runs on <strong>two tiers</strong> of townsfolk — a small
+      <strong>named cast</strong> with bios and relationships, plus a deep bench of <strong>nameless roles</strong> for ambient
+      colour. Both hook off what an adventurer is already doing — someone <code>DRINKING</code> at the inn naturally pulls the
+      innkeeper into a beat — and both <em>deliver</em> world events: the merchant becomes someone, not a sentence.
+    </p>
+
+    <div class="grid gap-4 sm:grid-cols-2 mb-6">
+      <div class="card card-border bg-secondary/5 border-secondary/30"><div class="card-body p-5">
+        <div class="flex items-center gap-2 mb-1"><span class="badge badge-secondary badge-sm">Tier A</span><h3 class="font-semibold text-sm">Notable NPCs — named, remembered</h3></div>
+        <p class="text-sm text-base-content/75">A handful per town: <em>the</em> blacksmith, the captain of the guard, the innkeeper. They carry a <strong>character bio</strong> (name, role, a trait or two) and form <strong>relationships</strong> with adventurers — favours owed, grudges, a regular they look out for. These are recurring faces with memory.</p>
+      </div></div>
+      <div class="card card-border bg-base-200/50"><div class="card-body p-5">
+        <div class="flex items-center gap-2 mb-1"><span class="badge badge-ghost badge-sm">Tier B</span><h3 class="font-semibold text-sm">Nameless roles — ambient texture</h3></div>
+        <p class="text-sm text-base-content/75">Everyone else: a shopkeeper, a guard on the gate, an urchin, a drunk. No relationship graph, no mood, no lifecycle — just a role + template pool. Cheap, infinite, and enough to make the town feel populated.</p>
+      </div></div>
+    </div>
+
+    <div class="overflow-x-auto rounded-box border border-base-content/10 bg-base-100 mb-5">
+      <table class="table table-sm table-zebra">
+        <thead><tr class="text-base-content/60"><th>Role</th><th>Tier</th><th>Hooks off activity</th><th>Affords</th></tr></thead>
+        <tbody>
+          <tr><td class="font-medium">Innkeeper</td><td><span class="badge badge-secondary badge-xs">A</span></td><td>DRINKING, EATING, GOSSIPING</td><td>rumours, mood lift, overheard quest leads</td></tr>
+          <tr><td class="font-medium">Blacksmith</td><td><span class="badge badge-secondary badge-xs">A</span></td><td>CRAFTING, post-quest</td><td>gear talk, haggling, a favour owed</td></tr>
+          <tr><td class="font-medium">Guard captain</td><td><span class="badge badge-secondary badge-xs">A</span></td><td>PATROL, town trouble</td><td>standing relationship, monster-surge foreshadow</td></tr>
+          <tr><td class="font-medium">Shopkeeper</td><td><span class="badge badge-secondary badge-xs">A</span> / <span class="badge badge-ghost badge-xs">B</span></td><td>idle in town</td><td>supplies, price gossip, merchant-event tie-in</td></tr>
+          <tr><td class="font-medium">Priest / shrine-keeper</td><td><span class="badge badge-secondary badge-xs">A</span> / <span class="badge badge-ghost badge-xs">B</span></td><td>PRAYING, BROODING</td><td>consolation, mood factor, goal nudges</td></tr>
+          <tr><td class="font-medium">Gate guard, urchin, drunk</td><td><span class="badge badge-ghost badge-xs">B</span></td><td>any public activity</td><td>colour, comic relief, stray rumour</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div class="card card-border bg-base-200/50"><div class="card-body p-5">
+        <h3 class="font-semibold text-sm mb-1">Where notable NPCs live in the model</h3>
+        <p class="text-sm text-base-content/70">A bio is small: <code>{ id, name, role, traits, bio }</code>. The open question is relationships — do notable NPCs get IDs <em>inside the existing adventurer relationship graph</em> (so bonds, decay, and threshold events reuse all the social machinery), or a parallel NPC↔adventurer map? That's the architectural fork — decided in the form below.</p>
+      </div></div>
+      <div class="card card-border bg-base-200/50"><div class="card-body p-5">
+        <h3 class="font-semibold text-sm mb-1">New event shape</h3>
+        <p class="text-sm text-base-content/70">An <code>NPC</code> social subtype where one participant is an NPC (named id <em>or</em> bare role), not an <code>AdventurerId</code>. EventFeed needs the usual three updates (<code>KIND_LABELS</code>, <code>ALL_KINDS</code>, <code>getInvolvedIds</code>) per CLAUDE.md — and <code>getInvolvedIds</code> must resolve NPC ids so the character filter works.</p>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- THREAD 4 -->
+  <section class="mb-16 vrule pl-5">
+    <div class="flex items-baseline gap-3 mb-2">
+      <span class="text-primary text-sm font-mono">04</span>
+      <h2 class="ink text-2xl font-bold">A narrator's voice — evocative, but spare</h2>
+    </div>
+    <p class="text-base-content/75 mb-6 max-w-3xl">
+      DnD-narrator tone is about <em>specificity and restraint</em>, not length. The activity/social pools already nail it.
+      Lift quest/world/lifecycle lines to match, and reserve the LLM for set-pieces — never per-tick (cost, latency, the
+      seeded-determinism rule).
+    </p>
+
+    <div class="grid gap-3 mb-6">
+      <div class="rounded-lg bg-base-200/40 p-4 flex flex-col sm:flex-row gap-3 sm:items-center">
+        <span class="badge badge-error badge-sm shrink-0">now</span>
+        <p class="narr ink text-base-content/60">"A party sets out on Clear the Cellar Rats."</p>
+        <span class="opacity-30 hidden sm:block shrink-0 px-1 leading-none">→</span>
+        <p class="narr ink text-primary/90">"Three of yours shoulder their packs and head for the cellar steps."</p>
+      </div>
+      <div class="rounded-lg bg-base-200/40 p-4 flex flex-col sm:flex-row gap-3 sm:items-center">
+        <span class="badge badge-error badge-sm shrink-0">now</span>
+        <p class="narr ink text-base-content/60">"A surge of monsters is reported in Thornvale."</p>
+        <span class="opacity-30 hidden sm:block shrink-0 px-1 leading-none">→</span>
+        <p class="narr ink text-primary/90">"Farmers come running — something has crawled out of the Thornvale woods, and it isn't alone."</p>
+      </div>
+      <div class="rounded-lg bg-base-200/40 p-4 flex flex-col sm:flex-row gap-3 sm:items-center">
+        <span class="badge badge-error badge-sm shrink-0">now</span>
+        <p class="narr ink text-base-content/60">"Bree has left the guild."</p>
+        <span class="opacity-30 hidden sm:block shrink-0 px-1 leading-none">→</span>
+        <p class="narr ink text-primary/90">"Bree's bunk is stripped bare by morning. No note."</p>
+      </div>
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-3 text-sm">
+      <div class="card card-border bg-base-200/50"><div class="card-body p-4">
+        <h4 class="font-semibold mb-1">Tier 1 — Template grammar</h4>
+        <p class="text-base-content/70">Deterministic, instant, free. Fragment composition (subject + beat + colour) for variety beyond fixed strings. Carries 95% of the feed.</p>
+      </div></div>
+      <div class="card card-border bg-base-200/50"><div class="card-body p-4">
+        <h4 class="font-semibold mb-1">Tier 2 — LLM set-pieces</h4>
+        <p class="text-base-content/70">Decision moments, quest climaxes, day summary. Already wired (<code>narrator.ts</code>, Haiku). Async, never blocks the tick.</p>
+      </div></div>
+      <div class="card card-border bg-base-200/50 opacity-70"><div class="card-body p-4">
+        <h4 class="font-semibold mb-1">Tier 3 — LLM per-event</h4>
+        <p class="text-base-content/70">Richest, but cost + latency per tick and breaks replay determinism. Likely a no — confirm below.</p>
+      </div></div>
+    </div>
+
+    <p class="text-sm text-base-content/60 mt-6 mb-2 font-mono">Sketch — fragment grammar vs flat string:</p>
+    <div id="diff-narr" class="pierre-wrap"></div>
+  </section>
+
+  <!-- SEQUENCING -->
+  <section class="mb-16">
+    <h2 class="ink text-2xl font-bold mb-4">A sane order to build it</h2>
+    <ul class="steps steps-vertical lg:steps-horizontal w-full">
+      <li class="step step-primary" data-content="1">
+        <div class="text-left px-2"><div class="font-semibold text-sm">Voice</div><div class="text-xs text-base-content/60">Lift flat templates → grammar. Lowest risk, instant payoff.</div></div>
+      </li>
+      <li class="step step-primary" data-content="2">
+        <div class="text-left px-2"><div class="font-semibold text-sm">Durations</div><div class="text-xs text-base-content/60">Stateful world spans in <code>activeWorldEvents</code>.</div></div>
+      </li>
+      <li class="step" data-content="3">
+        <div class="text-left px-2"><div class="font-semibold text-sm">Organic timing</div><div class="text-xs text-base-content/60">Replace <code>pairHour</code> with pressure + cooldown.</div></div>
+      </li>
+      <li class="step" data-content="4">
+        <div class="text-left px-2"><div class="font-semibold text-sm">Town &amp; NPCs</div><div class="text-xs text-base-content/60">New event subtype; ambient + merchant tie-in.</div></div>
+      </li>
+    </ul>
+    <p class="text-xs text-base-content/55 mt-3">Each step is spec-first: change <code>specs/behaviors/*</code>, then a <code>plans/</code> file, then code. Threads are independent — reorder freely.</p>
+  </section>
+
+  <!-- DECISIONS -->
+  <section class="mb-10">
+    <div class="rounded-box border border-primary/30 bg-primary/5 p-6">
+      <h2 class="ink text-2xl font-bold mb-1">Your calls</h2>
+      <p class="text-sm text-base-content/65 mb-4">Pick a lane on each fork; I'll turn the choices into specs + plans. Queue each answer — they batch and send together.</p>
+
+      <div role="alert" class="alert alert-success alert-soft mb-6 items-start">
+        <div>
+          <div class="font-semibold text-sm mb-1">Decisions locked ✓</div>
+          <ul class="text-xs space-y-0.5 text-base-content/80">
+            <li><strong>1 Voice:</strong> templates + LLM for set-pieces</li>
+            <li><strong>2 Timing:</strong> full pressure accumulator + cooldown</li>
+            <li><strong>3 Durations:</strong> world + weighty social (feuds, festivals)</li>
+            <li><strong>4 NPCs:</strong> two tiers; notable NPCs get IDs in the existing relationship graph</li>
+          </ul>
+          <div class="text-xs text-base-content/55 mt-1">Next: spec-first — <code>specs/behaviors/*</code>, then <code>plans/</code>, then code.</div>
+        </div>
+      </div>
+
+      <div class="grid gap-5 lg:grid-cols-2">
+
+        <!-- Q1 -->
+        <form class="card card-border bg-base-100" data-lavish-question="narration"
+          onsubmit="event.preventDefault(); const v=new FormData(event.currentTarget).get('narration'); if(v) window.lavish.queuePrompt('Narration strategy: '+v, {tag:'choice', text:'Narration: '+v, element:event.currentTarget, data:{question:'narration', answer:v}});">
+          <div class="card-body p-5">
+            <h3 class="font-semibold text-sm mb-2">1 · Narrator voice strategy</h3>
+            <label class="flex gap-2 items-start py-1 cursor-pointer"><input type="radio" name="narration" value="Templates only (richer grammar)" class="radio radio-sm radio-primary mt-0.5"><span class="text-sm">Templates only — richer fragment grammar</span></label>
+            <label class="flex gap-2 items-start py-1 cursor-pointer"><input type="radio" name="narration" value="Templates + LLM set-pieces" class="radio radio-sm radio-primary mt-0.5" checked><span class="text-sm">Templates <strong>+ LLM for set-pieces</strong> <span class="badge badge-primary badge-xs">rec</span></span></label>
+            <label class="flex gap-2 items-start py-1 cursor-pointer"><input type="radio" name="narration" value="LLM per-event" class="radio radio-sm radio-primary mt-0.5"><span class="text-sm">LLM per individual event</span></label>
+            <button type="submit" class="btn btn-sm btn-primary btn-outline mt-3 self-start">Queue answer</button>
+          </div>
+        </form>
+
+        <!-- Q2 -->
+        <form class="card card-border bg-base-100" data-lavish-question="triggering"
+          onsubmit="event.preventDefault(); const v=new FormData(event.currentTarget).get('triggering'); if(v) window.lavish.queuePrompt('Event triggering model: '+v, {tag:'choice', text:'Triggering: '+v, element:event.currentTarget, data:{question:'triggering', answer:v}});">
+          <div class="card-body p-5">
+            <h3 class="font-semibold text-sm mb-2">2 · How events trigger</h3>
+            <label class="flex gap-2 items-start py-1 cursor-pointer"><input type="radio" name="triggering" value="Full pressure accumulator + cooldown" class="radio radio-sm radio-primary mt-0.5" checked><span class="text-sm">Full <strong>pressure accumulator</strong> + cooldown <span class="badge badge-primary badge-xs">rec</span></span></label>
+            <label class="flex gap-2 items-start py-1 cursor-pointer"><input type="radio" name="triggering" value="Keep probability but add jitter and cooldown" class="radio radio-sm radio-primary mt-0.5"><span class="text-sm">Lighter — keep prob, add jitter + cooldown</span></label>
+            <label class="flex gap-2 items-start py-1 cursor-pointer"><input type="radio" name="triggering" value="Just remove the fixed pairHour" class="radio radio-sm radio-primary mt-0.5"><span class="text-sm">Minimal — only drop fixed <code>pairHour</code></span></label>
+            <button type="submit" class="btn btn-sm btn-primary btn-outline mt-3 self-start">Queue answer</button>
+          </div>
+        </form>
+
+        <!-- Q3 -->
+        <form class="card card-border bg-base-100" data-lavish-question="duration"
+          onsubmit="event.preventDefault(); const v=new FormData(event.currentTarget).get('duration'); if(v) window.lavish.queuePrompt('Stateful-duration scope: '+v, {tag:'choice', text:'Durations: '+v, element:event.currentTarget, data:{question:'duration', answer:v}});">
+          <div class="card-body p-5">
+            <h3 class="font-semibold text-sm mb-2">3 · What gets variable duration</h3>
+            <label class="flex gap-2 items-start py-1 cursor-pointer"><input type="radio" name="duration" value="World events only" class="radio radio-sm radio-primary mt-0.5"><span class="text-sm">World events only</span></label>
+            <label class="flex gap-2 items-start py-1 cursor-pointer"><input type="radio" name="duration" value="World + weighty social (feuds, festivals)" class="radio radio-sm radio-primary mt-0.5" checked><span class="text-sm">World <strong>+ weighty social</strong> (feuds, festivals) <span class="badge badge-primary badge-xs">rec</span></span></label>
+            <label class="flex gap-2 items-start py-1 cursor-pointer"><input type="radio" name="duration" value="Everything including NPC threads" class="radio radio-sm radio-primary mt-0.5"><span class="text-sm">Everything, incl. NPC threads</span></label>
+            <button type="submit" class="btn btn-sm btn-primary btn-outline mt-3 self-start">Queue answer</button>
+          </div>
+        </form>
+
+        <!-- Q4 -->
+        <form class="card card-border bg-base-100" data-lavish-question="npc"
+          onsubmit="event.preventDefault(); const v=new FormData(event.currentTarget).get('npc'); if(v) window.lavish.queuePrompt('Notable-NPC relationship model: '+v, {tag:'choice', text:'NPCs: '+v, element:event.currentTarget, data:{question:'npc', answer:v}});">
+          <div class="card-body p-5">
+            <h3 class="font-semibold text-sm mb-2">4 · Notable NPCs <span class="badge badge-success badge-xs">hybrid set</span></h3>
+            <p class="text-xs text-base-content/55 mb-2">Two tiers decided. Remaining fork: how do named NPCs hold relationships?</p>
+            <label class="flex gap-2 items-start py-1 cursor-pointer"><input type="radio" name="npc" value="NPCs get IDs in the existing relationship graph" class="radio radio-sm radio-primary mt-0.5" checked><span class="text-sm">IDs in the <strong>existing relationship graph</strong> — reuse all social machinery <span class="badge badge-primary badge-xs">rec</span></span></label>
+            <label class="flex gap-2 items-start py-1 cursor-pointer"><input type="radio" name="npc" value="Separate parallel NPC-to-adventurer relationship map" class="radio radio-sm radio-primary mt-0.5"><span class="text-sm">Separate <strong>parallel</strong> NPC↔adventurer map</span></label>
+            <label class="flex gap-2 items-start py-1 cursor-pointer"><input type="radio" name="npc" value="Bios and traits only, defer relationship edges" class="radio radio-sm radio-primary mt-0.5"><span class="text-sm">Bios + traits only — <strong>defer</strong> edges to a later pass</span></label>
+            <button type="submit" class="btn btn-sm btn-primary btn-outline mt-3 self-start">Queue answer</button>
+          </div>
+        </form>
+
+      </div>
+
+      <div class="mt-6 flex flex-wrap items-center gap-3">
+        <button class="btn btn-primary btn-sm" data-lavish-action
+          onclick="window.lavish && window.lavish.sendQueuedPrompts && window.lavish.sendQueuedPrompts()">Send all answers to agent</button>
+        <span class="text-xs text-base-content/50">Or annotate any block directly to push notes back.</span>
+      </div>
+    </div>
+  </section>
+
+  <footer class="text-center text-xs text-base-content/40 pt-6 border-t border-base-content/10">
+    Design source: Lavish DaisyUI <code>luxury</code> theme (no project design system found for a doc artifact). Code surfaces via @pierre/diffs · diagram via Mermaid.
+  </footer>
+
+</main>
+
+<!-- Mermaid -->
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.15.0/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "dark", securityLevel: "strict" });
+</script>
+
+<!-- Code diffs -->
+<script type="module">
+  import { FileDiff } from "https://esm.sh/@pierre/diffs@1.2.10?bundle";
+  const options = { theme: { light: "github-light", dark: "github-dark" }, themeType: "dark", overflow: "wrap", diffStyle: "unified" };
+
+  // Thread 1 — trigger gate
+  new FileDiff(options).render({
+    containerWrapper: document.querySelector("#diff-trigger"),
+    oldFile: {
+      name: "events/socialResolver.ts",
+      contents:
+`// Each pair fires at its own dedicated hour — fixed, every day.
+if (ctx.worldTime.hour !== pairHour(idA, idB)) continue;
+if (!edge) continue;
+
+const prob = computeInteractionProbability(a1, a2, edge);
+if (updatedCtx.rng.next() > prob) continue;
+`,
+    },
+    newFile: {
+      name: "events/socialResolver.ts",
+      contents:
+`// Pressure builds from proximity, mood strain, relationship tension.
+const pressure = socialPressure(a1, a2, edge, ctx);
+if (pressure < PRESSURE_THRESHOLD) continue;
+if (onCooldown(ctx, idA, idB)) continue;
+
+// Jittered roll scaled by how far past threshold we are.
+const p = baseRate * (pressure / PRESSURE_THRESHOLD);
+if (updatedCtx.rng.next() > p) continue;
+// ...emit, then write a randomised cooldown key.
+`,
+    },
+  });
+
+  // Thread 4 — narration grammar
+  new FileDiff(options).render({
+    containerWrapper: document.querySelector("#diff-narr"),
+    oldFile: {
+      name: "events/eventBus.ts",
+      contents:
+`case 'QUEST':
+  case 'STARTED':
+    return \`A party sets out on \${label}.\`;
+`,
+    },
+    newFile: {
+      name: "events/eventBus.ts",
+      contents:
+`case 'QUEST':
+  case 'STARTED': {
+    // subject + beat + colour, picked via ctx.rng (deterministic)
+    const who = partyPhrase(ctx, input.partyIds);   // "Three of yours"
+    const beat = pick(rng, QUEST_DEPART_BEATS);      // "shoulder their packs"
+    return \`\${who} \${beat} and head for \${label}.\`;
+  }
+`,
+    },
+  });
+</script>
+
+</body>
+</html>

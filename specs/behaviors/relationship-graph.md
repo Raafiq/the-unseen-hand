@@ -16,7 +16,10 @@ Relationships between adventurers are bidirectional weighted edges with a streng
 
 ### Graph structure
 
-`RelationshipGraph` is a `Map<AdventurerId, Map<AdventurerId, RelationshipEdge>>`.
+`RelationshipGraph` is a `Map<ActorId, Map<ActorId, RelationshipEdge>>`, where
+`ActorId = AdventurerId | NpcId`. Adventurers and **Tier A notable NPCs** share one node space
+(see `behaviors/npc-system.md`); an edge may connect two adventurers or an adventurer and a
+notable NPC. Tier B nameless roles are never graph nodes.
 
 The graph is symmetric: `graph[A][B].strength === graph[B][A].strength` at all times. Any update to one side must update the other.
 
@@ -44,10 +47,12 @@ Applied at the end of each tick where a relevant event fires:
 | Co-quest success | +8 |
 | Co-quest failure (survived together) | +4 |
 | Co-quest death of ally (survivor perspective) | −5 (grief) |
-| Positive social interaction | +5 |
-| Argument | −8 |
-| Breakthrough social event | +15 |
-| SILENT_DISTANCE social outcome | −3 |
+| Social outcome: BANTER | +3 |
+| Social outcome: SOLIDARITY | +10 |
+| Social outcome: BREAKTHROUGH | +18 |
+| Social outcome: SILENT_DISTANCE | −1 |
+| Social outcome: ARGUMENT | −10 |
+| Social outcome: ESTRANGEMENT | −22 (+ 5-day approach cooldown) |
 | Time apart (> 14 days, no shared activity) | −1 per day |
 | DEFEND_ALLY action (defender → defended) | +12; (defended → defender) +8 |
 | HESITATE when ally needed help (in RIVAL relationship) | −5 |
@@ -78,6 +83,22 @@ Applies at each day tick to edges where neither adventurer has been on a shared 
 - Decay: −1 per day until strength reaches 0 (no decay below 0 from separation alone — enemies do not become friends through distance).
 - Edges at `STRANGER` strength (−10 to +10) are not decayed further.
 
+### NPC actors (Tier A)
+
+Notable NPC ids are first-class graph nodes. Adventurer↔NPC edges use the **same** strength
+range, type thresholds, threshold events, and long-separation decay as adventurer↔adventurer
+edges — a notable NPC can become an ACQUAINTANCE, FRIEND, RIVAL, or TRUSTED_COMPANION. Two
+differences only, both because NPCs are not full adventurers (see `behaviors/npc-system.md`):
+
+- **Co-quest deltas never apply** to an edge whose endpoint is an NPC (NPCs do not quest). Only
+  social-outcome deltas, DEFEND/HESITATE-style deltas (if an NPC is ever in a scene), and decay
+  apply.
+- NPCs do not die or depart by default, so their edges are not frozen by death/retirement unless
+  a scenario scripts the NPC's removal — in which case they freeze exactly like a dead
+  adventurer's edge (below).
+
+Edges between two NPCs are not maintained (no NPC↔NPC relationships in scope).
+
 ### Dead and retired adventurers
 
 Edges involving dead or retired adventurers are preserved on surviving adventurers. They do not decay (the relationship is frozen in memory). They are displayed in the character detail panel with a `[deceased]` or `[departed]` annotation.
@@ -89,6 +110,8 @@ Edges involving dead or retired adventurers are preserved on surviving adventure
 - Crossing from `ACQUAINTANCE` to `FRIEND` fires exactly one `FRIENDSHIP_FORMED` event.
 - 14 days of no shared activity on a `FRIEND`-strength edge reduces strength by 14 points.
 - Dead adventurer's edge on a surviving adventurer does not change after death.
+- An adventurer↔notable-NPC edge crosses to FRIEND at strength ≥ 40 and fires one `FRIENDSHIP_FORMED` event, identical to an adventurer↔adventurer edge.
+- A co-quest success delta is never applied to an edge whose endpoint is an NPC id.
 
 ## Principles
 

@@ -1,0 +1,167 @@
+# Behavior: Town NPC System
+
+## Rule
+
+The town around the guild is populated by NPCs in **two tiers**. **Tier A — notable NPCs** are
+named, persistent characters (the blacksmith, the guard captain, the innkeeper) with a small
+identity record and real relationships: their ids live in the adventurer relationship graph, so
+the existing bond/decay/threshold machinery governs how adventurers feel about them. **Tier B —
+nameless roles** (a gate guard, a shopkeeper, an urchin, a drunk at the bar) are ephemeral: a
+role plus a template pool, with no persistent state. Adventurers encounter both as they go about
+town life; notable NPCs can become friends, rivals, or fixtures of a character's story, while
+nameless roles supply texture and never accumulate state.
+
+## Applies To
+
+- `packages/core/src/world/types.ts` — `NotableNpc`, `TownRole`, `ActorId` (id space shared
+  with adventurers)
+- `packages/core/src/events/socialResolver.ts` — Tier A NPCs as honorary actors in encounters
+- `packages/core/src/events/eventBus.ts` — `NPCEvent` rendering (Tier B flavour)
+- `packages/core/src/relationships/graph.ts` — NPC ids as graph nodes
+- `specs/behaviors/relationship-graph.md` — NPC actor participation (cross-reference)
+- `specs/behaviors/social-system.md` — encounter pressure/outcome model Tier A reuses
+- `specs/behaviors/narrative-voice.md` — grammar pools for NPC lines
+- `specs/behaviors/event-bus.md` — `NPCEvent` kind and widened `SocialEvent` participants
+- `apps/game-client/src/lib/components/EventFeed.svelte` — `NPC` kind (3 updates per CLAUDE.md)
+
+## Details
+
+### Actor id space
+
+Adventurers and Tier A NPCs share one **actor id space** so they can occupy the same
+relationship graph and the same encounter participant lists:
+
+```typescript
+type NpcId = string;                 // distinct namespace, e.g. "npc:blacksmith"
+type ActorId = AdventurerId | NpcId;
+```
+
+`isNpc(id)` is a cheap prefix/lookup test. Anywhere a system iterates "actors", it must
+tolerate both — but NPCs lack the full `Adventurer` shape (no quests, no personal goal, no
+divine touch), so adventurer-only logic must guard on `isNpc`.
+
+### Tier A — notable NPCs
+
+```typescript
+type NotableNpc = {
+  id: NpcId;
+  name: string;
+  role: TownRole;            // also a valid Tier-B role label
+  traits: Partial<PersonalityAxes>;   // enough to drive encounter valence/intensity
+  bio: string;               // 1–2 sentences, shown in UI; stable
+  mood?: number;             // optional, coarse; NPCs are not full mood-system citizens
+};
+```
+
+- Notable NPCs are seeded at world generation (scenario-defined; a starting town has a handful).
+- They are **graph nodes.** Edges between an adventurer and a notable NPC are ordinary
+  `RelationshipEdge`s with the same strength range, type thresholds, threshold events, and
+  long-separation decay as adventurer↔adventurer edges (see `relationship-graph.md`).
+- They **participate in social encounters** as honorary actors: the §4 pressure model and the §5
+  valence × intensity outcome grid (`social-system.md`) apply, using the NPC's `traits` and
+  optional `mood` where an adventurer's personality/mood would be read. A notable NPC can reach
+  FRIEND, RIVAL, even TRUSTED_COMPANION with an adventurer.
+- **Exclusions.** Co-quest strength deltas never apply (NPCs do not quest). NPCs do not draw from
+  the activity pool, do not have departures, and do not die unless a scenario scripts it. Their
+  edges are otherwise live (social deltas, decay).
+
+### Tier B — nameless roles
+
+```typescript
+type TownRole =
+  | 'GATE_GUARD' | 'SHOPKEEPER' | 'URCHIN' | 'DRUNK' | 'PRIEST'
+  | 'MERCHANT' | 'BEGGAR' | 'BARD' | 'STABLEHAND' | 'BLACKSMITH'
+  | 'GUARD_CAPTAIN' | 'INNKEEPER';
+```
+
+- A Tier B interaction is **flavour only**: it renders one grammar line and changes nothing —
+  no relationship edge, no mood factor, no persistent record beyond the event itself.
+- Tier B NPCs are never instantiated as objects; a role label plus the grammar's role-keyed beat
+  pool is the entire representation.
+- A `TownRole` that is *also* a notable NPC's `role` (e.g. `BLACKSMITH`) is rendered as the
+  notable NPC when that NPC is present and involved; otherwise the role is nameless texture.
+
+### Encounter eligibility
+
+Adventurers meet NPCs during **town-eligible activities** (non-Private activities representing
+time among others — DRINKING, EATING, GOSSIPING, PATROL, etc.; the same eligibility used for
+adventurer encounters in `social-system.md` §4):
+
+- **Tier A:** the adventurer↔NPC pair accumulates social pressure exactly as an
+  adventurer↔adventurer pair does (NPC traits feed `moodStrain`/`relationshipTension`). On
+  discharge, a normal `SocialEvent` fires with the NPC as a participant.
+- **Tier B:** at a low per-tick rng chance during a town-eligible activity, a flavour `NPCEvent`
+  fires — a single grammar line involving a nameless role. No pressure, no cooldown, no outcome.
+
+### Events
+
+- **Tier A encounters reuse `SocialEvent`** with participants widened to `ActorId[]` (see
+  `event-bus.md`). Everything else about the encounter is unchanged.
+- **Tier B flavour uses a new `NPCEvent` kind:**
+
+  ```typescript
+  type NPCEvent = EventBase & {
+    kind: 'NPC';
+    subtype: 'TOWN_FLAVOUR';
+    adventurerId: AdventurerId;
+    role: TownRole;
+  };
+  ```
+
+`renderedText` for both is composed by the template grammar (`narrative-voice.md`): Tier A from
+the social-outcome pools (subject names the NPC), Tier B from role-keyed beat pools. The NPC's
+name (Tier A) or role (Tier B) is the subject slot.
+
+### Festivals
+
+A **FESTIVAL** is a town-level stateful span (see `world-expansion.md`): while live it raises
+Social-cluster activity weights and social pressure gain guild-wide, and increases Tier B
+flavour frequency. It emits START/END events and is the town's counterpart to a world-event
+span. Festival cadence is scenario/seeding-driven; duration roll is defined where festivals are
+seeded.
+
+### UI — EventFeed
+
+Per CLAUDE.md, the new `NPC` kind requires three EventFeed updates: `KIND_LABELS` (a typed
+`Record` entry), `ALL_KINDS` (so it appears in the filter), and `getInvolvedIds` (which must
+resolve **actor ids** — including NPC ids — and the `adventurerId` field on `NPCEvent`). A Tier A
+NPC id appearing in a `SocialEvent.participantIds` must resolve to the NPC's name for display and
+character-filtering.
+
+## Validation
+
+- An adventurer↔notable-NPC edge crosses to FRIEND at strength ≥ 40 and fires exactly one
+  `FRIENDSHIP_FORMED` event, identical to an adventurer↔adventurer edge.
+- Co-quest deltas are never applied to an edge whose other endpoint is an NPC.
+- A notable NPC's edge decays under the 14-day long-separation rule like any other edge.
+- A Tier A encounter emits a `SocialEvent` whose `participantIds` includes the NPC id and whose
+  outcome/relationship delta follow the §5 grid.
+- A Tier B flavour line emits an `NPCEvent` (`kind: 'NPC'`) with non-empty, slot-free
+  `renderedText` and produces no relationship or mood change.
+- `getInvolvedIds` resolves an NPC id in a `SocialEvent` to the NPC's name; the event appears in
+  that NPC's and the adventurer's character filters.
+- All NPC line selection flows through `ctx.rng`; no `Math.random()`.
+- A live FESTIVAL span raises Social-cluster activity weight and social pressure gain while
+  active, and reverts on END.
+
+## Principles
+
+**Inherited:**
+- [Every outcome has a narrative cause](../principles.md#every-outcome-has-a-narrative-cause) —
+  NPC interactions, like all events, render a sentence; notable-NPC relationship shifts fire the
+  same threshold events as adventurers.
+- [Emergence over control](../principles.md#emergence-over-control) — the player cannot script
+  NPC relationships; they emerge from town life and the same pressure/outcome machinery.
+- [Seeded determinism](../principles.md#seeded-determinism) — NPC encounter timing and flavour
+  selection are `ctx.rng`-driven and replayable.
+
+**Local:**
+- **Two tiers, by design — persistence is earned, not default.** Most townsfolk are texture and
+  must cost nothing to stand up: a role and a line, no object, no state. Only the few NPCs who
+  are meant to matter carry identity and relationships. Implementations must not promote every
+  encountered role into a stateful entity — the nameless tier exists precisely so the town can be
+  populous without a state explosion.
+- **Notable NPCs are honorary adventurers in the graph, not a parallel system.** They reuse the
+  relationship graph, the encounter model, and the threshold events rather than duplicating them.
+  The only differences are exclusions (no quests, no activity pool, no death-by-default), guarded
+  by `isNpc`. Resist building a separate NPC-relationship subsystem.

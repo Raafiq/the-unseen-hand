@@ -1,95 +1,72 @@
 # Handoff — The Unseen Hand (guild-sim)
 
-_Last updated: 2026-06-30 (backlog-triage session). Focus for next session: **build the
-next Phase-10 plan — `p10c-social-pressure` (recommended) or `p10b-world-event-durations`.**_
+_Updated 2026-06-30. **p10c-social-pressure is DONE** (`a9d6736`). Next ready work in the DAG is
+`p10b-world-event-durations` (recommended — it unblocks p10c's descoped FEUD span) or
+`p10d-npc-system`. Tree is clean apart from this file. **Before p10b: read the p10c follow-ups
+below — one needs a user decision (density tuning).**_
 
 ---
 
-## Where things stand
+## What just landed (p10c)
 
-**The working tree is clean and fully committed.** A large multi-session backlog that had
-accumulated uncommitted on `main` (everything from P7 through P10a) was triaged and landed
-as a sequence of plan-grouped commits on `main`, in chronological order:
+Replaced the legacy memoryless `pairHour` social subscriber with the **pressure-accumulator +
+jittered-discharge + cooldown** engine and the six-outcome (valence × intensity) grid. Commit
+`a9d6736` (closeout); `chore` in-progress flip was `<prev>`. Specs were already amended last
+session (`a279ce8`).
 
-```
-1eeef28 docs: project guardrails, roadmap, BUGS backlog
-08f4074 feat(core): P10a — narrative-voice template grammar
-0e8aafe docs(specs): P10 events-redesign spec batch + plan DAG
-c400078 feat(core): P9a — activity system + social/mood, with P7-P9 core wiring
-e012250 feat(ui): P8 world-map sidebar, DI deltas, narrator client + Playwright E2E
-8712343 feat(core): P7a — departure shift wiring
-<gitignore + earlier P4d/P5 history>
-```
+- `packages/core/src/events/socialResolver.ts` — full rewrite. `socialPressureSubscriber` (thin
+  per-tick driver) + `resolveEncounter` (deep write site). Pure helpers `computePressureGain`,
+  `decideApproach`, `resolveOutcome` exported + unit-tested.
+- `SimulationContext` gained `socialPressure` + `socialCooldowns` (`PairKey`-keyed); init in
+  `createSimulationContext` (all other sites spread `...base`).
+- `SocialEvent` widened to six subtypes + `participantIds: ActorId[]` (new `ActorId`/`PairKey`/
+  `SocialOutcomeType` aliases in `types.ts`). Grammar pools: added SOLIDARITY + ESTRANGEMENT,
+  `POSITIVE_CHAT`→`BANTER`.
+- Tests: new `tests/social-pressure.test.ts` (21); updated event-bus/narrative-voice/social-departure.
+- Verified: **478 core Vitest green**, game-client `tsc` + `svelte-check` **0 errors**. All 11
+  plan Validation boxes checked.
 
-`.gitignore` now excludes `test-results/`, `playwright-report/`, and `.claude/worktrees/`.
+## p10c follow-ups (carried into the backlog — full text in `plans/p10c-social-pressure.md`)
 
-### Verification at triage time
-- `tsc --noEmit` clean (packages/core).
-- **814 unit tests pass.** Note: `vitest run` from the repo root reports "5 failed test
-  files" — those are the 5 Playwright `*.spec.ts` files under `apps/game-client/tests/`
-  being mis-collected by vitest (they use `page.goto`). They are **not** real failures;
-  run them via the `test:e2e` Playwright script, not vitest. **Follow-up worth doing:** add
-  an exclude for `apps/game-client/tests/**` to the root vitest config so the suite is clean.
+1. **Density tuning — NEEDS A USER DECISION.** Synthetic 5-adv/30-day harness reads **~1.7/day**
+   (mood on) vs the ~5/day target band (3–7). **Not changed**: constants are signed-off, and
+   density is **unobservable in the shipping 1-adventurer scenario** so it has zero in-game effect
+   today. The plan pre-authorised levers if you want to act: `PROXIMITY 0.05→0.06`,
+   `DECAY 0.015→0.012`, or lower `THRESHOLD` in `socialResolver.ts`. Harness is a caveat-heavy lower
+   bound (convergent moods). **Recommend: decide once recruitment exists** (multi-adventurer state).
+2. **FEUD span — descoped, blocked on p10b.** ESTRANGEMENT-under-crisis should open a FEUD span, but
+   the span lifecycle lives in `p10b-world-event-durations` (still `planned`). The crisis-bypass
+   *logic* is built + tested; nothing opens a span or sets the crisis flag yet. **Wire it when doing
+   p10b** — this is the main reason to pick p10b next.
+3. **Join/interrupt side effects not wired.** `decideApproach` exists + tested, but the subscriber
+   doesn't apply spec §3 JOIN duration-extension / INTERRUPT activity-termination.
+4. **Group prose names only 2 of N.** One `SocialEvent` carries all N ids, but P10a beat pools
+   (`{a}`/`{b}`) name only two. Needs a group-subject grammar (spec §6).
+5. **Crisis flag source** still a forward slot — first real producer is the FEUD path (#2).
 
----
+## Next steps
 
-## Plan DAG (run `…/specops next` to confirm)
+1. `specops next` → choose `p10b-world-event-durations` (recommended) or `p10d-npc-system`.
+2. Read the chosen plan in full; mark `in-progress` (specops protocol); build via `/tdd`.
+3. If p10b: when adding the span lifecycle, **circle back to p10c follow-up #2** and wire the FEUD
+   span + crisis flag into `resolveEncounter`.
 
-```
-p10a-narrative-voice   DONE
-p10b-world-event-durations   READY   (Durations #3 — unblocks nothing)
-p10c-social-pressure         READY   (Timing #2 — unblocks p10d)   ← recommended next
-   └─ p10d-npc-system        BLOCKED on p10c   (Town #4)
-```
+## Gotchas (still current)
 
-p9b/p9c are `cancelled` with successor pointers into Phase 10. Specs each plan implements
-are in its `specs:` frontmatter.
-
-Do not re-derive the Phase-10 design — it lives in:
-- Decisions + rationale: memory `project-events-redesign.md`; artifact
-  `.lavish/events-redesign-discussion.html` (now committed).
-- Review artifact: `.lavish/phase-10-events-redesign-review.html`.
-
-### Three scoping decisions carried forward from p10a (affect p10c/p10d)
-1. **Social pools are the current 4-outcome set.** The 6-outcome pools (`SOLIDARITY`,
-   `ESTRANGEMENT`, `BANTER`) are deferred to **p10c**, where emission changes (one-line-per-pool).
-2. **`MICRO_EVENT` is dead code** in `activitySystem.ts` (never emitted). Wiring it through
-   the grammar is a tracked follow-up (candidate to fold into p10c).
-3. **Region attribution dropped from world line text** (still on `event.regionId`).
-
----
-
-## Immediate next actions
-
-1. **Build `p10c-social-pressure`** (recommended — unblocks p10d). Use `/tdd`: one failing
-   test per behavior; route subscriber-owned behavior through the subscriber with a seeded
-   `createSimulationContext('seed')`. p10c's pressure accumulator + discharge needs a
-   `cooldownKey`/cooldown (per-tick detector rule below). Optionally `/grilling` first to
-   stress-test the pressure tuning. Mark it `in-progress`, build, then close out per specops.
-2. `p10b-world-event-durations` is the lower-leverage alternative (unblocks nothing).
-
----
-
-## Invariants (full list in `CLAUDE.md`)
-
-- No `Math.random()` in `packages/core/` — all randomness via `ctx.rng`.
-- Tests assert **probability shifts / accumulator state, not rolled outcomes**.
-- `tsc --noEmit` + `svelte-check` clean before any **Svelte** edit is "done".
-- Test subscriber-owned behavior **through the subscriber**, seeded context.
-- Per-tick detectors need a `cooldownKey`/cooldown — directly relevant to p10c's pressure discharge.
-- EventFeed needs 3 updates per new EventKind (`KIND_LABELS`/`ALL_KINDS`/`getInvolvedIds`) —
-  the new `NPC` kind in p10d; `getInvolvedIds` must resolve NPC actor ids.
+- **`vitest run` "failed files" for Playwright specs = false alarm** (mis-collected). Run e2e via the
+  game-client `test:e2e` script.
+- **Map-init crashes**: any new `SimulationContext` field must be init'd at `createSimulationContext`;
+  other sites spread `...base`. No compile guard for a missing `.get` on an undefined map.
+- **`createSimulationContext()` needs a seed arg** (crashes in `xmur3` without one).
+- **Rebuild core (`npm run build` in packages/core) before `svelte-check`** — the game-client resolves
+  `@ugs/core` types from `dist/`, not source.
+- **EventFeed.svelte** needs no change for new SOCIAL subtypes (keys on `kind` + `participantIds`),
+  but DOES for any *new EventKind* (`KIND_LABELS` + `ALL_KINDS` + `getInvolvedIds`; tsc only catches
+  the first).
+- Clock: 1 tick = 1 hour, 24/day, 720 ticks = 30 days.
 
 ## Suggested skills
 
-- **`/tdd`** — primary for building p10c/p10b/p10d.
-- **`/specops`** — close out each plan (freeze to `done`); `…/specops next` / `dag` to query.
-- **`/grilling`** — optional, to stress-test p10c's pressure-accumulator tuning before building.
-
-## State notes
-
-- Everything is committed; `git status` is clean. The user has a `BUGS.md` backlog (7 items —
-  night/sleep penalties, `TRUSTED_COMPANION` leaking into UI, hourly-activity spam, Day-0 start
-  time/quests, character event filter, auto-pause-on-intervention) worth turning into specs/plans
-  when the player-experience polish phase starts.
-- No secrets or PII in this document.
+- **`/specops`** — pick next, mark in-progress, close out.
+- **`/tdd`** — build test-first, one test per Validation box.
+- **`/code-review`** or **`/simplify`** — after green, before closeout.

@@ -97,6 +97,40 @@ function unlock(ctx: SimulationContext, regionId: RegionId): SimulationContext {
 // Subscriber
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// World event seeding subscriber
+// ---------------------------------------------------------------------------
+
+// Weighted table for autonomous world event selection.
+const WORLD_EVENT_TABLE: { subtype: string; weight: number }[] = [
+  { subtype: 'RUMOUR',              weight: 35 },
+  { subtype: 'TRAVELLING_MERCHANT', weight: 25 },
+  { subtype: 'MONSTER_SURGE',       weight: 20 },
+  { subtype: 'STORM',               weight: 10 },
+  { subtype: 'WINDFALL',            weight: 7  },
+  { subtype: 'PLAGUE',              weight: 3  },
+];
+const WORLD_EVENT_TOTAL_WEIGHT = WORLD_EVENT_TABLE.reduce((s, e) => s + e.weight, 0);
+const WORLD_EVENT_TRIGGER_PROB = 1 / 24; // ~1 flavour event per in-game day on average
+
+/** Fires autonomous world flavour events spread across the clock. Register before worldExpansion. */
+export function worldEventSeedingSubscriber(ctx: SimulationContext): SimulationContext {
+  if (ctx.rng.next() >= WORLD_EVENT_TRIGGER_PROB) return ctx;
+  const pick = ctx.rng.next() * WORLD_EVENT_TOTAL_WEIGHT;
+  let cum = 0;
+  for (const entry of WORLD_EVENT_TABLE) {
+    cum += entry.weight;
+    if (pick < cum) {
+      return emitEvent(ctx, { kind: 'WORLD', subtype: entry.subtype as any });
+    }
+  }
+  return ctx;
+}
+
+// ---------------------------------------------------------------------------
+// Region unlock subscriber
+// ---------------------------------------------------------------------------
+
 /** Per-tick world expansion check. Register in SimulationLoop after scenarioEvaluator. */
 export function worldExpansionSubscriber(
   ctx: SimulationContext,

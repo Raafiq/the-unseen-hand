@@ -73,12 +73,12 @@ describe('SimulationLoop quest subscriber registration', () => {
     const q = { ...makeQuest(1, 48), id: 'q1', requiredPartySize: 1 };
     let ctx: SimulationContext = {
       ...base,
-      worldTime: { tick: 167, day: 6, hour: 23 },
+      worldTime: { tick: 173, day: 7, hour: 5 },
       questBoard: { available: [q], active: [] },
       adventurers: new Map([['a', makeAdventurer('a')]]),
     };
     const loop = new SimulationLoop(ctx);
-    // Advance 1 tick → tick 168 = day 7, hour 0 → party selection runs
+    // Advance 1 tick → tick 174 = day 7, hour 6 → party selection runs at dawn
     loop.step();
     const hasOnQuest = [...loop.context.adventurers.values()].some(a => a.state === 'ON_QUEST');
     expect(hasOnQuest).toBe(true);

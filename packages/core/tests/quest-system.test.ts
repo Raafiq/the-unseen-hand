@@ -206,7 +206,7 @@ describe('partySelectionSubscriber', () => {
 
   it('assigns a party and transitions adventurers to ON_QUEST', () => {
     let ctx = createSimulationContext('sel-assign');
-    ctx = { ...ctx, worldTime: { tick: 24, day: 1, hour: 0 } };
+    ctx = { ...ctx, worldTime: { tick: 30, day: 1, hour: 6 } }; // dawn departure hour
     ctx = withIdleAdventurer(ctx, 'a');
     ctx = withAvailableQuest(ctx, { ...makeQuest(1), id: 'q1', requiredPartySize: 1 });
     const result = partySelectionSubscriber(ctx);
@@ -215,7 +215,7 @@ describe('partySelectionSubscriber', () => {
 
   it('fires QUEST STARTED event when party assigned', () => {
     let ctx = createSimulationContext('sel-event');
-    ctx = { ...ctx, worldTime: { tick: 24, day: 1, hour: 0 } };
+    ctx = { ...ctx, worldTime: { tick: 30, day: 1, hour: 6 } }; // dawn departure hour
     ctx = withIdleAdventurer(ctx, 'a');
     ctx = withAvailableQuest(ctx, { ...makeQuest(1), id: 'q1', requiredPartySize: 1 });
     const result = partySelectionSubscriber(ctx);

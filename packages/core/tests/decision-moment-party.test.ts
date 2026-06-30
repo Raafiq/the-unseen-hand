@@ -89,7 +89,8 @@ describe('decisionMomentSubscriber — PARTY_SELECTION detection', () => {
       situationText: 'Already pending.',
       options: [],
       expiresAt: 6,
-      subjectId: 'adv-1', // party member ID — dedup checks for overlap
+      subjectId: 'adv-1',
+      cooldownKey: 'PARTY_SELECTION:q-hard', // dedup now matches by cooldownKey
     };
     const ctx = makeCtx({
       adventurers: new Map([['adv-1', adv]]),

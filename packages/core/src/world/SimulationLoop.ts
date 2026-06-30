@@ -11,6 +11,7 @@ import { WorldClock, type SpeedMultiplier } from './WorldClock.js';
 import { moodSubscriber } from '../adventurers/mood.js';
 import { relationshipDecaySubscriber } from '../relationships/graph.js';
 import { socialEventSubscriber } from '../events/socialResolver.js';
+import { activitySubscriber } from '../events/activitySystem.js';
 import { departureSubscriber } from '../adventurers/departureSystem.js';
 import { diTrickleSubscriber } from '../divine/DivineInfluence.js';
 import { decisionMomentSubscriber } from '../events/DecisionMomentDetector.js';
@@ -23,6 +24,7 @@ import {
   questResolutionSubscriber,
 } from '../quests/questSystem.js';
 import { personalGoalSubscriber } from '../adventurers/PersonalGoals.js';
+import { worldEventSeedingSubscriber } from './WorldExpansion.js';
 
 export type TickSubscriber = (ctx: SimulationContext, delta: number) => SimulationContext;
 
@@ -55,12 +57,14 @@ export class SimulationLoop {
       createQuestExpirySubscriber(), // slot 5b: quest expiry + drought tracking
       partySelectionSubscriber,  // slot 6: autonomous party selection (day ticks)
       questResolutionSubscriber, // slot 7: quest outcome resolution
-      socialEventSubscriber,     // slot 8: social interaction resolver (day ticks)
+      activitySubscriber,        // slot 8: activity pool (runs before social escalation)
+      socialEventSubscriber,     // slot 8b: social interaction resolver (day ticks — TO BE REPLACED by P9b)
       personalGoalSubscriber,    // slot 9a: personal goal completion checks
       decisionMomentSubscriber,  // slot 9b: decision moment detector
       departureSubscriber,       // slot 10: departure system (day ticks)
       diTrickleSubscriber,       // DI trickle (every tick)
       scenarioEvaluatorSubscriber, // scenario evaluation (every tick, after all systems)
+      worldEventSeedingSubscriber, // autonomous world flavour events (~1/day, spread across clock)
       worldExpansionSubscriber,  // region unlocks (every tick, after scenario)
     );
   }

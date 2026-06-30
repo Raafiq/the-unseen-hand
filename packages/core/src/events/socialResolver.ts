@@ -131,9 +131,19 @@ const EFFECTS: Record<SocialOutcomeType, SocialOutcomeEffects> = {
 // Subscriber
 // ---------------------------------------------------------------------------
 
-export function socialEventSubscriber(ctx: SimulationContext): SimulationContext {
-  if (ctx.worldTime.hour !== 0) return ctx;
+/**
+ * Maps a pair of adventurer IDs to a stable hour of day (0–23).
+ * Each pair has a dedicated hour so social events spread across the clock
+ * while keeping the same daily rate (one interaction check per pair per day).
+ */
+export function pairHour(idA: string, idB: string): number {
+  const key = [idA, idB].sort().join('|');
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return h % 24;
+}
 
+export function socialEventSubscriber(ctx: SimulationContext): SimulationContext {
   const eligibleIds = [...ctx.adventurers.values()]
     .filter(a => a.state === 'IDLE' || a.state === 'RESTING')
     .map(a => a.id);
@@ -154,6 +164,9 @@ export function socialEventSubscriber(ctx: SimulationContext): SimulationContext
       const a1 = updatedCtx.adventurers.get(idA)!;
       const a2 = updatedCtx.adventurers.get(idB)!;
       const edge = updatedCtx.relationships.get(idA)?.get(idB);
+
+      // Each pair fires at its own dedicated hour — same daily rate, spread across the clock.
+      if (ctx.worldTime.hour !== pairHour(idA, idB)) continue;
 
       // Eligibility: must have existing edge (shared quest before)
       if (!edge) continue;

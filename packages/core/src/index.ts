@@ -38,6 +38,10 @@ export { relationshipDecaySubscriber } from './relationships/graph.js';
 // Event bus
 export { emitEvent } from './events/eventBus.js';
 
+// LLM Narrator (pure helpers; no I/O)
+export { getDayEvents, buildNarratorPrompt } from './events/LLMNarrator.js';
+export type { NarratorPrompt } from './events/LLMNarrator.js';
+
 // Social events + departure
 export {
   computeInteractionProbability,
@@ -89,6 +93,7 @@ export {
   partySelectionSubscriber,
   resolveQuest,
   questResolutionSubscriber,
+  seedQuestBoard,
 } from './quests/questSystem.js';
 export type { QuestOutcomeResult } from './quests/questSystem.js';
 export type { SimulationEventInput, SocialEventInput, CombatEventInput, QuestEventInput,

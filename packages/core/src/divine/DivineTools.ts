@@ -57,11 +57,17 @@ function chooseOption(ctx: SimulationContext, cmd: Extract<DispatchCommand, { ty
     }
   }
 
+  const decisionCooldowns = new Map(ctx.decisionCooldowns);
+  if (moment.cooldownKey) {
+    decisionCooldowns.set(moment.cooldownKey, ctx.worldTime.tick + 48);
+  }
+
   let next: SimulationContext = {
     ...ctx,
     divineInfluence: ctx.divineInfluence - option.diCost,
     pendingDecisions: ctx.pendingDecisions.filter(m => m.id !== cmd.decisionId),
     pendingShifts,
+    decisionCooldowns,
   };
   next = emitEvent(next, { kind: 'DIVINE', subtype: 'OPTION_CHOSEN', diDelta: -option.diCost });
 

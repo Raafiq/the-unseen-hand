@@ -3,14 +3,14 @@
  *
  * Spec: specs/behaviors/scenario-engine.md#scenario-1-the-failing-guild
  *
- * 6 pre-seeded adventurers, 30-day time limit, tight win conditions.
+ * Single-adventurer prototype: Kara, 30-day time limit.
  * Registry-registered at module import time.
  */
 import type { Scenario, SimulationContext, Adventurer } from '../world/types.js';
 import { createSimulationContext } from '../world/SimulationContext.js';
-import { createEdge } from '../relationships/graph.js';
 import { registerScenario } from './ScenarioEngine.js';
 import { createStartingRegions } from '../world/WorldExpansion.js';
+import { seedQuestBoard } from '../quests/questSystem.js';
 
 export const SCENARIO_1_ID = 'FAILING_GUILD';
 
@@ -21,12 +21,7 @@ const TIME_LIMIT = 720; // 30 days × 24 ticks
 // ---------------------------------------------------------------------------
 
 export const S1_IDS = {
-  kara:    's1-kara',
-  doran:   's1-doran',
-  selin:   's1-selin',
-  mira:    's1-mira',
-  garrett: 's1-garrett',
-  voss:    's1-voss',
+  kara: 's1-kara',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -39,12 +34,6 @@ function livingCount(ctx: SimulationContext): number {
   ).length;
 }
 
-function hasBondEvent(ctx: SimulationContext): boolean {
-  return ctx.eventLog.some(
-    e => e.kind === 'LIFECYCLE' && (e as any).subtype === 'TRUSTED_COMPANION_BOND_FORMED',
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Scenario definition
 // ---------------------------------------------------------------------------
@@ -53,7 +42,7 @@ const scenario1: Scenario = {
   id: SCENARIO_1_ID,
   title: 'The Failing Guild',
   premise:
-    'A once-proud guild is down to 6 adventurers and a near-empty treasury. A harsh winter is coming.',
+    'Kara is all that remains of a once-proud guild. A harsh winter is coming and the treasury is nearly empty.',
   startingRoster: [], // populated separately in createScenario1Context
   startingDI: 40,
   timeLimit: TIME_LIMIT,
@@ -61,10 +50,10 @@ const scenario1: Scenario = {
   goals: [
     {
       id: 'SURVIVAL',
-      description: 'Maintain ≥ 4 living (non-retired) adventurers through day 30',
+      description: 'Kara survives through day 30',
       diReward: 25,
-      condition: (ctx) => ctx.worldTime.tick === TIME_LIMIT && livingCount(ctx) >= 4,
-      isImminent: (ctx) => ctx.worldTime.tick > 600 && livingCount(ctx) >= 4,
+      condition: (ctx) => ctx.worldTime.tick === TIME_LIMIT && livingCount(ctx) >= 1,
+      isImminent: (ctx) => ctx.worldTime.tick > 600 && livingCount(ctx) >= 1,
     },
     {
       id: 'SOLVENT',
@@ -73,29 +62,13 @@ const scenario1: Scenario = {
       condition: (ctx) => ctx.worldTime.tick === TIME_LIMIT && ctx.treasury > 0,
       isImminent: (ctx) => ctx.worldTime.tick > 600 && ctx.treasury > 0,
     },
-    {
-      id: 'BOND',
-      description: 'Two adventurers form a TRUSTED_COMPANION bond',
-      diReward: 30,
-      optional: true,
-      condition: (ctx) => hasBondEvent(ctx),
-      isImminent: (ctx) => {
-        if (hasBondEvent(ctx)) return false; // already complete
-        for (const [, edges] of ctx.relationships) {
-          for (const edge of edges.values()) {
-            if (edge.strength >= 55 && edge.strength < 70) return true;
-          }
-        }
-        return false;
-      },
-    },
   ],
 
   failConditions: [
     {
       id: 'ROSTER_COLLAPSE',
-      description: 'Roster drops below 2 living adventurers',
-      condition: (ctx) => livingCount(ctx) < 2,
+      description: 'Kara falls or departs',
+      condition: (ctx) => livingCount(ctx) < 1,
     },
     {
       id: 'BANKRUPTCY',
@@ -147,65 +120,19 @@ export function createScenario1Context(seed = 'scenario-1'): SimulationContext {
   const adventurers: Map<string, Adventurer> = new Map([
     [S1_IDS.kara, makeAdventurer(
       S1_IDS.kara, 'Kara', 34,
-      'Veteran who lost her previous guild in a fire.',
+      'Veteran who lost her previous guild in a fire. She is all that is left.',
       'BELONGING',
       { courage: 70, loyalty: 80, empathy: 50, greed: 20, ambition: 50 },
     )],
-    [S1_IDS.doran, makeAdventurer(
-      S1_IDS.doran, 'Doran', 26,
-      "Merchant's son seeking fortune.",
-      'WEALTH',
-      { courage: 50, loyalty: 40, empathy: 30, greed: 75, ambition: 65 },
-    )],
-    [S1_IDS.selin, makeAdventurer(
-      S1_IDS.selin, 'Selin', 29,
-      'Former healer turned adventurer after village raid.',
-      'PEACE',
-      { courage: 30, loyalty: 60, empathy: 85, greed: 10, ambition: 30 },
-    )],
-    [S1_IDS.mira, makeAdventurer(
-      S1_IDS.mira, 'Mira', 22,
-      'Youngest sibling proving herself.',
-      'HEROISM',
-      { courage: 55, loyalty: 50, empathy: 40, greed: 30, ambition: 80 },
-    )],
-    [S1_IDS.garrett, makeAdventurer(
-      S1_IDS.garrett, 'Garrett', 38,
-      'Sworn to protect Kara after she saved his life.',
-      'BELONGING',
-      { courage: 60, loyalty: 90, empathy: 60, greed: 20, ambition: 30 },
-    )],
-    [S1_IDS.voss, makeAdventurer(
-      S1_IDS.voss, 'Voss', 31,
-      'Exile seeking redemption through violence.',
-      'REVENGE',
-      { courage: 85, loyalty: 30, empathy: 15, greed: 40, ambition: 60 },
-    )],
   ]);
 
-  // Pre-existing relationship edges
-  const relationships = new Map<string, Map<string, ReturnType<typeof createEdge>>>();
+  const relationships: SimulationContext['relationships'] = new Map();
 
-  // Garrett → Kara: TRUSTED_COMPANION (strength 75) — symmetric
-  const garrettMap = new Map<string, ReturnType<typeof createEdge>>();
-  garrettMap.set(S1_IDS.kara, createEdge(75));
-  relationships.set(S1_IDS.garrett, garrettMap);
+  const START_TICK = 9; // Day 0, 09:00
 
-  const karaMap = new Map<string, ReturnType<typeof createEdge>>();
-  karaMap.set(S1_IDS.garrett, createEdge(75));
-  relationships.set(S1_IDS.kara, karaMap);
-
-  // Voss → Mira: RIVAL (strength -30) — symmetric
-  const vossMap = new Map<string, ReturnType<typeof createEdge>>();
-  vossMap.set(S1_IDS.mira, createEdge(-30));
-  relationships.set(S1_IDS.voss, vossMap);
-
-  const miraMap = new Map<string, ReturnType<typeof createEdge>>();
-  miraMap.set(S1_IDS.voss, createEdge(-30));
-  relationships.set(S1_IDS.mira, miraMap);
-
-  return {
+  const ctx: SimulationContext = {
     ...base,
+    worldTime: { tick: START_TICK, day: 0, hour: START_TICK },
     adventurers,
     relationships,
     activeRegions: createStartingRegions(),
@@ -213,7 +140,7 @@ export function createScenario1Context(seed = 'scenario-1'): SimulationContext {
     divineInfluence: 40,
     scenario: {
       scenarioId: SCENARIO_1_ID,
-      startedAt: 0,
+      startedAt: START_TICK,
       status: 'ACTIVE',
       treasuryNegativeSince: null,
       goals: scenario1.goals.map(g => ({
@@ -229,4 +156,7 @@ export function createScenario1Context(seed = 'scenario-1'): SimulationContext {
       })),
     },
   };
+
+  // Seed the quest board at game start so players have work available immediately
+  return seedQuestBoard(ctx, 4);
 }

@@ -112,6 +112,22 @@ function baseQuestRate(ctx: SimulationContext): number {
 }
 
 // ---------------------------------------------------------------------------
+// Board seeding helpers
+// ---------------------------------------------------------------------------
+
+/** Seed N quests directly into the board — used at scenario creation to ensure quests are available on Day 0. */
+export function seedQuestBoard(ctx: SimulationContext, n: number): SimulationContext {
+  const newQuests: Quest[] = [];
+  for (let i = 0; i < n; i++) {
+    newQuests.push(generateQuest(ctx, i));
+  }
+  return {
+    ...ctx,
+    questBoard: { ...ctx.questBoard, available: [...ctx.questBoard.available, ...newQuests] },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Board seeding subscriber (weekly — every 168 ticks)
 // ---------------------------------------------------------------------------
 
@@ -187,7 +203,7 @@ export const questExpirySubscriber = createQuestExpirySubscriber();
 // ---------------------------------------------------------------------------
 
 export function partySelectionSubscriber(ctx: SimulationContext): SimulationContext {
-  if (ctx.worldTime.hour !== 0) return ctx;
+  if (ctx.worldTime.hour !== 6) return ctx; // dawn departure — staggers quest resolution away from midnight
 
   const idleAdventurers = [...ctx.adventurers.values()].filter(a => a.state === 'IDLE');
   const availableQuests = ctx.questBoard.available.filter(
@@ -405,15 +421,39 @@ export function questResolutionSubscriber(ctx: SimulationContext): SimulationCon
     const result = resolveQuest(quest, party, updatedCtx, diModifier);
     updatedCtx = result.ctx;
 
+    // Apply QUEST_INJURY moodFactor to injured adventurers (suppresses Physical activity weights)
+    if (result.injuries.length > 0) {
+      const injuredMap = new Map(updatedCtx.adventurers);
+      for (const injuredId of result.injuries) {
+        const adv = injuredMap.get(injuredId);
+        if (!adv) continue;
+        const injuryFactor = {
+          id: 'QUEST_INJURY',
+          label: 'Quest Injury',
+          value: -12,
+          decayRate: 0.05,
+          activityWeights: { TRAINING: 0.3, SPARRING: 0.3, PATROL: 0.5 } as const,
+          stubbornOverride: true,
+        };
+        injuredMap.set(injuredId, {
+          ...adv,
+          moodFactors: upsertMoodFactor(adv.moodFactors, injuryFactor),
+        });
+      }
+      updatedCtx = { ...updatedCtx, adventurers: injuredMap };
+    }
+
     // Generate beats (uses post-resolve RNG for deterministic continuation)
     const beats = generateBeats(quest, party, ctx.relationships, updatedCtx.rng, result.success);
 
-    // Emit BEAT_LOG combat event
+    // Emit BEAT_LOG combat event (carries beats for combat replay UI)
     updatedCtx = emitEvent(updatedCtx, {
       kind: 'COMBAT',
       subtype: 'BEAT_LOG',
       questId: quest.id,
       involvedIds: party.map(a => a.id),
+      beats,
+      success: result.success,
     });
 
     // Credit treasury on success; grant DI burst

@@ -29,11 +29,12 @@ export type PersonalGoal =
   | 'PEACE';
 
 export type PersonalityAxes = {
-  courage: number;  // 0–100
-  greed: number;    // 0–100
-  empathy: number;  // 0–100
-  loyalty: number;  // 0–100
-  ambition: number; // 0–100
+  courage: number;   // 0–100
+  greed: number;     // 0–100
+  empathy: number;   // 0–100
+  loyalty: number;   // 0–100
+  ambition: number;  // 0–100
+  stubborn?: number; // 0–100; defaults to 0 when absent
 };
 
 export type AdventurerState =
@@ -46,12 +47,29 @@ export type AdventurerState =
   | 'DEAD'
   | 'RETIRED';
 
+export type ActivityId =
+  | 'TRAINING' | 'SPARRING' | 'PATROL' | 'HUNTING'
+  | 'DRINKING' | 'GAMBLING' | 'COOKING' | 'EATING' | 'GOSSIPING'
+  | 'READING' | 'BROODING' | 'RESTING' | 'PRAYING' | 'CRAFTING'
+  | 'SLEEPING';
+
+export type ActivityCluster = 'PHYSICAL' | 'SOCIAL' | 'PRIVATE';
+
+export type ActivityState = {
+  current: ActivityId;
+  enteredAt: number;
+  scheduledExitAt: number;
+  nextMicroEventAt: number;
+};
+
 export type MoodFactor = {
   id: string;
   label: string;
   value: number;
   decayRate: number;
   expiresAt?: number;
+  activityWeights?: Partial<Record<ActivityId, number>>;
+  stubbornOverride?: boolean;
 };
 
 export type GoalMilestone = {
@@ -116,6 +134,7 @@ export type Adventurer = {
   despairStreak: number; // consecutive day-ticks with mood < 10; resets to 0 when mood ≥ 10
   personalGoalProgress: GoalProgress;
   currentQuestId: QuestId | null;
+  activityState?: ActivityState;
 };
 
 // ---------------------------------------------------------------------------
@@ -297,6 +316,14 @@ export type DivineInterventionEvent = EventBase & {
   targetId?: string;
 };
 
+export type ActivityEvent = EventBase & {
+  kind: 'ACTIVITY';
+  subtype: 'ACTIVITY_CHANGED' | 'MICRO_EVENT';
+  adventurerId: AdventurerId;
+  activity: ActivityId;
+  prevActivity?: ActivityId;
+};
+
 export type SimulationEvent =
   | SocialEvent
   | CombatEvent
@@ -304,7 +331,8 @@ export type SimulationEvent =
   | LifecycleEvent
   | WorldEvent
   | DecisionMomentEvent
-  | DivineInterventionEvent;
+  | DivineInterventionEvent
+  | ActivityEvent;
 
 // ---------------------------------------------------------------------------
 // Decision moments
@@ -334,7 +362,8 @@ export type DecisionMoment = {
   situationText: string;
   options: DecisionOption[];
   expiresAt: number;
-  subjectId?: string; // adventurerId or questId the chosen option's shift applies to
+  subjectId?: string; // adventurerId(s, comma-joined) the chosen option's shift applies to
+  cooldownKey?: string; // dedup key written to decisionCooldowns after dismiss/expiry
 };
 
 // ---------------------------------------------------------------------------
@@ -450,6 +479,7 @@ export type SimulationContext = {
   eventLog: SimulationEvent[];
   pendingDecisions: DecisionMoment[];
   pendingShifts: Map<string, number>; // subjectId → probabilityShift; written by CHOOSE_OPTION, read+cleared by quest resolver
+  decisionCooldowns: Map<string, number>; // cooldownKey → expiry tick; prevents re-fire after dismiss/expiry
   divineInfluence: number; // 0–100
   activeRegions: Map<RegionId, Region>;
   scenario: ScenarioState | null;

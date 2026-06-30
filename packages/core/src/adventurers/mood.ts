@@ -16,8 +16,9 @@ export function upsertMoodFactor(factors: MoodFactor[], next: MoodFactor): MoodF
   return factors.map((f, i) => (i === existing ? next : f));
 }
 
-export function decayMoodFactors(factors: MoodFactor[]): MoodFactor[] {
+export function decayMoodFactors(factors: MoodFactor[], currentTick?: number): MoodFactor[] {
   return factors
+    .filter(f => currentTick === undefined || f.expiresAt === undefined || f.expiresAt > currentTick)
     .map(f => ({ ...f, value: f.value * (1 - f.decayRate) }))
     .filter(f => Math.abs(f.value) >= 1);
 }
@@ -61,7 +62,7 @@ export function moodSubscriber(ctx: SimulationContext): SimulationContext {
 export function applyDayTickMood(adventurer: Adventurer, worldTime: WorldTime): Adventurer {
   if (worldTime.hour !== 0) return adventurer;
 
-  const decayed = decayMoodFactors(adventurer.moodFactors);
+  const decayed = decayMoodFactors(adventurer.moodFactors, worldTime.tick);
   const mood = recalculateMood(decayed);
   const despairStreak = mood < 10 ? adventurer.despairStreak + 1 : 0;
 

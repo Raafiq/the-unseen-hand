@@ -51,14 +51,24 @@ const DI_REWARD_ON_EXPIRY: Partial<Record<DecisionMomentKind, number>> = {
 // Expiry processing
 // ---------------------------------------------------------------------------
 
+const DECISION_COOLDOWN_TICKS = 48; // 2 days before re-firing a dismissable decision
+
 function handleExpiry(ctx: SimulationContext): SimulationContext {
   const tick = ctx.worldTime.tick;
   const expired = ctx.pendingDecisions.filter(m => tick >= m.expiresAt);
   if (expired.length === 0) return ctx;
 
+  const decisionCooldowns = new Map(ctx.decisionCooldowns);
+  for (const moment of expired) {
+    if (moment.cooldownKey) {
+      decisionCooldowns.set(moment.cooldownKey, tick + DECISION_COOLDOWN_TICKS);
+    }
+  }
+
   let next: SimulationContext = {
     ...ctx,
     pendingDecisions: ctx.pendingDecisions.filter(m => tick < m.expiresAt),
+    decisionCooldowns,
   };
 
   for (const moment of expired) {
@@ -224,31 +234,6 @@ function detectConditions(ctx: SimulationContext): SimulationContext {
       });
     }
 
-    const living = [...next.adventurers.values()].filter(
-      a => a.state !== 'DEAD' && a.state !== 'RETIRED',
-    );
-    if (
-      living.length === 2 &&
-      !next.pendingDecisions.some(m => m.kind === 'SCENARIO_CRITICAL' && m.subjectId === 'ROSTER_COLLAPSE')
-    ) {
-      next = addMoment(next, {
-        kind: 'SCENARIO_CRITICAL',
-        tick,
-        subjectId: 'ROSTER_COLLAPSE',
-        situationText: `Only ${living.length} adventurers remain. One more death ends everything.`,
-        options: [
-          FATE_OPTION,
-          {
-            label: 'Uplift the survivors',
-            description: 'Bolster the spirits of the remaining adventurers.',
-            diCost: 10,
-            probabilityShift: 0.25,
-            narrativeDistanceLabel: 'MODERATE' as const,
-          },
-        ],
-        expiresAt: tick + EXPIRY_WINDOW.SCENARIO_CRITICAL,
-      });
-    }
   }
 
   // PARTY_SELECTION: an available quest has unusually low probability for the best idle party
@@ -267,11 +252,13 @@ function detectConditions(ctx: SimulationContext): SimulationContext {
     const prob = computeQuestProbability(quest, party, next.relationships, 0);
     if (prob >= PARTY_SELECTION_THRESHOLD) continue;
 
-    const partyIdSet = new Set(party.map(a => a.id));
-    if (next.pendingDecisions.some(m =>
-      m.kind === 'PARTY_SELECTION' &&
-      m.subjectId?.split(',').some(id => partyIdSet.has(id)),
-    )) continue;
+    const cooldownKey = `PARTY_SELECTION:${quest.id}`;
+
+    // Skip if on cooldown (player already saw and dismissed this quest's warning)
+    if ((next.decisionCooldowns.get(cooldownKey) ?? 0) > tick) continue;
+
+    // Skip if already pending
+    if (next.pendingDecisions.some(m => m.kind === 'PARTY_SELECTION' && m.cooldownKey === cooldownKey)) continue;
 
     // subjectId = comma-joined adventurer IDs so chooseOption can fan out the shift
     const partySubjectId = party.map(a => a.id).join(',');
@@ -279,6 +266,7 @@ function detectConditions(ctx: SimulationContext): SimulationContext {
       kind: 'PARTY_SELECTION',
       tick,
       subjectId: partySubjectId,
+      cooldownKey,
       situationText: `${quest.name} has a ${Math.round(prob * 100)}% chance of success with the current roster.`,
       options: [
         FATE_OPTION,

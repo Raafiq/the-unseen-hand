@@ -43,31 +43,6 @@ describe('decisionMomentSubscriber — SCENARIO_CRITICAL detection', () => {
     expect(next.pendingDecisions.some(m => m.kind === 'SCENARIO_CRITICAL' && m.subjectId === 'BANKRUPTCY')).toBe(false);
   });
 
-  it('surfaces ROSTER_COLLAPSE SCENARIO_CRITICAL when exactly 2 living adventurers remain', () => {
-    const ctx = createScenario1Context();
-    const ids = [...ctx.adventurers.keys()];
-    // Kill 4 of 6 → 2 remain (one death from ROSTER_COLLAPSE which triggers at < 2)
-    const adventurers = new Map(ctx.adventurers);
-    for (const id of ids.slice(0, 4)) {
-      adventurers.set(id, { ...adventurers.get(id)!, state: 'DEAD' });
-    }
-    const next = decisionMomentSubscriber({ ...ctx, adventurers }, 1);
-    const criticalMoments = next.pendingDecisions.filter(m => m.kind === 'SCENARIO_CRITICAL');
-    expect(criticalMoments.some(m => m.subjectId === 'ROSTER_COLLAPSE')).toBe(true);
-  });
-
-  it('does NOT surface ROSTER_COLLAPSE when 3 or more adventurers are living', () => {
-    const ctx = createScenario1Context();
-    const ids = [...ctx.adventurers.keys()];
-    const adventurers = new Map(ctx.adventurers);
-    for (const id of ids.slice(0, 3)) {
-      adventurers.set(id, { ...adventurers.get(id)!, state: 'DEAD' });
-    }
-    // 3 remaining — safe
-    const next = decisionMomentSubscriber({ ...ctx, adventurers }, 1);
-    expect(next.pendingDecisions.some(m => m.kind === 'SCENARIO_CRITICAL' && m.subjectId === 'ROSTER_COLLAPSE')).toBe(false);
-  });
-
   it('does not duplicate SCENARIO_CRITICAL moments for same subjectId', () => {
     const tick = 200;
     const existing = {

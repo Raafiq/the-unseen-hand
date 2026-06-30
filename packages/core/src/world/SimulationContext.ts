@@ -33,6 +33,7 @@ export function createSimulationContext(seed: string): SimulationContext {
     eventLog: [],
     pendingDecisions: [],
     pendingShifts: new Map(),
+    decisionCooldowns: new Map(),
     divineInfluence: 50,
     activeRegions: new Map(),
     scenario: null,

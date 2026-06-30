@@ -27,7 +27,7 @@ const LEGAL: Partial<Record<AdventurerState, ReadonlySet<AdventurerState>>> = {
   RESTING: new Set(['IDLE']),
   SOCIALIZING: new Set(['IDLE']),
   IN_DISPUTE: new Set(['IDLE', 'RETIRED']),
-  ON_QUEST: new Set(['IN_DUNGEON', 'DEAD', 'IDLE']),
+  ON_QUEST: new Set(['IN_DUNGEON', 'DEAD', 'IDLE', 'RESTING']),
   IN_DUNGEON: new Set(['ON_QUEST', 'DEAD']),
 };
 

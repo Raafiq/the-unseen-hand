@@ -128,23 +128,23 @@ All player interventions flow through `Simulation.dispatch(command)`. The world 
 
 #### Sprint 1: Monorepo Scaffold & World Clock
 
-- [ ] **Task 1.1: Repository Initialization**
+- [x] **Task 1.1: Repository Initialization**
     - New repository. pnpm workspace + Turborepo pipeline for `build`, `test`, `dev`.
     - `packages/core` as `@ugs/core`: strict TypeScript, `lib: ["ES2022"]`, no DOM lib, Vitest config.
     - `apps/game-client`: Svelte 5 + Vite, linked via `"@ugs/core": "workspace:*"`.
 
-- [ ] **Task 1.2: World Clock**
+- [x] **Task 1.2: World Clock**
     - `WorldTime`: `{ tick: number; day: number; hour: number }`.
     - `WorldClock`: configurable real-time tick interval (default: 1 real second = 1 in-game hour). Emits typed `TICK` events.
     - Tick is the canonical unit. All systems subscribe to ticks.
 
-- [ ] **Task 1.3: Simulation Loop**
+- [x] **Task 1.3: Simulation Loop**
     - `SimulationLoop`: holds `WorldClock` + ordered tick subscriber registry.
     - `start()`, `stop()`, `step()` (manual advance for tests), `setSpeed(multiplier)`.
     - Subscribers receive `(ctx: SimulationContext, delta: number) => SimulationContext`. Immutable — each returns a new context.
     - `SimulationContext`: root object holding all world state + seeded RNG.
 
-- [ ] **Task 1.4: Headless Tests**
+- [x] **Task 1.4: Headless Tests**
     - 24 ticks advances exactly 1 in-game day.
     - `step()` is deterministic: same seed + same commands = same outcome.
     - Subscriber order is stable across ticks.
@@ -153,22 +153,22 @@ All player interventions flow through `Simulation.dispatch(command)`. The world 
 
 #### Sprint 2: Adventurer Entity & Personality
 
-- [ ] **Task 2.1: Identity Schema**
+- [x] **Task 2.1: Identity Schema**
     - `AdventurerIdentity`: `{ id, name, age, backstory: string, personalGoal: PersonalGoal }`.
     - `PersonalGoal`: `HEROISM | WEALTH | BELONGING | REVENGE | WANDERLUST | PEACE`.
     - `PersonalityAxes`: `{ courage, greed, empathy, loyalty, ambition }` (0–100 each).
 
-- [ ] **Task 2.2: Derived Behaviour Probabilities**
+- [x] **Task 2.2: Derived Behaviour Probabilities**
     - Pure functions: `fleeThreshold(axes)`, `shareLootChance(axes)`, `defendAllyChance(axes, relationship)`.
     - These are used by combat and social resolvers — not stored on the entity, computed on demand.
     - Vitest: verify axis values produce expected probability ranges.
 
-- [ ] **Task 2.3: Mood System**
+- [x] **Task 2.3: Mood System**
     - `mood`: 0–100. Below 25 = `UNSATISFIED`. Below 10 = departure risk.
     - `MoodFactors`: named contributors with values and decay rates. Recalculated each day tick.
     - Mood influences quest volunteer probability and social interaction outcomes.
 
-- [ ] **Task 2.4: State Machine**
+- [x] **Task 2.4: State Machine**
     - States: `IDLE | ON_QUEST | IN_DUNGEON | RESTING | SOCIALIZING | IN_DISPUTE | DEAD | RETIRED`.
     - Typed transitions with guards. Illegal transitions throw in development, are caught in production.
     - Vitest: all legal transitions pass; all illegal transitions are caught.
@@ -177,17 +177,17 @@ All player interventions flow through `Simulation.dispatch(command)`. The world 
 
 #### Sprint 3: Relationship Graph
 
-- [ ] **Task 3.1: Graph Schema**
+- [x] **Task 3.1: Graph Schema**
     - `RelationshipGraph`: `Map<AdventurerId, Map<AdventurerId, RelationshipEdge>>`.
     - `RelationshipEdge`: `{ strength: number, type: RelationshipType, history: RelationshipEvent[] }`.
     - `RelationshipType`: `STRANGER | ACQUAINTANCE | FRIEND | TRUSTED_COMPANION | RIVAL | ENEMY`.
 
-- [ ] **Task 3.2: Relationship Tick**
+- [x] **Task 3.2: Relationship Tick**
     - Strength shifts based on shared activity: co-quest success/failure, proximity, time apart.
     - Long separation decays strength toward `STRANGER`.
     - All shifts computed as pure functions of context — no direct mutation.
 
-- [ ] **Task 3.3: Threshold Events**
+- [x] **Task 3.3: Threshold Events**
     - Crossing type thresholds fires typed events: `FRIENDSHIP_FORMED`, `RIVALRY_FORMED`, `BOND_BROKEN`, `RECONCILIATION`.
     - Events carry both adventurer IDs + the edge state that triggered.
     - Threshold events are consumed by the event engine in Phase 2.
@@ -202,21 +202,21 @@ All player interventions flow through `Simulation.dispatch(command)`. The world 
 
 #### Sprint 4: Quest System
 
-- [ ] **Task 4.1: Quest Schema**
+- [x] **Task 4.1: Quest Schema**
     - `Quest`: `{ id, type: QuestType, name, difficulty, duration, reward, risk, requiredPartySize, expiresAt }`.
     - `QuestType`: `BOUNTY | ESCORT | FETCH | DUNGEON | INVESTIGATION | RESCUE | POLITICAL`.
     - `QuestRisk`: `{ injuryChance, deathChance, criticalFailChance }`.
 
-- [ ] **Task 4.2: Quest Board Seeding**
+- [x] **Task 4.2: Quest Board Seeding**
     - Each in-game week: seed `N` new quests weighted by world region and current scenario context.
     - Quests expire. Board with no quests for 3 days fires a `QUEST_DROUGHT` world event.
 
-- [ ] **Task 4.3: Autonomous Party Selection**
+- [x] **Task 4.3: Autonomous Party Selection**
     - Each day tick: if idle adventurers exist and open quests exist, attempt auto-assign.
     - Selection weights: personality-goal alignment, current mood, relationship compatibility of candidate party.
     - Player can override via `CHOOSE_OPTION` on a surfaced decision moment.
 
-- [ ] **Task 4.4: Quest Outcome Resolver**
+- [x] **Task 4.4: Quest Outcome Resolver**
     - `resolveQuest(quest, party, rng, diModifier): QuestOutcome`.
     - Base probability from party stats vs. difficulty. Modified by relationship cohesion, mood average, luck rolls.
     - `diModifier`: the probability shift from any player intervention on this quest.
@@ -226,18 +226,18 @@ All player interventions flow through `Simulation.dispatch(command)`. The world 
 
 #### Sprint 5: Beat-by-Beat Combat Log
 
-- [ ] **Task 5.1: Combat Beat Schema**
+- [x] **Task 5.1: Combat Beat Schema**
     - `CombatBeat`: `{ tick, actorId, action: BeatAction, outcome, personalityNote?: string }`.
     - `BeatAction`: `ATTACK | FLEE | DEFEND_ALLY | HESITATE | USE_ITEM | CRITICAL | NEAR_DEATH`.
     - `personalityNote`: populated when a personality axis caused a non-obvious decision (e.g. "courage 28 — hesitates at the opening").
 
-- [ ] **Task 5.2: Personality-Driven Beat Resolver**
+- [x] **Task 5.2: Personality-Driven Beat Resolver**
     - Each beat: roll action probabilities against personality axes and context.
     - `courage < 30` in a losing fight → `FLEE` probability spikes.
     - Active `TRUSTED_COMPANION` relationship → `DEFEND_ALLY` fires when ally drops below 20% health.
     - `RIVAL` relationship → `HESITATE` when the rival needs help.
 
-- [ ] **Task 5.3: Beat Template Engine**
+- [x] **Task 5.3: Beat Template Engine**
     - `renderBeat(beat, adventurerMap): string` — maps `CombatBeat` to a narrative sentence.
     - Template bank per `BeatAction` with variable slots for names, stats, and relationship context.
     - Vitest: every `BeatAction` has at least 3 template variants. No slot goes unfilled.
@@ -246,16 +246,16 @@ All player interventions flow through `Simulation.dispatch(command)`. The world 
 
 #### Sprint 6: Social Event Engine
 
-- [ ] **Task 6.1: Event Bus**
+- [x] **Task 6.1: Event Bus**
     - `SimulationEventBus`: typed pub/sub. Tick subscribers emit events. UI consumers subscribe by type.
     - Typed union: `SocialEvent | CombatEvent | QuestEvent | LifecycleEvent | WorldEvent | DecisionMomentEvent`.
 
-- [ ] **Task 6.2: Social Interaction Resolver**
+- [x] **Task 6.2: Social Interaction Resolver**
     - Each day tick: for idle/resting adventurer pairs, roll social interaction probability weighted by `empathy` and `sociability`.
     - Outcomes: `POSITIVE_CHAT | ARGUMENT | BREAKTHROUGH | SILENT_DISTANCE`.
     - Each outcome adjusts relationship edge + fires a `SocialEvent` with a template-rendered narrative string.
 
-- [ ] **Task 6.3: Departure System**
+- [x] **Task 6.3: Departure System**
     - `mood < 10` for 3 consecutive days → departure roll (probability scales with duration).
     - On departure: state → `RETIRED`, fire `AdventurerDeparted` with reason derived from top negative mood factors.
     - Departed adventurer persists in history. Their relationships remain on surviving adventurers.
@@ -270,17 +270,17 @@ All player interventions flow through `Simulation.dispatch(command)`. The world 
 
 #### Sprint 7: Divine Influence Engine
 
-- [ ] **Task 7.1: DI Resource**
+- [x] **Task 7.1: DI Resource**
     - `divineInfluence`: 0–100. Stored in `SimulationContext`.
     - Passive trickle: +1 DI per in-game day (floor — never fully locked out).
     - Burst sources: quest completion (+5), relationship milestone (+8), personal goal achievement (+12), death not prevented (+10), scenario objective completed (+25).
 
-- [ ] **Task 7.2: Narrative Distance Calculator**
+- [x] **Task 7.2: Narrative Distance Calculator**
     - `narrativeDistance(naturalProbability, targetProbability): number` — how far the player is pushing against fate.
     - DI cost = `BASE_COST × narrativeDistance`. Reversing a 95% certain death costs ~10× more than nudging a 50/50.
     - Pure function. Fully testable. Used by both the choice card renderer and the freeform divine touch panel.
 
-- [ ] **Task 7.3: Probability Shifter**
+- [x] **Task 7.3: Probability Shifter**
     - `applyDivineShift(baseProbability, diSpent, context): shiftedProbability`.
     - Returns a clamped float. The simulation still rolls — a shifted 80% is not a guarantee.
     - DI is deducted from `SimulationContext` on shift application, before roll resolution.
@@ -289,24 +289,24 @@ All player interventions flow through `Simulation.dispatch(command)`. The world 
 
 #### Sprint 8: Decision Moment System & Freeform Tools
 
-- [ ] **Task 8.1: Decision Moment Surfacing**
+- [x] **Task 8.1: Decision Moment Surfacing**
     - `DecisionMomentDetector`: tick subscriber that scans world state for surface-worthy situations.
     - Trigger conditions: adventurer death imminent, relationship at breaking threshold, rare world event, scenario-critical moment.
     - Fires `DecisionMomentEvent`: `{ id, situationText, options: DecisionOption[], expiresAt }`.
     - `DecisionOption`: `{ label, description, diCost, probabilityShift, narrativeDistanceLabel }`.
 
-- [ ] **Task 8.2: Choice Resolution**
+- [x] **Task 8.2: Choice Resolution**
     - `Simulation.dispatch({ type: 'CHOOSE_OPTION', decisionId, optionIndex })`.
     - Applies the chosen option's probability shift, deducts DI, fires a `DivineInterventionEvent`.
     - "Let fate decide" option is always index 0, always costs 0 DI.
     - Expired decisions auto-resolve as "let fate decide."
 
-- [ ] **Task 8.3: Freeform Divine Touch (Individual Layer)**
+- [x] **Task 8.3: Freeform Divine Touch (Individual Layer)**
     - `DivineEffect` union: `COURAGE_BLESS | LUCK_CURSE | MOOD_LIFT | SEND_DREAM | REVEAL_SECRET | MARK_FOR_DEATH`.
     - Each effect has a base DI cost + narrative distance multiplier based on target's current state.
     - `Simulation.dispatch({ type: 'DIVINE_TOUCH', adventurerId, effect, diCost })`.
 
-- [ ] **Task 8.4: Freeform World Seeding (World Layer)**
+- [x] **Task 8.4: Freeform World Seeding (World Layer)**
     - `WorldEventType`: `STORM | PLAGUE | WINDFALL | MONSTER_SURGE | TRAVELLING_MERCHANT | RUMOUR`.
     - `Simulation.dispatch({ type: 'SEED_EVENT', regionId, eventType, diCost })`.
     - `Simulation.dispatch({ type: 'SHIFT_DIFFICULTY', regionId, delta, diCost })`.
@@ -322,12 +322,12 @@ All player interventions flow through `Simulation.dispatch(command)`. The world 
 
 #### Sprint 9: Scenario System
 
-- [ ] **Task 9.1: Scenario Schema**
+- [x] **Task 9.1: Scenario Schema**
     - `Scenario`: `{ id, title, premise, goals: ScenarioGoal[], failConditions: FailCondition[], timeLimit?: number, startingRoster: AdventurerSeed[] }`.
     - `ScenarioGoal`: `{ description, condition: (ctx) => boolean, diReward }`.
     - `FailCondition`: `{ description, condition: (ctx) => boolean }`.
 
-- [ ] **Task 9.2: Scenario 1 — "The Failing Guild"**
+- [x] **Task 9.2: Scenario 1 — "The Failing Guild"**
     - Premise: A once-proud guild is down to 6 adventurers and a near-empty treasury. A harsh winter is coming.
     - Goal 1: Maintain at least 4 living adventurers through 30 in-game days.
     - Goal 2: Treasury above zero at day 30.
@@ -335,7 +335,7 @@ All player interventions flow through `Simulation.dispatch(command)`. The world 
     - Fail condition: Roster drops below 2 OR treasury < 0 for 7 consecutive days.
     - Starting roster: 6 pre-seeded adventurers with varied personality axes and pre-existing relationships.
 
-- [ ] **Task 9.3: Win/Lose Detection & Sandbox Transition**
+- [x] **Task 9.3: Win/Lose Detection & Sandbox Transition**
     - Each tick: evaluate all goal conditions and fail conditions.
     - On goal completion: fire `GoalAchieved`, grant DI burst, display summary.
     - On all goals met: fire `ScenarioComplete`, unlock sandbox mode.
@@ -346,18 +346,18 @@ All player interventions flow through `Simulation.dispatch(command)`. The world 
 
 #### Sprint 10: Personal Goal Arcs & World Expansion
 
-- [ ] **Task 10.1: Personal Goal Progress Tracking**
+- [x] **Task 10.1: Personal Goal Progress Tracking**
     - Each adventurer tracks progress toward their `PersonalGoal` via accumulated milestone events.
     - `HEROISM`: landmark dungeon clears + near-death survivals. `WEALTH`: total gold earned. `BELONGING`: relationship milestones. `REVENGE`: specific antagonist defeated (seeded at world gen). `WANDERLUST`: regions explored. `PEACE`: days without combat.
     - Goal completion fires `PersonalGoalAchieved`: large mood spike + permanent trait shift + optional retirement decision.
 
-- [ ] **Task 10.2: History Layer (Personality Modifier)**
+- [x] **Task 10.2: History Layer (Personality Modifier)**
     - `AdventurerHistory`: ordered list of `HistoryEvent` with emotional weight tags.
     - `HistoryEvent` types that create contextual modifiers: `WITNESSED_DEATH`, `BETRAYED_BY`, `SAVED_BY`, `FIRST_KILL`, `NEAR_DEATH`.
     - `contextualModifier(axes, history, currentContext): axisAdjustment` — read-only, computed on demand.
     - Example: `WITNESSED_DEATH` of a `TRUSTED_COMPANION` adds −20 effective courage vs. undead enemies only.
 
-- [ ] **Task 10.3: World Expansion Trigger**
+- [x] **Task 10.3: World Expansion Trigger**
     - On scenario completion OR reputation crossing a threshold: new region unlocks.
     - New region seeds new quest types, new adventurer recruitment pool, new world events.
     - Simulation complexity scales with progression — early game is intimate and legible.
@@ -372,19 +372,19 @@ All player interventions flow through `Simulation.dispatch(command)`. The world 
 
 #### Sprint 11: Store Bridge & App Shell
 
-- [ ] **Task 11.1: Reactive Store Layer**
+- [x] **Task 11.1: Reactive Store Layer**
     - `simulationStore.svelte.ts`: `$state` object wrapping `SimulationContext` snapshot.
     - Updated on each tick. Key properties: `adventurerMap`, `relationshipGraph`, `eventLog`, `questBoard`, `divineInfluence`, `worldTime`, `activeDecisionMoments`.
     - `Simulation.dispatch` wired to a store action function.
 
-- [ ] **Task 11.2: App Shell**
+- [x] **Task 11.2: App Shell**
     - Top bar: world name, in-game date, DI meter (prominent — it's the player's core resource).
     - Left panel: navigation tabs (Roster, Quests, World, Events).
     - Main panel: active view.
     - Right panel: contextual detail (selected adventurer or active decision moment).
     - Speed controls: Pause / 1× / 5× / 20×.
 
-- [ ] **Task 11.3: DI Meter Component**
+- [x] **Task 11.3: DI Meter Component**
     - Visual DI bar: current / max with animated fill.
     - Recent DI changes shown as floating deltas (+10 from Mira's milestone, −15 from blessing).
     - Tooltip explaining what generates and costs DI.
@@ -393,19 +393,19 @@ All player interventions flow through `Simulation.dispatch(command)`. The world 
 
 #### Sprint 12: Roster, Character Detail & Divine Touch
 
-- [ ] **Task 12.1: Roster Grid**
+- [x] **Task 12.1: Roster Grid**
     - Card per adventurer: portrait placeholder, name, state badge, mood bar, personal goal icon.
     - State colour-coding: green (idle), amber (on quest), red (in danger / dispute), grey (dead/retired).
     - Click → opens Character Detail in right panel.
 
-- [ ] **Task 12.2: Character Detail Panel**
+- [x] **Task 12.2: Character Detail Panel**
     - Identity section: name, age, backstory, personal goal with progress bar.
     - Personality axes: radar chart or bar display (courage, greed, empathy, loyalty, ambition).
     - Mood: current score + top 3 active mood factors.
     - Relationships: list of known adventurers, relationship type badge, strength bar.
     - History: last 10 events involving this adventurer.
 
-- [ ] **Task 12.3: Divine Touch Sub-Panel**
+- [x] **Task 12.3: Divine Touch Sub-Panel**
     - Below character detail: available `DivineEffect` options for this adventurer.
     - Each shows: effect name, description, DI cost, and narrative distance label (LOW / MODERATE / EXTREME).
     - Greyed out if insufficient DI. Confirm dialog before spending.
@@ -414,19 +414,19 @@ All player interventions flow through `Simulation.dispatch(command)`. The world 
 
 #### Sprint 13: Event Feed, Choice Cards & World Panel
 
-- [ ] **Task 13.1: Event Feed**
+- [x] **Task 13.1: Event Feed**
     - Chronological list of rendered narrative strings from `SimulationEventBus`.
     - Filterable by type: Social, Combat, Quest, Lifecycle, World, Divine.
     - Click an entry → highlight involved adventurers in roster. Click again → open character detail.
     - Unread indicator on the Events nav tab.
 
-- [ ] **Task 13.2: Choice Card UI**
+- [x] **Task 13.2: Choice Card UI**
     - Active decision moments render as cards in the right panel (or as a modal overlay for urgent moments).
     - Card layout: situation text at top, option buttons below each showing label, description, DI cost, and distance label.
     - "Let fate decide" always present as a free option.
     - Expiry countdown timer visible. Expired cards collapse with a "resolved by fate" label.
 
-- [ ] **Task 13.3: World Panel**
+- [x] **Task 13.3: World Panel**
     - Region list with current difficulty level and active world events.
     - Difficulty slider per region: player adjusts, DI cost shown in real-time.
     - "Seed Event" button: opens a picker of available `WorldEventType` options with costs.
@@ -440,19 +440,19 @@ All player interventions flow through `Simulation.dispatch(command)`. The world 
 
 ---
 
-- [ ] **Task 14.1: LLM Narrator Layer**
+- [x] **Task 14.1: LLM Narrator Layer**
     - End of each in-game day: collect that day's `SimulationEvent` stream and pass structured context to Claude API.
     - Prompt: adventurer identities, personality axes, relationship states, events of the day → 2–3 sentence narrative paragraph.
     - Output rendered at the top of the event feed as a "day summary" block.
     - Gracefully disabled if no API key. Templates remain the load-bearing narrative.
 
-- [ ] **Task 14.2: Combat Beat Replay**
+- [x] **Task 14.2: Combat Beat Replay**
     - "Replay" button on completed quest cards.
     - Lightweight PixiJS v8 canvas mounts inside a modal.
     - Character icons on a simple field. Beats play out as icon animations + floating text.
     - No live battle — this is a reconstructed replay of the already-resolved `CombatBeat[]` array.
 
-- [ ] **Task 14.3: World Map View**
+- [x] **Task 14.3: World Map View**
     - PixiJS canvas in the World Panel.
     - Region nodes connected by paths. Quest location markers. Adventurer icons moving toward quest destinations.
     - Clicking a region opens the region detail (difficulty, active events, current quests).

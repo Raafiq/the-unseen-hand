@@ -1,7 +1,7 @@
 # Handoff — The Unseen Hand (guild-sim)
 
 _Updated 2026-06-30. **Task: BUILD `p10d-npc-system` via `/tdd`** (the last Phase-10 plan, and the
-only `ready` plan). HEAD `94f2a68` on `main`, tree clean. p10b shipped this session (`94f2a68`) —
+only `ready` plan). HEAD `73971e5` on `main`, tree clean. p10b shipped this session (`94f2a68`) —
 its span lifecycle is what p10d's FESTIVAL reuses (see §SPAN REUSE). Read
 `plans/p10d-npc-system.md` in full first; this doc covers what the plan doesn't._
 

@@ -1,72 +1,111 @@
 # Handoff — The Unseen Hand (guild-sim)
 
-_Updated 2026-06-30. **p10c-social-pressure is DONE** (`a9d6736`). Next ready work in the DAG is
-`p10b-world-event-durations` (recommended — it unblocks p10c's descoped FEUD span) or
-`p10d-npc-system`. Tree is clean apart from this file. **Before p10b: read the p10c follow-ups
-below — one needs a user decision (density tuning).**_
+_Updated 2026-06-30. **Task: BUILD `p10d-npc-system` via `/tdd`** (the last Phase-10 plan, and the
+only `ready` plan). HEAD `94f2a68` on `main`, tree clean. p10b shipped this session (`94f2a68`) —
+its span lifecycle is what p10d's FESTIVAL reuses (see §SPAN REUSE). Read
+`plans/p10d-npc-system.md` in full first; this doc covers what the plan doesn't._
 
 ---
 
-## What just landed (p10c)
+## Where Phase 10 stands
 
-Replaced the legacy memoryless `pairHour` social subscriber with the **pressure-accumulator +
-jittered-discharge + cooldown** engine and the six-outcome (valence × intensity) grid. Commit
-`a9d6736` (closeout); `chore` in-progress flip was `<prev>`. Specs were already amended last
-session (`a279ce8`).
+Phase 10 (Events Redesign) is 3 of 4 done: p10a (narrative voice), p10c (social pressure), p10b
+(world-event durations) all `done`. **p10d is the last one.** `specops next` → `p10d-npc-system`
+ready (deps `p10c` + `p10a` both met). Repo: 20 done, 2 cancelled, 0 blocked.
 
-- `packages/core/src/events/socialResolver.ts` — full rewrite. `socialPressureSubscriber` (thin
-  per-tick driver) + `resolveEncounter` (deep write site). Pure helpers `computePressureGain`,
-  `decideApproach`, `resolveOutcome` exported + unit-tested.
-- `SimulationContext` gained `socialPressure` + `socialCooldowns` (`PairKey`-keyed); init in
-  `createSimulationContext` (all other sites spread `...base`).
-- `SocialEvent` widened to six subtypes + `participantIds: ActorId[]` (new `ActorId`/`PairKey`/
-  `SocialOutcomeType` aliases in `types.ts`). Grammar pools: added SOLIDARITY + ESTRANGEMENT,
-  `POSITIVE_CHAT`→`BANTER`.
-- Tests: new `tests/social-pressure.test.ts` (21); updated event-bus/narrative-voice/social-departure.
-- Verified: **478 core Vitest green**, game-client `tsc` + `svelte-check` **0 errors**. All 11
-  plan Validation boxes checked.
+Verified baseline (end of p10b): **493 core Vitest green**, `tsc --noEmit` (core + client) clean,
+`svelte-check` 0/0, no `Math.random()` in `packages/core/src`.
 
-## p10c follow-ups (carried into the backlog — full text in `plans/p10c-social-pressure.md`)
+## Goal (p10d)
 
-1. **Density tuning — NEEDS A USER DECISION.** Synthetic 5-adv/30-day harness reads **~1.7/day**
-   (mood on) vs the ~5/day target band (3–7). **Not changed**: constants are signed-off, and
-   density is **unobservable in the shipping 1-adventurer scenario** so it has zero in-game effect
-   today. The plan pre-authorised levers if you want to act: `PROXIMITY 0.05→0.06`,
-   `DECAY 0.015→0.012`, or lower `THRESHOLD` in `socialResolver.ts`. Harness is a caveat-heavy lower
-   bound (convergent moods). **Recommend: decide once recruitment exists** (multi-adventurer state).
-2. **FEUD span — descoped, blocked on p10b.** ESTRANGEMENT-under-crisis should open a FEUD span, but
-   the span lifecycle lives in `p10b-world-event-durations` (still `planned`). The crisis-bypass
-   *logic* is built + tested; nothing opens a span or sets the crisis flag yet. **Wire it when doing
-   p10b** — this is the main reason to pick p10b next.
-3. **Join/interrupt side effects not wired.** `decideApproach` exists + tested, but the subscriber
-   doesn't apply spec §3 JOIN duration-extension / INTERRUPT activity-termination.
-4. **Group prose names only 2 of N.** One `SocialEvent` carries all N ids, but P10a beat pools
-   (`{a}`/`{b}`) name only two. Needs a group-subject grammar (spec §6).
-5. **Crisis flag source** still a forward slot — first real producer is the FEUD path (#2).
+Add the two-tier town NPC population. **Tier A** notable NPCs (`NotableNpc`) become honorary actors
+in the relationship graph and the p10c encounter model; **Tier B** nameless `TownRole` NPCs are pure
+grammar flavour (`NPCEvent`, `kind:'NPC'`, `subtype:'TOWN_FLAVOUR'`). Plus a **FESTIVAL** town span.
+**Done** = all 10 Validation boxes in `plans/p10d-npc-system.md` checked, `tsc` + `svelte-check` +
+Vitest + Playwright E2E green, plan closed out per specops.
 
-## Next steps
+## Next steps (in order)
 
-1. `specops next` → choose `p10b-world-event-durations` (recommended) or `p10d-npc-system`.
-2. Read the chosen plan in full; mark `in-progress` (specops protocol); build via `/tdd`.
-3. If p10b: when adding the span lifecycle, **circle back to p10c follow-up #2** and wire the FEUD
-   span + crisis flag into `resolveEncounter`.
+1. `chore(plans): mark p10d-npc-system in-progress` — flip frontmatter, commit (specops).
+2. Read `plans/p10d-npc-system.md` Approach §1–7 + the three specs it implements (`npc-system.md`
+   is the main one; also `event-bus.md`, `relationship-graph.md`, `world-expansion.md`).
+3. Build test-first per the plan's §7 / Validation boxes. The **graph-key widening**
+   (`Map<AdventurerId,…>` → `Map<ActorId,…>`) is the highest-blast-radius change — audit every
+   relationship-graph consumer (combat, quest, departure, decision moments) for adventurer-only
+   assumptions and `isNpc`-guard them (plan Risk #1).
+4. **EventFeed 3-update rule** for the new `NPC` kind: `KIND_LABELS`, `ALL_KINDS`, `getInvolvedIds`
+   (must resolve NPC ids → NPC name, not just `adventurerMap`). `tsc` only catches the first;
+   the other two fail silently (CLAUDE.md EventFeed rule).
+5. Verify (`tsc` + `svelte-check` + Vitest + `npm run test:e2e` in game-client, grep `Math.random`
+   clean). Close out per specops; populate Notes + Follow-ups; mark `done`; closeout commit.
 
-## Gotchas (still current)
+## SPAN REUSE — p10b → p10d FESTIVAL (read before wiring the festival)
 
-- **`vitest run` "failed files" for Playwright specs = false alarm** (mis-collected). Run e2e via the
-  game-client `test:e2e` script.
-- **Map-init crashes**: any new `SimulationContext` field must be init'd at `createSimulationContext`;
-  other sites spread `...base`. No compile guard for a missing `.get` on an undefined map.
+p10b built a **reusable span lifecycle** in `packages/core/src/world/WorldExpansion.ts`:
+`SPAN_DURATIONS`, `rollSpanDuration`, `activeSpans(ctx)`, `hasActiveSpan(ctx,type)`, plus private
+`openSpan` / `sweepExpiredSpans` driven by `worldEventSeedingSubscriber`. Events carry
+`WorldEvent.phase: 'START'|'END'`; grammar keys on phase (`WORLD:<type>:START`/`:END` in
+`eventBus.ts` `BEAT_POOLS`). **But it is region-instance-based** — spans live in
+`Region.activeWorldEvents` keyed by `WorldEventType`. Three gaps p10d must close to add FESTIVAL:
+
+- `FESTIVAL` (and `FEUD`) are **not** in the code's `WorldEvent`/`WorldEventInput` subtype unions
+  (`types.ts:302`, `eventBus.ts:60`) **nor** in `WorldEventType` (`types.ts:392`). The spec
+  (`event-bus.md:132`) already lists them — pre-existing drift, deliberately left for p10c/p10d.
+  Decide whether FESTIVAL becomes a `WorldEventType` (and gets a `SPAN_DURATIONS` entry) or rides a
+  separate town-span field.
+- FESTIVAL is **town-level**, not region-scoped — the current `openSpan`/`sweep` attach to one
+  region's `activeWorldEvents`. Either attach the festival to a region anyway (simplest) or
+  generalize the lifecycle to a town-level span store. Pick one, document in plan Notes.
+- Add START/END grammar pools for `WORLD:FESTIVAL:*` (mirror the p10b STORM/PLAGUE/etc pools).
+
+Wire FESTIVAL effects through the same consumer pattern p10b used: `hasActiveSpan(ctx,'FESTIVAL')`
+gating Social-cluster weight / pressure-gain / Tier-B-frequency scaling (revert on END).
+
+## Key files
+
+- Plan: `plans/p10d-npc-system.md` (Scope, Approach §1–7, 10 Validation boxes).
+- Specs: `specs/behaviors/npc-system.md`, `event-bus.md`, `relationship-graph.md`,
+  `world-expansion.md` (§Weighty social spans covers FEUD/FESTIVAL).
+- Graph: `packages/core/src/relationships/graph.js` (key widening lands here + every consumer).
+- Social encounter model (p10c): `packages/core/src/events/socialResolver.ts` (pressure +
+  `resolveEncounter`; Tier A NPC pairs plug in here).
+- Span lifecycle to reuse: `packages/core/src/world/WorldExpansion.ts` (see §SPAN REUSE).
+- Grammar: `packages/core/src/events/eventBus.ts` (`BEAT_POOLS`, `renderText` NPC + WORLD cases).
+- EventFeed: `apps/game-client/src/lib/components/EventFeed.svelte` (the 3-update rule).
+- E2E: `apps/game-client/tests/` via `npm run test:e2e` (builds + Playwright).
+
+## Gotchas & dead ends
+
+- **Rebuild core (`npm run build` in `packages/core`) before `svelte-check`** — game-client resolves
+  `@ugs/core` types from `dist/`, not source. (`dist/` is gitignored — no commit churn.)
 - **`createSimulationContext()` needs a seed arg** (crashes in `xmur3` without one).
-- **Rebuild core (`npm run build` in packages/core) before `svelte-check`** — the game-client resolves
-  `@ugs/core` types from `dist/`, not source.
-- **EventFeed.svelte** needs no change for new SOCIAL subtypes (keys on `kind` + `participantIds`),
-  but DOES for any *new EventKind* (`KIND_LABELS` + `ALL_KINDS` + `getInvolvedIds`; tsc only catches
-  the first).
+- **No `Math.random()` in `packages/core`** — all rng via `ctx.rng` (CLAUDE.md). NPC selection too.
+- **EventFeed: `tsc` catches only `KIND_LABELS`** — `ALL_KINDS` + `getInvolvedIds` gaps are silent.
+- **`vitest run` "failed files" for Playwright specs = false alarm** (mis-collected). E2E via the
+  game-client `test:e2e` script.
 - Clock: 1 tick = 1 hour, 24/day, 720 ticks = 30 days.
+- **Span tint rng discipline (p10b precedent):** the narrative colour tint in `eventBus.ts compose`
+  only consumes rng when a span is live, so spanless feeds stay byte-for-byte identical. If p10d
+  adds any new conditional rng draw in `compose`/`renderText`, keep this property or the
+  narrative-voice replay test breaks.
+
+## Carryover (not blocking p10d)
+
+- **p10b follow-ups (deferred):** STORM-suppresses-departures and TRAVELLING_MERCHANT-trade-variants
+  were in p10b Scope but not validated and not shipped — the latter is *blocked* on a trade/restock
+  `QuestType` that doesn't exist. Full text in `plans/p10b-world-event-durations.md` Follow-ups.
+- **FEUD span (p10c follow-up #2):** the shared lifecycle now exists; p10c can open a FEUD span from
+  `resolveEncounter` on ESTRANGEMENT+crisis. Same FESTIVAL-style union/duration gaps apply (§SPAN
+  REUSE). p10d need not do this, but if you're touching the span machinery for FESTIVAL, FEUD is the
+  symmetric sibling.
+- **p10c density tuning (user decision pending):** density playtest read sparse (~1.7/day synthetic
+  vs ~5 target), unobservable in the 1-adventurer scenario; constants left signed-off. Tuning of
+  `PROXIMITY`/`DECAY`/`THRESHOLD` in `events/socialResolver.ts` is unresolved. Ignore unless raised.
 
 ## Suggested skills
 
-- **`/specops`** — pick next, mark in-progress, close out.
+- **`/specops`** — mark in-progress (step 1), close out (step 5). Touch specs only if the build
+  surfaces a contradiction.
 - **`/tdd`** — build test-first, one test per Validation box.
-- **`/code-review`** or **`/simplify`** — after green, before closeout.
+- **`/code-review`** or **`/simplify`** — after green, before closeout (the graph-key widening is
+  exactly the kind of broad change worth a review pass).

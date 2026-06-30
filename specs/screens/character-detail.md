@@ -57,6 +57,27 @@ Examples:
 - "Day 3: Nearly died — but survived."
 - "Day 1: Received divine guidance (dream)."
 
+### Last Day Events section
+
+Displayed between History and Divine Touch.
+
+Shows the **1–2 most significant events from the previous in-game day** involving this
+adventurer, as their already-rendered feed sentences. Significance is defined in
+`behaviors/social-system.md` §7 (BREAKTHROUGH, ESTRANGEMENT, relationship type-boundary
+crossings, crisis-flagged outcomes, deaths/departures of known companions, quest outcomes).
+The events are selected from `eventLog` (and/or the history layer), filtered to the prior day
+(`day * 24 - 24` … `day * 24 - 1`) and to events whose participants include this adventurer.
+
+- Header: "Yesterday" (or "Last seen on Day {day}" if the adventurer is dead/retired).
+- Content: the 1–2 most significant event sentences, in chronological order, sorted by
+  significance when more than two qualify.
+- Hidden entirely if there were no significant events on the prior day. No placeholder text, no
+  "nothing to report."
+
+This section is read-only — a window into what mattered to the character recently, not an
+action surface. It reads from the deterministic event/history record (there is no
+per-character LLM card).
+
 ### Divine Touch sub-panel
 
 Below history. Header: "Divine Touch".

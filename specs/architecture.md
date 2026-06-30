@@ -10,7 +10,8 @@ Foundational technology decisions and monorepo structure for *The Unseen Hand*.
 | Simulation engine | Pure TypeScript | `packages/core` (`@ugs/core`); `lib: ["ES2022"]`, no DOM lib |
 | UI framework | Svelte 5 | DOM-first; no canvas; runes API (`$state`, `$derived`, `$effect`) |
 | Build tool | Vite | Dev server for `apps/game-client` |
-| Testing | Vitest | Headless; runs in Node against `packages/core`; no browser required |
+| Testing — unit | Vitest | Headless; runs in Node against `packages/core`; no browser required |
+| Testing — E2E | Playwright | Browser smoke tests for `apps/game-client`; runs against `vite preview` (built output) |
 | Visual layer (Phase 6+) | PixiJS v8 | Optional; world map and combat replay only; not required until Phase 6 |
 | LLM narrator (Phase 6+) | Claude API | Additive; degrades gracefully when no API key present |
 
@@ -111,10 +112,19 @@ type UGSCommand =
 
 ## Testing conventions
 
-- All tests live in `packages/core/tests/`.
+### Unit tests (Vitest)
+
+- All unit tests live in `packages/core/tests/`.
 - Tests use `step()` for manual tick advance — never real timers.
 - Probability-shift tests assert the shifted value, not the rolled outcome (see [principles.md — Probability shift, not outcome override](./principles.md#probability-shift-not-outcome-override)).
 - Every public behavior must have at least one Vitest test before implementation is considered complete.
+
+### E2E tests (Playwright)
+
+- E2E tests live in `apps/game-client/tests/`.
+- Run `pnpm --filter game-client test:e2e` to execute. The Playwright config starts `vite preview` (built output) as `webServer` — not the dev server — for stability.
+- All UI smoke tests must be automated. No plan may leave a manual browser validation step; it must be replaced with a Playwright assertion before the plan is considered done.
+- Required smoke coverage: app mounts + topbar/nav DOM presence; simulation running (≥ 3 events in feed within 5 s); speed control click changes active button class; Events tab click clears unread badge; DI meter bar has non-zero width.
 
 ## Principles
 

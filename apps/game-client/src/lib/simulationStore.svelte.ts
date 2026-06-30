@@ -10,6 +10,7 @@ import {
   type DispatchCommand,
   type SimulationContext,
 } from '@ugs/core';
+import { fetchDaySummary } from './narrator.js';
 
 // Import to trigger registration
 import '@ugs/core';
@@ -27,15 +28,38 @@ export const loop = new SimulationLoop(initialCtx);
 export const simulationStore = $state({
   ctx: initialCtx as SimulationContext,
   speed: 1 as 1 | 5 | 20 | 'paused',
+  speedBeforePause: 1 as 1 | 5 | 20, // speed to restore after decision pause
   selectedAdventurerId: null as string | null,
   activeTab: 'roster' as 'roster' | 'quests' | 'world' | 'events',
   eventsLastReadTick: -1, // tick when Events tab was last opened; drives unread badge
+  daySummaries: new Map<number, string>(), // day → narrator prose; populated async
 });
 
-// Register a render observer at the end of the subscriber chain
-// This runs after all other subscribers and syncs ctx to the Svelte store.
+// Register a render observer at the end of the subscriber chain.
+// Also fires the async narrator when a new day begins (hour === 0, day > 0).
+let lastNarratorDay = -1;
 loop.register((ctx) => {
+  const prevPendingCount = simulationStore.ctx.pendingDecisions.length;
   simulationStore.ctx = ctx;
+
+  // Auto-pause when a new decision moment appears so the player can act on it
+  if (ctx.pendingDecisions.length > prevPendingCount && simulationStore.speed !== 'paused') {
+    simulationStore.speedBeforePause = simulationStore.speed;
+    setSpeed('paused');
+  }
+
+  const { day, hour } = ctx.worldTime;
+  if (hour === 0 && day > 0 && day !== lastNarratorDay) {
+    lastNarratorDay = day;
+    const prevDay = day - 1;
+    fetchDaySummary(prevDay, ctx).then(text => {
+      if (text) {
+        // Replace map to trigger Svelte reactivity
+        simulationStore.daySummaries = new Map(simulationStore.daySummaries).set(prevDay, text);
+      }
+    });
+  }
+
   return ctx;
 });
 
@@ -48,6 +72,10 @@ export function doDispatch(cmd: DispatchCommand): boolean {
   if (result.ok) {
     simulationStore.ctx = result.ctx;
     loop.setContext(result.ctx);
+    // Resume the loop when the last pending decision is resolved
+    if (cmd.type === 'CHOOSE_OPTION' && result.ctx.pendingDecisions.length === 0 && simulationStore.speed === 'paused') {
+      setSpeed(simulationStore.speedBeforePause);
+    }
     return true;
   }
   return false;

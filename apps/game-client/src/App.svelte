@@ -41,6 +41,25 @@
     ctx.divineInfluence >= 25 ? 'di-amber' : 'di-red'
   );
 
+  // Floating DI deltas
+  type DiDelta = { id: number; amount: number };
+  let diDeltas = $state<DiDelta[]>([]);
+  let _prevDI = -1; // -1 = uninitialized; first effect run sets baseline without emitting a delta
+  let _deltaSeq = 0;
+
+  $effect(() => {
+    const current = ctx.divineInfluence;
+    if (_prevDI >= 0) {
+      const diff = Math.round(current - _prevDI);
+      if (diff !== 0) {
+        const id = ++_deltaSeq;
+        diDeltas = [...diDeltas, { id, amount: diff }];
+        setTimeout(() => { diDeltas = diDeltas.filter(d => d.id !== id); }, 1500);
+      }
+    }
+    _prevDI = current;
+  });
+
   function handleTabClick(tab: typeof activeTab) {
     setActiveTab(tab);
   }
@@ -65,6 +84,11 @@
         <div class="di-bar-fill {diColor}" style="width: {ctx.divineInfluence}%"></div>
       </div>
       <span class="di-value">{ctx.divineInfluence}</span>
+      {#each diDeltas as d (d.id)}
+        <span class="di-delta" class:di-delta-pos={d.amount > 0} class:di-delta-neg={d.amount < 0}>
+          {d.amount > 0 ? '+' : ''}{d.amount}
+        </span>
+      {/each}
     </div>
 
     <!-- Speed controls -->
@@ -164,6 +188,7 @@
       {:else if activeTab === 'events'}
         <EventFeed
           {ctx}
+          daySummaries={simulationStore.daySummaries}
           onSelectAdventurer={(id) => { selectAdventurer(id); }}
         />
       {/if}
@@ -225,7 +250,7 @@
   .world-name { font-weight: bold; font-size: 15px; color: #c9b8ff; min-width: 140px; }
   .world-time { color: #888; font-size: 12px; min-width: 100px; }
 
-  .di-meter { display: flex; align-items: center; gap: 6px; flex: 1; max-width: 220px; }
+  .di-meter { display: flex; align-items: center; gap: 6px; flex: 1; max-width: 220px; position: relative; }
   .di-label { font-size: 11px; color: #888; }
   .di-bar-bg { flex: 1; height: 8px; background: #2e2a3a; border-radius: 4px; overflow: hidden; }
   .di-bar-fill { height: 100%; transition: width 0.3s; border-radius: 4px; }
@@ -233,6 +258,18 @@
   .di-amber { background: #ff9800; }
   .di-red { background: #f44336; }
   .di-value { font-size: 12px; color: #ccc; min-width: 28px; text-align: right; }
+
+  @keyframes di-float {
+    0%   { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-22px); }
+  }
+  .di-delta {
+    position: absolute; right: -4px; top: -14px;
+    font-size: 11px; font-weight: 700; pointer-events: none;
+    animation: di-float 1.5s ease-out forwards;
+  }
+  .di-delta-pos { color: #4caf50; }
+  .di-delta-neg { color: #ef5350; }
 
   .speed-controls { display: flex; gap: 4px; }
   .speed-btn {

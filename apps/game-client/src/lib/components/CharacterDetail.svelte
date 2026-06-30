@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { SimulationContext, Adventurer, DispatchCommand, HistoryEvent } from '@ugs/core';
+  import type { SimulationContext, Adventurer, DispatchCommand, HistoryEvent, RelationshipType, AdventurerState, ActivityId, PersonalGoal } from '@ugs/core';
   import { topMoodFactors, moodThresholdLabel, strengthToType } from '@ugs/core';
 
   type DivineEffect = 'COURAGE_BLESS' | 'LUCK_CURSE' | 'MOOD_LIFT' | 'SEND_DREAM' | 'REVEAL_SECRET' | 'MARK_FOR_DEATH';
@@ -25,13 +25,40 @@
   const moodFactors = $derived(adv ? topMoodFactors(adv.moodFactors, 3) : []);
   const recentHistory = $derived((adv?.history ?? []).slice(-10).reverse());
 
-  const GOAL_DESCRIPTIONS: Record<string, string> = {
-    HEROISM: 'Seeks glory and legend',
-    WEALTH: 'Hunts fortune above all',
-    BELONGING: 'Wants to find their people',
-    REVENGE: 'Lives for a reckoning',
+  const ADV_STATE_LABELS: Record<AdventurerState, string> = {
+    IDLE:        'Idle',
+    ON_QUEST:    'On Quest',
+    IN_DUNGEON:  'In Dungeon',
+    RESTING:     'Resting',
+    SOCIALIZING: 'Socializing',
+    IN_DISPUTE:  'In Dispute',
+    DEAD:        'Fallen',
+    RETIRED:     'Departed',
+  };
+
+  const GOAL_NAMES: Record<PersonalGoal, string> = {
+    HEROISM:    'Heroism',
+    WEALTH:     'Wealth',
+    BELONGING:  'Belonging',
+    REVENGE:    'Revenge',
+    WANDERLUST: 'Wanderlust',
+    PEACE:      'Peace',
+  };
+
+  const GOAL_DESCRIPTIONS: Record<PersonalGoal, string> = {
+    HEROISM:    'Seeks glory and legend',
+    WEALTH:     'Hunts fortune above all',
+    BELONGING:  'Wants to find their people',
+    REVENGE:    'Lives for a reckoning',
     WANDERLUST: 'Must see every horizon',
-    PEACE: 'Wants the fighting to stop',
+    PEACE:      'Wants the fighting to stop',
+  };
+
+  const ACTIVITY_LABELS: Record<ActivityId, string> = {
+    TRAINING: 'Training', SPARRING: 'Sparring', PATROL: 'Patrol', HUNTING: 'Hunting',
+    DRINKING: 'Drinking', GAMBLING: 'Gambling', COOKING: 'Cooking', EATING: 'Eating',
+    GOSSIPING: 'Gossiping', READING: 'Reading', BROODING: 'Brooding', RESTING: 'Resting',
+    PRAYING: 'Praying', CRAFTING: 'Crafting', SLEEPING: 'Sleeping',
   };
 
   const GOAL_TOTALS: Record<string, number> = {
@@ -48,20 +75,30 @@
     return mood >= 50 ? '#4caf50' : mood >= 25 ? '#ff9800' : '#f44336';
   }
 
+  const REL_LABELS: Record<RelationshipType, string> = {
+    STRANGER: 'Stranger',
+    ACQUAINTANCE: 'Acquaintance',
+    FRIEND: 'Friend',
+    TRUSTED_COMPANION: 'Trusted Companion',
+    RIVAL: 'Rival',
+    ENEMY: 'Enemy',
+  };
+
+  const REL_CLASSES: Record<RelationshipType, string> = {
+    STRANGER: 'rel-stranger',
+    ACQUAINTANCE: 'rel-acquaint',
+    FRIEND: 'rel-friend',
+    TRUSTED_COMPANION: 'rel-trusted',
+    RIVAL: 'rel-rival',
+    ENEMY: 'rel-enemy',
+  };
+
   function edgeTypeName(strength: number): string {
-    return strengthToType(strength).toLowerCase().replace('_', ' ');
+    return REL_LABELS[strengthToType(strength)];
   }
 
   function edgeTypeClass(strength: number): string {
-    const t = strengthToType(strength);
-    return {
-      STRANGER: 'rel-stranger',
-      ACQUAINTANCE: 'rel-acquaint',
-      FRIEND: 'rel-friend',
-      TRUSTED_COMPANION: 'rel-trusted',
-      RIVAL: 'rel-rival',
-      ENEMY: 'rel-enemy',
-    }[t] ?? 'rel-stranger';
+    return REL_CLASSES[strengthToType(strength)];
   }
 
   function historyLabel(h: HistoryEvent): string {
@@ -131,7 +168,10 @@
       </div>
       <div class="ident-body">
         <div class="ident-name">{adv.identity.name}, age {adv.identity.age}</div>
-        <div class="state-badge state-{adv.state.toLowerCase().replace('_','-')}">{adv.state.replace('_',' ')}</div>
+        <div class="state-badge state-{adv.state.toLowerCase().replace('_','-')}">{ADV_STATE_LABELS[adv.state] ?? adv.state}</div>
+        {#if adv.activityState && (adv.state === 'IDLE' || adv.state === 'RESTING' || adv.state === 'SOCIALIZING')}
+          <div class="activity-pill">{ACTIVITY_LABELS[adv.activityState.current] ?? adv.activityState.current}</div>
+        {/if}
       </div>
     </div>
 
@@ -147,10 +187,10 @@
 
     <!-- Goal -->
     <div class="goal-row">
-      <span class="goal-name">{adv.identity.personalGoal}</span>
+      <span class="goal-name">{GOAL_NAMES[adv.identity.personalGoal] ?? adv.identity.personalGoal}</span>
       <span class="goal-desc">{GOAL_DESCRIPTIONS[adv.identity.personalGoal] ?? ''}</span>
       <div class="goal-bar-bg">
-        <div class="goal-bar-fill" style="width:{goalProgressFraction(adv)*100}%"></div>
+        <div class="goal-bar-fill" style="width:{Math.round(goalProgressFraction(adv)*100)}%"></div>
       </div>
     </div>
 
@@ -161,7 +201,7 @@
         <div class="axis-row">
           <span class="axis-name">{axis}</span>
           <div class="axis-bar-bg">
-            <div class="axis-bar-fill" style="width:{val}%"></div>
+            <div class="axis-bar-fill" style="width:{Math.round(val)}%"></div>
           </div>
           <span class="axis-val">{val}</span>
         </div>
@@ -171,11 +211,11 @@
     <!-- Mood -->
     <div class="section-label">Mood</div>
     <div class="mood-score" style="color:{moodColor(adv.mood)}">
-      {adv.mood}/100 — {moodThresholdLabel(adv.mood)}
+      {Math.round(adv.mood)}/100 — {moodThresholdLabel(adv.mood)}
     </div>
     {#each moodFactors as factor (factor.id)}
       <div class="mood-factor" style="color:{factor.value >= 0 ? '#4caf50' : '#f44336'}">
-        {factor.label}: {factor.value > 0 ? '+' : ''}{factor.value}
+        {factor.label}: {factor.value > 0 ? '+' : ''}{Math.round(factor.value)}
       </div>
     {/each}
 
@@ -195,7 +235,7 @@
           <span class="rel-type {edgeTypeClass(edge.strength)}">{edgeTypeName(edge.strength)}</span>
           <div class="str-bar-bg">
             <div class="str-bar-fill"
-              style="width:{Math.abs(edge.strength)}%;background:{edge.strength >= 0 ? '#42a5f5' : '#ef5350'};margin-left:{edge.strength < 0 ? (100 - Math.abs(edge.strength)) + '%' : '0'}"></div>
+              style="width:{Math.round(Math.abs(edge.strength))}%;background:{edge.strength >= 0 ? '#42a5f5' : '#ef5350'};margin-left:{edge.strength < 0 ? (100 - Math.round(Math.abs(edge.strength))) + '%' : '0'}"></div>
           </div>
         </div>
       {/each}
@@ -266,6 +306,11 @@
   .state-in-dispute { background: #2e1a00; color: #ff7043; }
   .state-dead    { background: #1a1a1a; color: #777; }
   .state-retired { background: #1e1e1e; color: #888; }
+
+  .activity-pill {
+    display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 3px;
+    background: #1a2a1a; color: #7cb97c; margin-top: 3px; font-style: italic;
+  }
 
   .backstory { font-size: 12px; color: #999; font-style: italic; }
   .expand-btn { background: none; border: none; color: #7b6fe8; cursor: pointer; font-size: 11px; }

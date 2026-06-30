@@ -87,7 +87,7 @@
                 </span>
               </div>
               <div class="mood-bar-bg">
-                <div class="mood-bar-fill" style="width:{adv.mood}%;background:{moodColor(adv.mood)}"></div>
+                <div class="mood-bar-fill" style="width:{Math.round(adv.mood)}%;background:{moodColor(adv.mood)}"></div>
               </div>
               <div class="card-footer">
                 <span class="goal-icon" title={adv.identity.personalGoal}>
@@ -105,7 +105,7 @@
               {STATE_LABELS[adv.state]?.label ?? adv.state}
             </span>
             <div class="mood-bar-bg compact-mood">
-              <div class="mood-bar-fill" style="width:{adv.mood}%;background:{moodColor(adv.mood)}"></div>
+              <div class="mood-bar-fill" style="width:{Math.round(adv.mood)}%;background:{moodColor(adv.mood)}"></div>
             </div>
           {/if}
         </button>

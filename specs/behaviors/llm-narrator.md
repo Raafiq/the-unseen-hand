@@ -1,8 +1,20 @@
 # Behavior: LLM Narrator Layer
 
+> **Status note (events redesign):** the day-summary narrator is **retained** as one of the
+> LLM *set-pieces* defined in `behaviors/narrative-voice.md`. An earlier draft of
+> `behaviors/social-system.md` claimed to supersede this layer (replacing it with per-character
+> card persistence); that direction was **rejected**. The day summary stays; this spec is the
+> authoritative definition of it.
+
 ## Rule
 
 At the end of each in-game day, the simulation collects that day's events and passes structured context to the Claude API to generate a 2–3 sentence narrative paragraph. The paragraph is inserted as a "day summary" block at the top of that day's event feed entries. The LLM layer is entirely additive — if no API key is present, no summary is generated and the template-rendered event feed remains fully functional.
+
+The day summary is one of exactly three LLM **set-pieces** (with decision-moment situation
+text and quest-climax dramatisation; see `behaviors/narrative-voice.md`). Like the others, it
+is additive, async, and outside the deterministic replay record — it never feeds back into
+simulation state, and the high-frequency feed is rendered entirely by the deterministic
+template grammar, not the LLM.
 
 ## Applies To
 

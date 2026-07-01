@@ -6,7 +6,13 @@ set -euo pipefail
 #
 # Each web/mobile session clones the repo into a fresh container with no
 # node_modules, so we install dependencies and pre-build the core package here.
-# This runs on the Linux web container; local desktop sessions can also run it.
+
+# Cloud-only: web/mobile sessions set CLAUDE_CODE_REMOTE_SESSION_ID; local
+# sessions don't. Skip on local devices, which already have node_modules and may
+# lack a bash interpreter on PATH (Windows).
+if [ -z "${CLAUDE_CODE_REMOTE_SESSION_ID:-}" ]; then
+  exit 0
+fi
 
 cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
 

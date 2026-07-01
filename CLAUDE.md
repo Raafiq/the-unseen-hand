@@ -86,7 +86,9 @@ Each web/mobile session runs in a **fresh, ephemeral Linux container** (the repo
 is cloned clean, no `node_modules`). The `.claude/hooks/session-start.sh`
 SessionStart hook bootstraps it automatically — enabling pnpm `10.12.1`, running
 `pnpm install --frozen-lockfile`, and building `@ugs/core` — so builds and tests
-work from the first prompt. Node is pinned to `22` via `.nvmrc`. Commits push to a
+work from the first prompt. The hook is **cloud-only**: it early-exits unless
+`CLAUDE_CODE_REMOTE_SESSION_ID` is set, so it no-ops on local devices (which
+already have `node_modules` and may lack a bash interpreter on Windows). Node is pinned to `22` via `.nvmrc`. Commits push to a
 working branch, and `.github/workflows/ci.yml` (typecheck, `svelte-check`, build,
 test, and Playwright e2e) validates every push.
 

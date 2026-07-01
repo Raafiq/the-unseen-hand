@@ -154,6 +154,29 @@ describe('emitEvent — renderedText never empty', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Quest title formatting — the title must read as a proper name, not blend in
+// ---------------------------------------------------------------------------
+
+describe('emitEvent — quest title is quoted in prose', () => {
+  const base = createSimulationContext('quest-quote');
+  const quest = {
+    id: 'q-1', type: 'INVESTIGATION' as const, name: 'The Mystery of Duskvale',
+    difficulty: 3, duration: 36, reward: 200,
+    risk: { injuryChance: 0.1, deathChance: 0.03, criticalFailChance: 0.09 },
+    requiredPartySize: 1, expiresAt: 168, assignedParty: null, status: 'AVAILABLE' as const,
+  };
+  const ctx = { ...base, questBoard: { ...base.questBoard, available: [quest] } };
+
+  for (const subtype of ['STARTED', 'COMPLETED', 'FAILED', 'EXPIRED'] as const) {
+    it(`QUEST:${subtype} wraps the title in quotation marks`, () => {
+      const result = emitEvent(ctx, { kind: 'QUEST', subtype, questId: 'q-1', partyIds: ['a'] });
+      const text = result.eventLog[result.eventLog.length - 1].renderedText;
+      expect(text).toContain('“The Mystery of Duskvale”');
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Per-kind shape checks
 // ---------------------------------------------------------------------------
 

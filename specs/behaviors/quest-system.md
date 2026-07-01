@@ -24,6 +24,14 @@ Quests are the primary activity of adventurers. The quest board is autonomously 
 
 This distribution shifts during `MONSTER_SURGE` world events (harder) and `WINDFALL` events (easier).
 
+### Quest naming
+
+Each generated quest gets a flavorful, deterministic `name` drawn from per-type title templates - e.g. `INVESTIGATION` → "The Mystery of Duskvale", `BOUNTY` → "The Hunt for Grimjaw the Cruel".
+Templates and their placeholder nouns (places, foes, prizes, persons) are selected via the simulation RNG, so names are reproducible for a given seed.
+The name is the meaningful title alone - no difficulty suffix; `quest.difficulty` remains a separate field for any surface that wants to show it.
+Player-facing surfaces (event feed, quest board) render `quest.name`; the bare `QuestType` is never shown as a name.
+In event prose the title is wrapped in quotation marks (`"The Mystery of Duskvale"`) so it reads as a proper name instead of blending into the surrounding sentence.
+
 ### Autonomous party selection
 
 Runs each **day tick** (hour === 0) if:
@@ -82,6 +90,8 @@ The player may use `CHOOSE_OPTION` to override the assignment. If the decision e
 - `resolveQuest` with `difficulty: 10` and a solo party has `finalProbability ≤ 0.95` even with max DI.
 - `resolveQuest` with `difficulty: 1` and a full `TRUSTED_COMPANION` party has `finalProbability ≤ 0.95`.
 - A `QUEST_DROUGHT` event fires after exactly 72 consecutive ticks (3 days × 24 hours) with 0 available quests.
+- A generated quest's `name` is a flavorful multi-word title - never the bare `QuestType` and never carrying a difficulty suffix (e.g. not `"Investigation"` or `"Investigation (d3)"`).
+- Quest naming is deterministic: the same seed produces the same sequence of quest names.
 
 ## Principles
 

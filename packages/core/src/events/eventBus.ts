@@ -578,7 +578,9 @@ const TOWN_ROLE_LABELS: Record<import('../world/types.js').TownRole, string> = {
 
 function questLabel(ctx: SimulationContext, questId: QuestId): string {
   const quest = [...ctx.questBoard.available, ...ctx.questBoard.active].find(q => q.id === questId);
-  return quest?.name ?? questId;
+  // Wrap the title in quotation marks so it reads as a proper name in prose
+  // rather than blending into the sentence (quest-system.md#quest-naming).
+  return quest ? `“${quest.name}”` : questId;
 }
 
 function renderText(input: SimulationEventInput, ctx: SimulationContext): string {

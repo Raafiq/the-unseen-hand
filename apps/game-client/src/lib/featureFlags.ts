@@ -5,14 +5,17 @@
  * single edit re-enables both the surface and its tests.
  *
  * Current focus: Events + Relationships. Hidden for now:
- *   - `quests`  — the Quests nav tab + quest board panel.
  *   - `world`   — the World nav tab + region map/sidebar panel.
  *   - `divineIntervention` — the DI meter and floating DI deltas (topbar), the
  *     Divine Touch actions (character detail), and decision-moment ChoiceCards
  *     (right panel) along with their auto-pause.
+ *
+ * `quests` is enabled: the sim runs quests autonomously, so their QUEST/COMBAT
+ * events and quest history surface in the feed (otherwise a QUEST_SUCCESS buff
+ * would appear on a character with no visible cause).
  */
 export const FEATURES = {
-  quests: false,
+  quests: true,
   world: false,
   divineIntervention: false,
 } as const;

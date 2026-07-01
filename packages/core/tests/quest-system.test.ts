@@ -138,6 +138,28 @@ describe('questBoardSeedingSubscriber', () => {
       expect(q.expiresAt).toBe(168 + 168);
     }
   });
+
+  it('generated names are flavorful multi-word titles, never the bare type or a (dN) suffix', () => {
+    const ctx = { ...createSimulationContext('seed-names'), worldTime: { tick: 168, day: 7, hour: 0 } };
+    const quests = questBoardSeedingSubscriber(ctx).questBoard.available;
+    expect(quests.length).toBeGreaterThan(0);
+    for (const q of quests) {
+      // No difficulty suffix - the meaningful title stands alone.
+      expect(q.name).not.toMatch(/\(d\d+\)/);
+      // Never the bare quest type (e.g. "Investigation").
+      const bareType = q.type.charAt(0) + q.type.slice(1).toLowerCase();
+      expect(q.name).not.toBe(bareType);
+      // Flavorful titles are always multi-word.
+      expect(q.name.split(' ').length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('quest naming is deterministic for a given seed', () => {
+    const mk = () => ({ ...createSimulationContext('seed-determinism'), worldTime: { tick: 168, day: 7, hour: 0 } });
+    const namesA = questBoardSeedingSubscriber(mk()).questBoard.available.map(q => q.name);
+    const namesB = questBoardSeedingSubscriber(mk()).questBoard.available.map(q => q.name);
+    expect(namesA).toEqual(namesB);
+  });
 });
 
 // ---------------------------------------------------------------------------

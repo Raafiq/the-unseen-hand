@@ -78,6 +78,23 @@ test('hidden-feature event kinds never appear in the feed', async ({ page }) => 
   }
 });
 
+test('enabled-feature event kinds do surface in the feed', async ({ page }) => {
+  // Positive counterpart to the hidden-feature test: an enabled autonomous feature
+  // must actually render its events. Regression guard for the QUEST_SUCCESS-buff-with-
+  // no-visible-quest leak — the sim runs quests autonomously, so with the flag on a
+  // Quest event must appear rather than only its buff. Labels come from KIND_LABELS.
+  test.skip(!FEATURES.quests, 'Quests hidden');
+
+  await page.goto('/');
+  await page.locator('.speed-btn', { hasText: '20×' }).click();
+
+  // The quest board is seeded at game start and party selection runs on day ticks,
+  // so a Quest event fires within the first simulated day.
+  await expect(
+    page.locator('.event-row .type-tag', { hasText: /^Quest$/ }).first(),
+  ).toBeVisible({ timeout: 8_000 });
+});
+
 test('speed control active class changes on click', async ({ page }) => {
   await page.goto('/');
   const btn5x = page.locator('.speed-btn', { hasText: '5×' });

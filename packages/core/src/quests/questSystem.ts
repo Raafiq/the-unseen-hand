@@ -85,6 +85,52 @@ function pickDifficulty(roll: number): number {
   return Math.ceil((roll - 0.85) / 0.15 * 3) + 7;            // → 8-10
 }
 
+// Flavorful quest naming (quest-system.md#quest-naming). Each type draws a title
+// template; the single {place}/{foe}/{prize}/{person} placeholder is filled from
+// the matching noun pool. All picks route through ctx.rng, so names are
+// deterministic for a given seed.
+const QUEST_PLACES = [
+  'Duskvale', 'the Blackwood', 'Thornhollow', 'the Sunken Crypt', 'Ravenmoor',
+  'the Ashen Wastes', 'Grimhollow', 'the Weeping Caverns', 'Mistfen', 'the Old Mill',
+];
+const QUEST_FOES = [
+  'the Ashen Marauder', 'Grimjaw the Cruel', 'the Bogfen Troll', 'the Red Wolf',
+  'the Hollow King', 'Vashka the Serpent', 'the Gravemaw', 'the Iron Baron',
+];
+const QUEST_PRIZES = [
+  'the Sunstone', "the Widow's Locket", 'the Ember Chalice', 'the Whispering Blade',
+  'the Lost Ledger', 'the Gilded Crown', 'the Moonpetal Draught',
+];
+const QUEST_PERSONS = [
+  "the Merchant's Daughter", 'the Lost Caravan', 'Brother Aldric', 'the Envoy',
+  "the Miller's Son", 'the Captured Scout',
+];
+
+const QUEST_NAME_TEMPLATES: Record<QuestType, string[]> = {
+  BOUNTY:        ['The Hunt for {foe}', 'A Bounty on {foe}', 'Blood Price: {foe}'],
+  DUNGEON:       ['Into {place}', 'The Depths of {place}', 'Descent into {place}'],
+  ESCORT:        ['Safe Passage to {place}', 'Escort to {place}', 'The Road to {place}'],
+  FETCH:         ['Recover {prize}', 'The {prize} Retrieval', 'In Search of {prize}'],
+  INVESTIGATION: ['The Mystery of {place}', 'Whispers in {place}', 'The {place} Affair'],
+  RESCUE:        ['Rescue at {place}', 'Save {person}', 'The Captive of {place}'],
+  POLITICAL:     ['Intrigue in {place}', 'A Delicate Matter in {place}', 'The {place} Accord'],
+};
+
+function pickFrom<T>(ctx: SimulationContext, pool: readonly T[]): T {
+  return pool[Math.floor(ctx.rng.next() * pool.length)]!;
+}
+
+function generateQuestName(ctx: SimulationContext, type: QuestType): string {
+  const template = pickFrom(ctx, QUEST_NAME_TEMPLATES[type]);
+  // Each template carries exactly one placeholder; the replace callback only fires
+  // for the token present, so exactly one noun is drawn.
+  return template
+    .replace('{place}', () => pickFrom(ctx, QUEST_PLACES))
+    .replace('{foe}', () => pickFrom(ctx, QUEST_FOES))
+    .replace('{prize}', () => pickFrom(ctx, QUEST_PRIZES))
+    .replace('{person}', () => pickFrom(ctx, QUEST_PERSONS));
+}
+
 function generateQuest(ctx: SimulationContext, index: number): Quest {
   // A live MONSTER_SURGE span raises the region's effective threat (world-expansion.md consumers).
   const difficulty = Math.max(1, Math.min(10, pickDifficulty(ctx.rng.next()) + monsterSurgeThreatBonus(ctx)));
@@ -92,7 +138,7 @@ function generateQuest(ctx: SimulationContext, index: number): Quest {
   const id = `q-${ctx.worldTime.tick}-${index}`;
   return {
     id, type,
-    name: `${type.charAt(0) + type.slice(1).toLowerCase()} (d${difficulty})`,
+    name: generateQuestName(ctx, type),
     difficulty,
     duration: difficulty * 12,
     reward: difficulty * 50 + Math.floor(ctx.rng.next() * 50),

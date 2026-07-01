@@ -46,6 +46,12 @@ pnpm --filter @ugs/game-client test:e2e     # Playwright e2e (builds first)
 pnpm --filter @ugs/game-client dev          # vite dev server
 ```
 
+## Git workflow
+
+- Trunk-based: commit directly to `main`. Do not create a feature branch or PR
+  for routine work unless explicitly asked (this overrides the default
+  "branch first on the default branch" rule).
+
 ## Architecture
 
 - **`packages/core`** (`@ugs/core`) — deterministic sim engine, no UI. Public API in

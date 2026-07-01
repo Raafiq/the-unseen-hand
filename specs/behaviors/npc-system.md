@@ -112,6 +112,33 @@ adventurer encounters in `social-system.md` §4):
 the social-outcome pools (subject names the NPC), Tier B from role-keyed beat pools. The NPC's
 name (Tier A) or role (Tier B) is the subject slot.
 
+### UI — Townsfolk detail
+
+A notable (Tier A) NPC is **inspectable**: the identity record that already exists (name, role,
+traits, bio, optional mood) is surfaced in a read-only detail view so the player can learn who a
+townsfolk is. This is the counterpart to the adventurer character-detail view and shares the same
+detail drawer (`app-shell.md#detail-drawer`).
+
+- **Entry points.** A townsfolk is opened by selecting it as an actor id (the same selection
+  channel that opens an adventurer):
+  - a townsfolk row in an adventurer's **Relationships** list is clickable (previously inert
+    because the target was not an adventurer);
+  - a notable-NPC **name in the event feed** is clickable, resolving through the same
+    actor-id lookup as adventurer names.
+- **Display rules.** The view shows: the NPC's `name`; a human-readable **role** label; a
+  **Townsfolk** tag distinguishing it from a guild adventurer; the `bio` (1–2 sentences); the
+  `traits` present on the NPC, each as a named 0–100 bar (only the axes the NPC defines — traits
+  is `Partial<PersonalityAxes>`); the coarse `mood` **only if** defined; and a **Relationships**
+  list built from the NPC's edges in the graph (`ctx.relationships.get(npcId)`), each row showing
+  the other actor's name, relationship type, and strength, and clickable to re-target the drawer
+  to that actor.
+- **Exclusions (mirror the model's Tier-A exclusions).** A townsfolk has no personal goal, no
+  full personality axes, no history timeline, no divine-touch actions, and no dispatch controls —
+  NPCs are not commandable and do not quest. None of those sections render for a townsfolk.
+- A relationship row whose other endpoint is itself a notable NPC is displayed like any other but,
+  since NPC↔NPC edges are not modelled, will not normally occur; if present it re-targets like an
+  adventurer row.
+
 ### Festivals
 
 A **FESTIVAL** is a town-level stateful span (see `world-expansion.md`): while live it raises
@@ -143,6 +170,13 @@ character-filtering.
 - All NPC line selection flows through `ctx.rng`; no `Math.random()`.
 - A live FESTIVAL span raises Social-cluster activity weight and social pressure gain while
   active, and reverts on END.
+- Clicking a townsfolk relationship row on an adventurer's detail opens the townsfolk detail
+  view, which shows the NPC's name, role label, bio, and defined trait bars, and no goal /
+  history / divine-touch / dispatch sections.
+- The townsfolk detail's Relationships list is built from the NPC's own graph edges and each row
+  re-targets the drawer to that actor; clicking the adventurer the townsfolk is bonded to returns
+  to that adventurer's detail.
+- A notable-NPC name in the event feed is clickable and opens that townsfolk's detail view.
 
 ## Principles
 

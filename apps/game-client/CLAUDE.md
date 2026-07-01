@@ -69,6 +69,25 @@ fields the new event type carries — `participantIds`, `involvedIds`, `partyIds
 catch missing `ALL_KINDS` or `getInvolvedIds` entries — the kind simply won't
 appear in the feed or character filter.
 
+### Hiding or filtering a content category spans multiple surfaces
+
+Event kinds and history entries render in several places, and the core engine
+keeps emitting them regardless of UI state — so hiding a "feature" is a
+client-side display concern that is NOT done by hiding its nav tab/panel alone.
+Cover every surface or the content leaks:
+
+- **EventFeed** — the rendered rows *and* the filter chips (`ALL_KINDS`).
+- **Unread badge** — `unreadEventCount` in `simulationStore`, else the badge
+  counts events the feed won't show.
+- **LLM narrator** — the day-summary prompt is built from the event log
+  (`fetchDaySummary`), so it recaps hidden kinds unless you filter its input.
+- **CharacterDetail history** — `recentHistory` renders `HistoryEvent`s.
+
+`featureFlags.ts` (`hiddenEventKinds` / `hiddenHistoryKinds`) is the single
+source all four read from. Gotcha: **COMBAT is quest-derived** — both subtypes
+are emitted only by `questSystem.ts` (required `questId`), so it belongs to the
+quests feature, not a category of its own.
+
 ### UI verification — no manual browser gates
 
 All UI validation must be automated. Do not leave a plan validation step that requires
@@ -76,6 +95,14 @@ a human to open a browser. Use Playwright (`apps/game-client/tests/`) targeting
 `vite preview` (built output) as the `webServer`. Add a `test:e2e` script to the
 package. Replace any "verify in browser" checklist item with a concrete Playwright
 assertion before calling a plan done.
+
+**Pixel/screenshot checks:** Playwright's `webServer` owns port 4173 (`vite preview`),
+so a hand-started preview makes `test:e2e` fail with "4173 is already used" — free it
+first (`Get-NetTCPConnection -LocalPort 4173 | Stop-Process`; `taskkill` by window title
+won't find it). Cleanest path: capture the screenshot from a throwaway Playwright spec run
+through the harness, which owns the server itself and avoids both the port clash and the
+`@playwright/test` module-resolution gotcha (a standalone `.mjs` only resolves that import
+from inside `apps/game-client/`).
 
 ### Store rule — auto-pause must save and restore speed
 

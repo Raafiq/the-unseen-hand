@@ -7,11 +7,14 @@ import {
   SimulationLoop,
   createScenario1Context,
   dispatch,
+  makeNpcId,
+  createEdge,
   type DispatchCommand,
   type DecisionMoment,
   type SimulationContext,
 } from '@ugs/core';
 import { fetchDaySummary } from './narrator.js';
+import { FEATURES, hiddenEventKinds } from './featureFlags.js';
 
 // Import to trigger registration
 import '@ugs/core';
@@ -29,7 +32,7 @@ if (typeof location !== 'undefined' && new URLSearchParams(location.search).get(
     kind: 'PARTY_SELECTION',
     tick: initialCtx.worldTime.tick,
     situationText: 'A perilous bounty stands little chance with the current roster.',
-    subjectId: 's1-kara',
+    subjectId: 's1-reiko',
     cooldownKey: 'PARTY_SELECTION:e2e',
     options: [
       { label: 'Let fate decide', description: 'Do not intervene.', diCost: 0, probabilityShift: 0, narrativeDistanceLabel: 'LOW' },
@@ -38,6 +41,23 @@ if (typeof location !== 'undefined' && new URLSearchParams(location.search).get(
     expiresAt: initialCtx.worldTime.tick + 100_000,
   };
   initialCtx.pendingDecisions = [e2eDecision];
+}
+
+// E2E seam (test-only): townsfolk↔adventurer edges form only after emergent town encounters,
+// so — gated behind `?e2e=npc` — seed one deterministic FRIEND edge between Reiko and the guard
+// captain (Halden). This lets the townsfolk-detail spec exercise the real relationship-row →
+// NpcDetail path without waiting on emergent state. Never runs in normal play.
+if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('e2e') === 'npc') {
+  const advId = 's1-reiko';
+  const haldenId = makeNpcId('halden-captain');
+  const edge = createEdge(55); // FRIEND (≥ 40)
+  const link = (a: string, b: string) => {
+    const row = new Map(initialCtx.relationships.get(a) ?? new Map());
+    row.set(b, edge);
+    initialCtx.relationships.set(a, row);
+  };
+  link(advId, haldenId);
+  link(haldenId, advId); // edges are symmetric (relationship-graph.md)
 }
 
 // Single SimulationLoop instance
@@ -64,8 +84,10 @@ loop.register((ctx) => {
   const prevPendingCount = simulationStore.ctx.pendingDecisions.length;
   simulationStore.ctx = ctx;
 
-  // Auto-pause when a new decision moment appears so the player can act on it
-  if (ctx.pendingDecisions.length > prevPendingCount && simulationStore.speed !== 'paused') {
+  // Auto-pause when a new decision moment appears so the player can act on it.
+  // Skipped when Divine Intervention is hidden — the ChoiceCard never renders,
+  // so pausing here would freeze the loop with no way to resume.
+  if (FEATURES.divineIntervention && ctx.pendingDecisions.length > prevPendingCount && simulationStore.speed !== 'paused') {
     simulationStore.speedBeforePause = simulationStore.speed;
     setSpeed('paused');
   }
@@ -130,5 +152,7 @@ export function setActiveTab(tab: typeof simulationStore.activeTab): void {
 // ---------------------------------------------------------------------------
 
 export function unreadEventCount(ctx: SimulationContext, lastReadTick: number): number {
-  return ctx.eventLog.filter(e => e.tick > lastReadTick).length;
+  // Exclude kinds for hidden features so the badge matches what the feed shows.
+  const hidden = hiddenEventKinds();
+  return ctx.eventLog.filter(e => e.tick > lastReadTick && !hidden.has(e.kind)).length;
 }

@@ -73,12 +73,12 @@ Each tick, the scenario evaluator runs after all other subscribers:
 | `BANKRUPTCY` | Treasury below 0 for 7 consecutive days | `treasury < 0` for 168+ consecutive ticks |
 
 **Pre-seeded adventurers** (identities defined in the scenario seed, axes seeded deterministically):
-- Kara (courage: 70, loyalty: 80, backstory: veteran who lost her previous guild in a fire; personal goal: BELONGING)
+- Reiko (courage: 70, loyalty: 80, backstory: veteran who lost her previous guild in a fire; personal goal: BELONGING)
 - Doran (greed: 75, ambition: 65, backstory: merchant's son seeking fortune; personal goal: WEALTH)
 - Selin (empathy: 85, courage: 30, backstory: former healer turned adventurer after village raid; personal goal: PEACE)
 - Mira (courage: 55, ambition: 80, backstory: youngest sibling proving herself; personal goal: HEROISM)
-- Garrett (loyalty: 90, greed: 20, backstory: sworn to protect Kara after she saved his life; personal goal: BELONGING)
-  - Pre-existing edge: Garrett → Kara: `TRUSTED_COMPANION` (strength 75)
+- Garrett (loyalty: 90, greed: 20, backstory: sworn to protect Reiko after she saved his life; personal goal: BELONGING)
+  - Pre-existing edge: Garrett → Reiko: `TRUSTED_COMPANION` (strength 75)
 - Voss (courage: 85, empathy: 15, backstory: exile seeking redemption through violence; personal goal: REVENGE)
   - Pre-existing edge: Voss → Mira: `RIVAL` (strength −30)
 
@@ -92,7 +92,7 @@ Each tick, the scenario evaluator runs after all other subscribers:
 - `BANKRUPTCY` fail condition does not fire after 6 days of negative treasury — exactly 7 days (168 ticks).
 - `ScenarioComplete` fires only when all non-optional goals are complete and no fail condition is triggered.
 - Optional `BOND` goal grants DI on completion but its incompletion does not prevent `ScenarioComplete`.
-- Pre-seeded Garrett and Kara start with `TRUSTED_COMPANION` edge at strength 75.
+- Pre-seeded Garrett and Reiko start with `TRUSTED_COMPANION` edge at strength 75.
 - Entering sandbox mode: `ctx.scenario.status === 'COMPLETE'`, `ctx.scenario` is not null (preserved as record).
 
 ## Principles

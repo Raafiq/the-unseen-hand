@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { SimulationContext, Adventurer, DispatchCommand, HistoryEvent, RelationshipType, AdventurerState, ActivityId, PersonalGoal } from '@ugs/core';
   import { topMoodFactors, moodThresholdLabel, strengthToType } from '@ugs/core';
+  import { FEATURES, hiddenHistoryKinds } from '../featureFlags';
 
   type DivineEffect = 'COURAGE_BLESS' | 'LUCK_CURSE' | 'MOOD_LIFT' | 'SEND_DREAM' | 'REVEAL_SECRET' | 'MARK_FOR_DEATH';
 
@@ -9,9 +10,11 @@
     adventurerId: string;
     onSelectAdventurer: (id: string) => void;
     onDispatch: (cmd: DispatchCommand) => boolean;
+    // 'panel' = tall single-column (sidebar); 'drawer' = wide multi-column (bottom drawer).
+    variant?: 'panel' | 'drawer';
   }
 
-  const { ctx, adventurerId, onSelectAdventurer, onDispatch }: Props = $props();
+  const { ctx, adventurerId, onSelectAdventurer, onDispatch, variant = 'panel' }: Props = $props();
 
   const adv = $derived(ctx.adventurers.get(adventurerId));
   const edges = $derived(adv ? [...(ctx.relationships.get(adv.id) ?? new Map()).entries()] : []);
@@ -23,7 +26,16 @@
   );
 
   const moodFactors = $derived(adv ? topMoodFactors(adv.moodFactors, 3) : []);
-  const recentHistory = $derived((adv?.history ?? []).slice(-10).reverse());
+  // Drop history kinds whose owning feature is hidden (quest triumphs, divine
+  // touches) before taking the last 10, so the list stays full of relationship
+  // and combat beats rather than showing gaps.
+  const HIDDEN_HISTORY_KINDS = hiddenHistoryKinds();
+  const recentHistory = $derived(
+    (adv?.history ?? [])
+      .filter(h => !HIDDEN_HISTORY_KINDS.has(h.kind))
+      .slice(-10)
+      .reverse()
+  );
 
   const ADV_STATE_LABELS: Record<AdventurerState, string> = {
     IDLE:        'Idle',
@@ -160,7 +172,7 @@
 </script>
 
 {#if adv}
-  <div class="detail">
+  <div class="detail" class:drawer={variant === 'drawer'}>
     <!-- Identity -->
     <div class="identity">
       <div class="portrait-lg" style="background:{portraitColor(adv.id)}">
@@ -225,9 +237,9 @@
       {#each sortedEdges as [otherId, edge] (otherId)}
         {@const other = ctx.adventurers.get(otherId)}
         {@const npc = ctx.notableNpcs.get(otherId)}
-        <div class="rel-row" class:rel-npc-row={!!npc} role="button" tabindex="0"
-          onclick={() => other && onSelectAdventurer(otherId)}
-          onkeydown={(e) => e.key === 'Enter' && other && onSelectAdventurer(otherId)}>
+        <div class="rel-row" role="button" tabindex="0"
+          onclick={() => (other || npc) && onSelectAdventurer(otherId)}
+          onkeydown={(e) => e.key === 'Enter' && (other || npc) && onSelectAdventurer(otherId)}>
           <span class="rel-name">
             {other?.identity.name ?? npc?.name ?? otherId}
             {#if npc} <em>[townsfolk]</em>{/if}
@@ -252,7 +264,7 @@
     {/if}
 
     <!-- Divine Touch -->
-    {#if adv.state !== 'DEAD' && adv.state !== 'RETIRED'}
+    {#if FEATURES.divineIntervention && adv.state !== 'DEAD' && adv.state !== 'RETIRED'}
       <div class="section-label">Divine Touch</div>
       {#each DIVINE_OPTIONS as opt (opt.effect)}
         {@const cooldown = isOnCooldown(opt.effect)}
@@ -289,6 +301,19 @@
 
 <style>
   .detail { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+
+  /* Drawer variant — flow the sections into balanced newspaper columns so the
+     wide, short bottom drawer uses its horizontal space instead of scrolling. */
+  .detail.drawer {
+    display: block;
+    column-count: 3;
+    column-gap: 28px;
+    padding: 16px 22px 18px;
+  }
+  .detail.drawer > * { margin: 0 0 10px; break-inside: avoid; }
+  .detail.drawer .identity { column-span: all; margin-bottom: 12px; }
+  /* Keep a section label attached to the block it introduces across column breaks. */
+  .detail.drawer .section-label { break-after: avoid; }
 
   .identity { display: flex; gap: 10px; align-items: flex-start; }
   .portrait-lg {
@@ -340,8 +365,6 @@
     border-bottom: 1px solid #1e1c24; cursor: pointer;
   }
   .rel-row:hover .rel-name { color: #c9b8ff; }
-  .rel-npc-row { cursor: default; }
-  .rel-npc-row:hover .rel-name { color: #aaa; }
   .rel-name { flex: 1; font-size: 12px; color: #aaa; }
   .rel-name em { color: #555; font-size: 10px; }
   .rel-type { font-size: 10px; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; }

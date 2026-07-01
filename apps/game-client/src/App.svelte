@@ -2,19 +2,18 @@
   import {
     simulationStore,
     setSpeed,
-    setActiveTab,
     selectAdventurer,
     doDispatch,
-    unreadEventCount,
     loop,
   } from './lib/simulationStore.svelte';
-  import RosterGrid from './lib/components/RosterGrid.svelte';
+  import RosterDock from './lib/components/RosterDock.svelte';
   import EventFeed from './lib/components/EventFeed.svelte';
-  import WorldPanel from './lib/components/WorldPanel.svelte';
   import CharacterDetail from './lib/components/CharacterDetail.svelte';
+  import NpcDetail from './lib/components/NpcDetail.svelte';
   import ChoiceCard from './lib/components/ChoiceCard.svelte';
   import { onMount, onDestroy } from 'svelte';
-  import type { SimulationContext } from '@ugs/core';
+  import { slide } from 'svelte/transition';
+  import { FEATURES } from './lib/featureFlags';
 
   onMount(() => {
     loop.start();
@@ -26,13 +25,9 @@
 
   const ctx = $derived(simulationStore.ctx);
   const speed = $derived(simulationStore.speed);
-  const activeTab = $derived(simulationStore.activeTab);
   const selectedId = $derived(simulationStore.selectedAdventurerId);
 
-  const unreadEvents = $derived(
-    unreadEventCount(ctx, simulationStore.eventsLastReadTick)
-  );
-  const hasPendingMoment = $derived(ctx.pendingDecisions.length > 0);
+  const hasPendingMoment = $derived(FEATURES.divineIntervention && ctx.pendingDecisions.length > 0);
   const worldName = $derived(
     ctx.scenario ? 'The Failing Guild' : 'Sandbox'
   );
@@ -60,10 +55,6 @@
     _prevDI = current;
   });
 
-  function handleTabClick(tab: typeof activeTab) {
-    setActiveTab(tab);
-  }
-
   function handleSpeedClick(s: 1 | 5 | 20 | 'paused') {
     setSpeed(s);
   }
@@ -78,18 +69,20 @@
     </div>
 
     <!-- DI Meter -->
-    <div class="di-meter" title="Divine Influence fuels your interventions. You gain it from quest completions, relationship milestones, personal goal achievements, and deaths you choose not to prevent. You spend it on divine touches, event seeding, difficulty shifts, and decision moment options. Spending everything makes you helpless. Letting the world breathe makes you powerful.">
-      <span class="di-label">DI</span>
-      <div class="di-bar-bg">
-        <div class="di-bar-fill {diColor}" style="width: {ctx.divineInfluence}%"></div>
+    {#if FEATURES.divineIntervention}
+      <div class="di-meter" title="Divine Influence fuels your interventions. You gain it from quest completions, relationship milestones, personal goal achievements, and deaths you choose not to prevent. You spend it on divine touches, event seeding, difficulty shifts, and decision moment options. Spending everything makes you helpless. Letting the world breathe makes you powerful.">
+        <span class="di-label">DI</span>
+        <div class="di-bar-bg">
+          <div class="di-bar-fill {diColor}" style="width: {ctx.divineInfluence}%"></div>
+        </div>
+        <span class="di-value">{ctx.divineInfluence}</span>
+        {#each diDeltas as d (d.id)}
+          <span class="di-delta" class:di-delta-pos={d.amount > 0} class:di-delta-neg={d.amount < 0}>
+            {d.amount > 0 ? '+' : ''}{d.amount}
+          </span>
+        {/each}
       </div>
-      <span class="di-value">{ctx.divineInfluence}</span>
-      {#each diDeltas as d (d.id)}
-        <span class="di-delta" class:di-delta-pos={d.amount > 0} class:di-delta-neg={d.amount < 0}>
-          {d.amount > 0 ? '+' : ''}{d.amount}
-        </span>
-      {/each}
-    </div>
+    {/if}
 
     <!-- Speed controls -->
     <div class="speed-controls">
@@ -116,85 +109,17 @@
     </div>
   </header>
 
-  <div class="main-layout">
-    <!-- Left nav -->
-    <nav class="nav-panel">
-      <button
-        class="nav-btn"
-        class:active={activeTab === 'roster'}
-        onclick={() => handleTabClick('roster')}
-      >
-        Roster
-      </button>
-      <button
-        class="nav-btn"
-        class:active={activeTab === 'quests'}
-        onclick={() => handleTabClick('quests')}
-      >
-        Quests
-        {#if hasPendingMoment}
-          <span class="badge">!</span>
-        {/if}
-      </button>
-      <button
-        class="nav-btn"
-        class:active={activeTab === 'world'}
-        onclick={() => handleTabClick('world')}
-      >World</button>
-      <button
-        class="nav-btn"
-        class:active={activeTab === 'events'}
-        onclick={() => handleTabClick('events')}
-      >
-        Events
-        {#if unreadEvents > 0 && activeTab !== 'events'}
-          <span class="badge">{unreadEvents > 99 ? '99+' : unreadEvents}</span>
-        {/if}
-      </button>
-    </nav>
-
-    <!-- Main panel -->
+  <div class="content">
+    <!-- Main panel — the event feed is always in view -->
     <main class="main-panel">
-      {#if activeTab === 'roster'}
-        <RosterGrid
-          {ctx}
-          selectedId={selectedId}
-          onSelect={(id) => selectAdventurer(id)}
-        />
-      {:else if activeTab === 'quests'}
-        <div class="quest-board">
-          <h2>Quest Board</h2>
-          <p class="muted">Available: {ctx.questBoard.available.length} · Active: {ctx.questBoard.active.length}</p>
-          {#each ctx.questBoard.available as quest}
-            <div class="quest-card">
-              <span class="quest-name">{quest.name}</span>
-              <span class="quest-diff">d{quest.difficulty}</span>
-              <span class="quest-reward">{quest.reward}g</span>
-            </div>
-          {/each}
-          {#each ctx.questBoard.active as quest}
-            <div class="quest-card active">
-              <span class="quest-name">{quest.name}</span>
-              <span class="badge-amber">Active</span>
-              <span class="quest-reward">{quest.reward}g</span>
-            </div>
-          {/each}
-          {#if ctx.questBoard.available.length === 0 && ctx.questBoard.active.length === 0}
-            <p class="muted">No quests available — the board is empty.</p>
-          {/if}
-        </div>
-      {:else if activeTab === 'world'}
-        <WorldPanel {ctx} onDispatch={doDispatch} />
-      {:else if activeTab === 'events'}
-        <EventFeed
-          {ctx}
-          daySummaries={simulationStore.daySummaries}
-          onSelectAdventurer={(id) => { selectAdventurer(id); }}
-        />
-      {/if}
+      <EventFeed
+        {ctx}
+        daySummaries={simulationStore.daySummaries}
+        onSelectAdventurer={(id) => { selectAdventurer(id); }}
+      />
     </main>
 
-    <!-- Right panel -->
+    <!-- Right panel — your divine dashboard: scenario status, or an active ChoiceCard -->
     <aside class="right-panel" class:has-moment={hasPendingMoment}>
       {#if hasPendingMoment}
         <ChoiceCard
@@ -203,13 +128,6 @@
           tick={ctx.worldTime.tick}
           onChoose={(decisionId, optionIndex) =>
             doDispatch({ type: 'CHOOSE_OPTION', decisionId, optionIndex })}
-        />
-      {:else if selectedId}
-        <CharacterDetail
-          {ctx}
-          adventurerId={selectedId}
-          onSelectAdventurer={(id) => selectAdventurer(id)}
-          onDispatch={doDispatch}
         />
       {:else}
         <div class="right-default">
@@ -232,6 +150,38 @@
         </div>
       {/if}
     </aside>
+  </div>
+
+  <!-- Detail drawer — rises from the dock when an adventurer is selected -->
+  {#if selectedId}
+    <div class="detail-drawer" transition:slide={{ duration: 180 }}>
+      <button class="drawer-close" title="Close" onclick={() => selectAdventurer(null)}>×</button>
+      {#if ctx.notableNpcs.has(selectedId)}
+        <NpcDetail
+          {ctx}
+          npcId={selectedId}
+          variant="drawer"
+          onSelectActor={(id) => selectAdventurer(id)}
+        />
+      {:else}
+        <CharacterDetail
+          {ctx}
+          adventurerId={selectedId}
+          variant="drawer"
+          onSelectAdventurer={(id) => selectAdventurer(id)}
+          onDispatch={doDispatch}
+        />
+      {/if}
+    </div>
+  {/if}
+
+  <!-- Roster dock — persistent overlay pinned to the bottom -->
+  <div class="roster-dock">
+    <RosterDock
+      {ctx}
+      selectedId={selectedId}
+      onSelect={(id) => selectAdventurer(id)}
+    />
   </div>
 </div>
 
@@ -279,44 +229,31 @@
   .speed-btn:hover { background: #3e3a4a; }
   .speed-btn.active { background: #5b4fcf; border-color: #7b6fe8; color: #fff; }
 
-  /* Layout */
-  .main-layout { display: flex; flex: 1; overflow: hidden; }
-
-  /* Nav */
-  .nav-panel {
-    width: 110px; flex-shrink: 0; background: #131218;
-    border-right: 1px solid #2e2a3a; display: flex; flex-direction: column; padding: 8px 0;
-  }
-  .nav-btn {
-    position: relative; padding: 10px 12px; background: none; border: none;
-    color: #888; cursor: pointer; text-align: left; font-size: 13px;
-    border-left: 3px solid transparent;
-  }
-  .nav-btn:hover { color: #ccc; background: #1e1c24; }
-  .nav-btn.active { color: #c9b8ff; border-left-color: #7b6fe8; background: #1a1820; }
-
-  /* Badge */
-  .badge {
-    position: absolute; top: 6px; right: 8px;
-    background: #f44336; color: #fff; border-radius: 10px;
-    font-size: 10px; padding: 1px 5px; font-style: normal;
-  }
+  /* Layout — feed + right panel above, roster dock pinned below */
+  .content { display: flex; flex: 1; overflow: hidden; min-height: 0; }
 
   /* Main panel */
   .main-panel { flex: 1; overflow-y: auto; padding: 16px; }
 
-  /* Quest board */
-  .quest-board h2 { font-size: 15px; margin-bottom: 8px; color: #c9b8ff; }
-  .quest-card {
-    display: flex; gap: 12px; align-items: center; padding: 8px 12px;
-    background: #1a1820; border: 1px solid #2e2a3a; border-radius: 6px; margin-bottom: 6px;
+  /* Detail drawer — rises from the dock, reads as one unit with it */
+  .detail-drawer {
+    position: relative; flex-shrink: 0;
+    max-height: 42vh; overflow-y: auto;
+    background: #15131c; border-top: 2px solid #7b6fe8;
   }
-  .quest-card.active { border-color: #ff9800; }
-  .quest-name { flex: 1; }
-  .quest-diff { font-size: 12px; color: #888; }
-  .quest-reward { font-size: 12px; color: #ffd700; }
-  .badge-amber { background: #ff9800; color: #000; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
-  .muted { color: #666; font-size: 13px; margin-bottom: 8px; }
+  .drawer-close {
+    position: absolute; top: 8px; right: 10px; z-index: 2;
+    width: 24px; height: 24px; line-height: 1;
+    background: #201d2c; border: 1px solid #3a3550; border-radius: 5px;
+    color: #b7abe0; cursor: pointer; font-size: 16px;
+  }
+  .drawer-close:hover { background: #2a2640; color: #fff; }
+
+  /* Roster dock */
+  .roster-dock {
+    flex-shrink: 0; height: 96px;
+    background: #131218; border-top: 1px solid #2e2a3a;
+  }
 
   /* Right panel */
   .right-panel {

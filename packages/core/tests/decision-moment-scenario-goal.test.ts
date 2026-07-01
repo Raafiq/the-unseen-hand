@@ -8,7 +8,7 @@ function makeCtx(overrides: Partial<SimulationContext> = {}): SimulationContext 
 }
 
 describe('decisionMomentSubscriber — SCENARIO_GOAL detection', () => {
-  it('surfaces SURVIVAL SCENARIO_GOAL when tick > 600 and Kara is alive', () => {
+  it('surfaces SURVIVAL SCENARIO_GOAL when tick > 600 and Reiko is alive', () => {
     const ctx = makeCtx({ worldTime: { tick: 650, day: 27, hour: 2 } });
     const next = decisionMomentSubscriber(ctx, 1);
     expect(next.pendingDecisions.some(m => m.kind === 'SCENARIO_GOAL' && m.subjectId === 'SURVIVAL')).toBe(true);

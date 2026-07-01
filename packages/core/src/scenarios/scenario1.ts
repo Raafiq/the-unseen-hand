@@ -3,7 +3,7 @@
  *
  * Spec: specs/behaviors/scenario-engine.md#scenario-1-the-failing-guild
  *
- * Single-adventurer prototype: Kara, 30-day time limit.
+ * Single-adventurer prototype: Reiko, 30-day time limit.
  * Registry-registered at module import time.
  */
 import type { Scenario, SimulationContext, Adventurer } from '../world/types.js';
@@ -22,7 +22,7 @@ const TIME_LIMIT = 720; // 30 days × 24 ticks
 // ---------------------------------------------------------------------------
 
 export const S1_IDS = {
-  kara: 's1-kara',
+  reiko: 's1-reiko',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -43,7 +43,7 @@ const scenario1: Scenario = {
   id: SCENARIO_1_ID,
   title: 'The Failing Guild',
   premise:
-    'Kara is all that remains of a once-proud guild. A harsh winter is coming and the treasury is nearly empty.',
+    'Reiko is all that remains of a once-proud guild. A harsh winter is coming and the treasury is nearly empty.',
   startingRoster: [], // populated separately in createScenario1Context
   startingDI: 40,
   timeLimit: TIME_LIMIT,
@@ -51,7 +51,7 @@ const scenario1: Scenario = {
   goals: [
     {
       id: 'SURVIVAL',
-      description: 'Kara survives through day 30',
+      description: 'Reiko survives through day 30',
       diReward: 25,
       condition: (ctx) => ctx.worldTime.tick === TIME_LIMIT && livingCount(ctx) >= 1,
       isImminent: (ctx) => ctx.worldTime.tick > 600 && livingCount(ctx) >= 1,
@@ -68,7 +68,7 @@ const scenario1: Scenario = {
   failConditions: [
     {
       id: 'ROSTER_COLLAPSE',
-      description: 'Kara falls or departs',
+      description: 'Reiko falls or departs',
       condition: (ctx) => livingCount(ctx) < 1,
     },
     {
@@ -119,8 +119,8 @@ export function createScenario1Context(seed = 'scenario-1'): SimulationContext {
   const base = createSimulationContext(seed);
 
   const adventurers: Map<string, Adventurer> = new Map([
-    [S1_IDS.kara, makeAdventurer(
-      S1_IDS.kara, 'Kara', 34,
+    [S1_IDS.reiko, makeAdventurer(
+      S1_IDS.reiko, 'Reiko', 34,
       'Veteran who lost her previous guild in a fire. She is all that is left.',
       'BELONGING',
       { courage: 70, loyalty: 80, empathy: 50, greed: 20, ambition: 50 },

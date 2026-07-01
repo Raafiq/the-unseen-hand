@@ -7,6 +7,7 @@
  */
 import { getDayEvents, buildNarratorPrompt } from '@ugs/core';
 import type { SimulationContext } from '@ugs/core';
+import { hiddenEventKinds } from './featureFlags.js';
 
 const TIMEOUT_MS = 10_000;
 const MODEL = 'claude-haiku-4-5-20251001';
@@ -20,7 +21,10 @@ export async function fetchDaySummary(
     || (typeof window !== 'undefined' ? (window as any).__e2eNarratorKey as string | undefined : undefined);
   if (!apiKey) return null;
 
-  const events = getDayEvents(ctx.eventLog, day);
+  // Keep the summary prose on-topic: drop event kinds for hidden features so the
+  // narrator doesn't recap quests/divine acts/world events the player can't see.
+  const hidden = hiddenEventKinds();
+  const events = getDayEvents(ctx.eventLog, day).filter(e => !hidden.has(e.kind));
   const { systemPrompt, userPrompt } = buildNarratorPrompt(day, events, ctx);
 
   try {

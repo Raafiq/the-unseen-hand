@@ -39,14 +39,14 @@ describe('Scenario 1 — createScenario1Context', () => {
     expect(ctx.divineInfluence).toBe(40);
   });
 
-  it('starts with 1 adventurer (Kara)', () => {
+  it('starts with 1 adventurer (Reiko)', () => {
     const ctx = createScenario1Context();
     expect(ctx.adventurers.size).toBe(1);
     const kara = [...ctx.adventurers.values()][0]!;
-    expect(kara.identity.name).toBe('Kara');
+    expect(kara.identity.name).toBe('Reiko');
   });
 
-  it('Kara starts with no relationship edges', () => {
+  it('Reiko starts with no relationship edges', () => {
     const ctx = createScenario1Context();
     const kara = [...ctx.adventurers.values()][0]!;
     const edges = ctx.relationships.get(kara.id);
@@ -60,7 +60,7 @@ describe('Scenario 1 — createScenario1Context', () => {
     expect(ctx.scenario!.status).toBe('ACTIVE');
   });
 
-  it('Kara has BELONGING as her personal goal', () => {
+  it('Reiko has BELONGING as her personal goal', () => {
     const ctx = createScenario1Context();
     const kara = [...ctx.adventurers.values()][0]!;
     expect(kara.identity.personalGoal).toBe('BELONGING');
@@ -72,13 +72,13 @@ describe('Scenario 1 — createScenario1Context', () => {
 // ---------------------------------------------------------------------------
 
 describe('Scenario 1 — SURVIVAL goal', () => {
-  it('SURVIVAL goal completes at tick 720 when Kara is alive', () => {
+  it('SURVIVAL goal completes at tick 720 when Reiko is alive', () => {
     const result = tick(createScenario1Context(), 720);
     const survival = result.scenario!.goals.find(g => g.id === 'SURVIVAL');
     expect(survival!.completed).toBe(true);
   });
 
-  it('SURVIVAL goal does not complete at tick 720 when Kara is dead', () => {
+  it('SURVIVAL goal does not complete at tick 720 when Reiko is dead', () => {
     const ctx = createScenario1Context();
     const ids = [...ctx.adventurers.keys()];
     const result = tick(killAdventurers(ctx, ids), 720);
@@ -121,7 +121,7 @@ describe('Scenario 1 — SOLVENT goal', () => {
 // ---------------------------------------------------------------------------
 
 describe('Scenario 1 — ROSTER_COLLAPSE fail condition', () => {
-  it('ROSTER_COLLAPSE triggers when Kara dies', () => {
+  it('ROSTER_COLLAPSE triggers when Reiko dies', () => {
     const ctx = createScenario1Context();
     const ids = [...ctx.adventurers.keys()];
     const result = tick(killAdventurers(ctx, ids), 1);
@@ -130,7 +130,7 @@ describe('Scenario 1 — ROSTER_COLLAPSE fail condition', () => {
     expect(fc!.triggered).toBe(true);
   });
 
-  it('ROSTER_COLLAPSE does not trigger when Kara is alive', () => {
+  it('ROSTER_COLLAPSE does not trigger when Reiko is alive', () => {
     const result = tick(createScenario1Context(), 1);
     const fc = result.scenario!.failConditions.find(f => f.id === 'ROSTER_COLLAPSE');
     expect(fc!.triggered).toBe(false);

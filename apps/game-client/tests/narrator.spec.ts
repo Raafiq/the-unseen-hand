@@ -6,8 +6,8 @@ import { test, expect } from '@playwright/test';
  *   narrator's apiKey guard passes (import.meta.env.VITE_CLAUDE_API_KEY is
  *   undefined in the built output; the fallback survives Vite compilation).
  * - page.route intercepts the Anthropic API fetch and returns mocked prose.
- * - DaySummaryBlock (.day-summary) appears in the Events feed once a full day
- *   has passed and the narrator resolves.
+ * - DaySummaryBlock (.day-summary) appears in the always-visible event feed once
+ *   a full day has passed and the narrator resolves.
  *
  * Narrator fires at hour === 0 && day > 0. At 20× speed day 1 arrives in ~2-3s.
  */
@@ -30,11 +30,8 @@ test('DaySummaryBlock renders after narrator mock response', async ({ page }) =>
 
   await page.goto('/');
 
-  // Speed up so day 1 arrives quickly
+  // Speed up so day 1 arrives quickly. The event feed is always in view — no tab to open.
   await page.locator('.speed-btn', { hasText: '20×' }).click();
-
-  // Switch to Events tab where day summaries appear
-  await page.locator('button', { hasText: 'Events' }).click();
 
   // DaySummaryBlock must appear once the narrator resolves
   await expect(page.locator('.day-summary')).toBeVisible({ timeout: 12_000 });

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { SimulationContext, SimulationEvent, CombatBeat } from '@ugs/core';
   import CombatReplay from './CombatReplay.svelte';
+  import { hiddenEventKinds } from '../featureFlags';
 
   interface Props {
     ctx: SimulationContext;
@@ -28,7 +29,12 @@
     ACTIVITY:       { label: 'Activity',  cls: 'tag-world' },
   };
 
-  const ALL_KINDS: EventKind[] = ['SOCIAL', 'NPC', 'COMBAT', 'QUEST', 'LIFECYCLE', 'WORLD', 'DIVINE', 'ACTIVITY'];
+  // Kinds whose owning feature is currently hidden (featureFlags) — dropped from
+  // both the filter chips and the rendered rows below.
+  const HIDDEN_KINDS = hiddenEventKinds();
+
+  const ALL_KINDS: EventKind[] = (['SOCIAL', 'NPC', 'COMBAT', 'QUEST', 'LIFECYCLE', 'WORLD', 'DIVINE', 'ACTIVITY'] as EventKind[])
+    .filter(k => !HIDDEN_KINDS.has(k));
 
   function toggleFilter(key: FilterKey) {
     if (key === 'ALL') {
@@ -54,7 +60,9 @@
   type DayGroup = { day: number; summary: string | null; events: SimulationEvent[] };
 
   const dayGroups = $derived((): DayGroup[] => {
-    const log = [...ctx.eventLog].reverse(); // newest first
+    const log = [...ctx.eventLog]
+      .reverse() // newest first
+      .filter(e => !HIDDEN_KINDS.has(e.kind)); // drop kinds for hidden features, even under "All"
     const filtered = (activeFilters.has('ALL')
       ? log
       : log.filter(e => activeFilters.has(e.kind as FilterKey)))
@@ -188,7 +196,7 @@
                     class="portrait-init"
                     title={advName(id)}
                     style="background:{portraitColor(id)}"
-                    onclick={() => ctx.adventurers.has(id) && onSelectAdventurer(id)}
+                    onclick={() => (ctx.adventurers.has(id) || ctx.notableNpcs.has(id)) && onSelectAdventurer(id)}
                   >
                     {advName(id)[0] ?? '?'}
                   </button>

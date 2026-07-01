@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { FEATURES } from '../src/lib/featureFlags';
 
 /**
  * Verifies that clicking a region row opens the region-detail sidebar panel
@@ -8,6 +9,7 @@ import { test, expect } from '@playwright/test';
  * so its sidebar shows difficulty controls.
  */
 test('region sidebar opens when a region header is clicked', async ({ page }) => {
+  test.skip(!FEATURES.world, 'World tab hidden');
   await page.goto('/');
 
   // Navigate to the World tab
@@ -31,6 +33,7 @@ test('region sidebar opens when a region header is clicked', async ({ page }) =>
 });
 
 test('region sidebar closes when the × button is clicked', async ({ page }) => {
+  test.skip(!FEATURES.world, 'World tab hidden');
   await page.goto('/');
 
   await page.locator('button', { hasText: 'World' }).click();

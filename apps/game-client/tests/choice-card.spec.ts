@@ -1,15 +1,17 @@
 import { test, expect } from '@playwright/test';
+import { FEATURES } from '../src/lib/featureFlags';
 
 /**
  * Verifies the ChoiceCard renders in the right panel when a decision moment is pending.
  *
- * The single-adventurer scenario-1 produces no decision moments organically (Kara alone can't
+ * The single-adventurer scenario-1 produces no decision moments organically (Reiko alone can't
  * field the size-2/3 quests, so PARTY_SELECTION never fires), so this drives the app through its
  * `?e2e=decision` seam, which injects one deterministic PARTY_SELECTION moment at load. The test
  * still exercises the real store → App → ChoiceCard render path — it just doesn't wait on
  * emergent board luck (see simulationStore.svelte.ts).
  */
 test('ChoiceCard renders when a decision moment is pending', async ({ page }) => {
+  test.skip(!FEATURES.divineIntervention, 'Decision moments hidden with Divine Intervention');
   await page.goto('/?e2e=decision');
 
   const primaryCard = page.locator('.primary-card');
@@ -25,6 +27,7 @@ test('ChoiceCard renders when a decision moment is pending', async ({ page }) =>
 });
 
 test('ChoiceCard shows expiry countdown', async ({ page }) => {
+  test.skip(!FEATURES.divineIntervention, 'Decision moments hidden with Divine Intervention');
   await page.goto('/?e2e=decision');
 
   await expect(page.locator('.primary-card')).toBeVisible({ timeout: 12_000 });

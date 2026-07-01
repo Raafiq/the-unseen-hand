@@ -3,7 +3,7 @@ import { createScenario1Context } from '../src/scenarios/scenario1.js';
 import { moodSubscriber } from '../src/adventurers/mood.js';
 
 describe('Scenario 1 — adventurer baseline mood', () => {
-  it('Kara has mood ≥ 25 after the first day tick', () => {
+  it('Reiko has mood ≥ 25 after the first day tick', () => {
     const ctx = createScenario1Context();
     // Advance to day 1, hour 0 — moodSubscriber fires on this tick
     const atDayOne = { ...ctx, worldTime: { tick: 24, day: 1, hour: 0 } };

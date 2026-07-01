@@ -1,8 +1,8 @@
 /**
  * Bot player — UI regression scanner.
  *
- * Runs the simulation at 20× for 8 seconds, visits every tab (including
- * character detail and world sidebar), then scans the rendered DOM for:
+ * Runs the simulation at 20× for 8 seconds across the shell (event feed,
+ * roster dock, character detail), then scans the rendered DOM for:
  *
  *   1. Float precision leaks in CSS `width` style attributes
  *      e.g. width:22.499999999999996% from an unrounded mood value
@@ -18,6 +18,7 @@
  * Run with: pnpm --filter game-client test:e2e
  */
 import { test, expect, type Page } from '@playwright/test';
+import { FEATURES } from '../src/lib/featureFlags';
 
 // ---------------------------------------------------------------------------
 // DOM scanner — runs inside the browser via page.evaluate
@@ -101,7 +102,7 @@ async function scanPage(page: Page, tab: string): Promise<UiIssue[]> {
 // Bot player test
 // ---------------------------------------------------------------------------
 
-test('bot player: 8s at 20×, scan all tabs for UI precision and bad values', async ({ page }) => {
+test('bot player: 8s at 20×, scan the shell for UI precision and bad values', async ({ page }) => {
   await page.goto('/');
 
   // Start at 20× so we accumulate diverse state quickly
@@ -109,50 +110,43 @@ test('bot player: 8s at 20×, scan all tabs for UI precision and bad values', as
 
   const allIssues: UiIssue[] = [];
 
-  async function visit(tabLabel: string, navigate: () => Promise<void>): Promise<void> {
+  async function visit(label: string, navigate: () => Promise<void>): Promise<void> {
     await navigate();
     await page.waitForTimeout(250);
-    const issues = await scanPage(page, tabLabel);
+    const issues = await scanPage(page, label);
     allIssues.push(...issues);
   }
 
   // Accumulate 3 seconds of ticks before first scan
   await page.waitForTimeout(3000);
 
-  // Roster tab + character detail
-  await visit('roster', async () => {
-    await page.locator('.nav-btn', { hasText: 'Roster' }).click();
-    const card = page.locator('.card').first();
-    if (await card.count() > 0) await card.click();
-  });
-
-  // Quests tab
-  await visit('quests', async () => {
-    await page.locator('.nav-btn', { hasText: 'Quests' }).click();
-  });
-
-  // World tab + open region sidebar
-  await visit('world', async () => {
-    await page.locator('.nav-btn', { hasText: 'World' }).click();
-    const regionHeader = page.locator('.region-header').first();
-    if (await regionHeader.count() > 0) await regionHeader.click();
-  });
-
-  // Events tab — wait for at least one row
-  await visit('events', async () => {
-    await page.locator('.nav-btn', { hasText: 'Events' }).click();
+  // The event feed is always in view — wait for at least one row, then scan.
+  await visit('shell', async () => {
     await page.waitForFunction(
       () => document.querySelectorAll('.event-row').length >= 1,
       { timeout: 8_000 },
     );
   });
 
-  // Let state evolve another 4s then re-scan roster (mood and DI will have shifted)
+  // Roster dock is persistent — open a character's detail in the right panel.
+  await visit('character-detail', async () => {
+    const card = page.locator('.roster-dock .card').first();
+    if (await card.count() > 0) await card.click();
+  });
+
+  // World region sidebar (flag-gated)
+  if (FEATURES.world) {
+    await visit('world', async () => {
+      const regionHeader = page.locator('.region-header').first();
+      if (await regionHeader.count() > 0) await regionHeader.click();
+    });
+  }
+
+  // Let state evolve another 4s then re-scan (mood and DI will have shifted)
   await page.waitForTimeout(4000);
 
-  await visit('roster-late', async () => {
-    await page.locator('.nav-btn', { hasText: 'Roster' }).click();
-    const card = page.locator('.card').first();
+  await visit('shell-late', async () => {
+    const card = page.locator('.roster-dock .card').first();
     if (await card.count() > 0) await card.click();
   });
 

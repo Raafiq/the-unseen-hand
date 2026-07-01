@@ -82,9 +82,15 @@ Cover every surface or the content leaks:
 - **LLM narrator** — the day-summary prompt is built from the event log
   (`fetchDaySummary`), so it recaps hidden kinds unless you filter its input.
 - **CharacterDetail history** — `recentHistory` renders `HistoryEvent`s.
+- **CharacterDetail mood factors (buffs)** — `topMoodFactors(adv.moodFactors, …)`
+  renders buffs like `QUEST_SUCCESS` with **no** featureFlags gate. The engine
+  writes mood factors from a hidden feature's own logic (e.g. `resolveQuest`), so a
+  buff can surface on a character sheet with no visible cause.
 
-`featureFlags.ts` (`hiddenEventKinds` / `hiddenHistoryKinds`) is the single
-source all four read from. Gotcha: **COMBAT is quest-derived** — both subtypes
+`featureFlags.ts` (`hiddenEventKinds` / `hiddenHistoryKinds`) is the single source
+the event/history surfaces read from — but **mood factors are the exception: no flag
+gates them yet**, so a hidden feature that writes one leaks a buff (this was the
+QUEST_SUCCESS-with-no-visible-quest bug). Gotcha: **COMBAT is quest-derived** — both subtypes
 are emitted only by `questSystem.ts` (required `questId`), so it belongs to the
 quests feature, not a category of its own.
 

@@ -8,6 +8,7 @@ import {
   createScenario1Context,
   dispatch,
   type DispatchCommand,
+  type DecisionMoment,
   type SimulationContext,
 } from '@ugs/core';
 import { fetchDaySummary } from './narrator.js';
@@ -17,6 +18,27 @@ import '@ugs/core';
 
 // Create the initial context with Scenario 1
 const initialCtx = createScenario1Context();
+
+// E2E seam (test-only): the single-adventurer scenario produces no decision moments
+// organically, so — gated behind an explicit `?e2e=decision` query param — inject one
+// deterministic PARTY_SELECTION moment. This lets the choice-card spec exercise the real
+// ChoiceCard render path without waiting on emergent board state. Never runs in normal play.
+if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('e2e') === 'decision') {
+  const e2eDecision: DecisionMoment = {
+    id: 'e2e-decision',
+    kind: 'PARTY_SELECTION',
+    tick: initialCtx.worldTime.tick,
+    situationText: 'A perilous bounty stands little chance with the current roster.',
+    subjectId: 's1-kara',
+    cooldownKey: 'PARTY_SELECTION:e2e',
+    options: [
+      { label: 'Let fate decide', description: 'Do not intervene.', diCost: 0, probabilityShift: 0, narrativeDistanceLabel: 'LOW' },
+      { label: 'Bless the party', description: 'A divine blessing improves their odds.', diCost: 12, probabilityShift: 0.2, narrativeDistanceLabel: 'MODERATE' },
+    ],
+    expiresAt: initialCtx.worldTime.tick + 100_000,
+  };
+  initialCtx.pendingDecisions = [e2eDecision];
+}
 
 // Single SimulationLoop instance
 export const loop = new SimulationLoop(initialCtx);

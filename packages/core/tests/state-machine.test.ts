@@ -89,4 +89,31 @@ describe('transitionState', () => {
     expect(result.state).toBe('IDLE');
     expect(result.currentQuestId).toBeNull();
   });
+
+  it('IDLE → ON_QUEST clears activityState (no stale home activity while away)', () => {
+    const a: Adventurer = {
+      ...makeAdventurer('IDLE'),
+      activityState: { current: 'SLEEPING', enteredAt: 1, scheduledExitAt: 8, nextMicroEventAt: 5 },
+    };
+    const result = transitionState(a, 'ON_QUEST', { questId: 'q1', isDev: false });
+    expect(result.activityState).toBeUndefined();
+  });
+
+  it('ON_QUEST → IN_DUNGEON clears activityState', () => {
+    const a: Adventurer = {
+      ...makeAdventurer('ON_QUEST', 'q1'),
+      activityState: { current: 'SLEEPING', enteredAt: 1, scheduledExitAt: 8, nextMicroEventAt: 5 },
+    };
+    const result = transitionState(a, 'IN_DUNGEON', { questId: 'q1', isDev: false });
+    expect(result.activityState).toBeUndefined();
+  });
+
+  it('IDLE → RESTING preserves a home activity (only quest departure clears it)', () => {
+    const a: Adventurer = {
+      ...makeAdventurer('IDLE'),
+      activityState: { current: 'READING', enteredAt: 1, scheduledExitAt: 8, nextMicroEventAt: 5 },
+    };
+    const result = transitionState(a, 'RESTING', { questId: null, isDev: false });
+    expect(result.activityState).toEqual(a.activityState);
+  });
 });

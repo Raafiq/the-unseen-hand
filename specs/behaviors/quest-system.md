@@ -83,6 +83,30 @@ The player may use `CHOOSE_OPTION` to override the assignment. If the decision e
 - Expired quests are removed from the board. No event fires for individual expiry.
 - If board expiry causes a drought condition (0 available quests for 3 days), `QUEST_DROUGHT` fires.
 
+### Quest lifecycle event ordering (bracket invariant)
+
+A single quest run surfaces in the feed as a well-formed **bracket**. Considering only the
+questId-bearing events for one quest, in event-log (chronological) order:
+
+1. **Open** — `QUEST:STARTED` is the first bracket event (a party is committed). Per-member
+   `PREPARES_FOR_QUEST` prep beats precede it; see `behaviors/social-system.md` §2.
+2. **Middle (away)** — the away-quest events belong here and nowhere else: `COMBAT:BEAT_LOG` (the
+   fight report), then the `LIFECYCLE:ADVENTURER_DIED` events for any casualties. Beats are emitted
+   inside `resolveQuest`; see `behaviors/combat-resolution.md`.
+3. **Close** — exactly one `QUEST:COMPLETED` or `QUEST:FAILED`, and it is the **last** bracket
+   event for that quest.
+
+The load-bearing rule is that **nothing tied to a quest may appear after its close**: combat must
+not trail past the outcome (the fight is reported *before* the quest is announced resolved), and the
+outcome must not be announced before the fight it summarises. Concurrent quests interleave freely —
+the invariant is per-quest, keyed by `questId`, so multiple parties out at once is not a violation.
+A quest still in progress at the end of a log (opened, not yet closed) is valid, not a violation.
+
+`findQuestBracketViolations(eventLog)` is the canonical oracle for this invariant and returns an
+empty array for any well-formed log. This is the first-class guard for a recurring class of bug —
+state or narration crossing the guild↔away-quest boundary in the wrong order — rather than a
+per-symptom patch.
+
 ## Validation
 
 - Quest board is seeded once per 168 ticks, not every tick.
@@ -92,6 +116,8 @@ The player may use `CHOOSE_OPTION` to override the assignment. If the decision e
 - A `QUEST_DROUGHT` event fires after exactly 72 consecutive ticks (3 days × 24 hours) with 0 available quests.
 - A generated quest's `name` is a flavorful multi-word title - never the bare `QuestType` and never carrying a difficulty suffix (e.g. not `"Investigation"` or `"Investigation (d3)"`).
 - Quest naming is deterministic: the same seed produces the same sequence of quest names.
+- The quest-bracket invariant holds over a full simulation: `findQuestBracketViolations` returns
+  `[]` for the event log of a multi-day scenario run (many quests started and resolved).
 
 ## Principles
 

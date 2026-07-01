@@ -6,6 +6,7 @@ import {
   sleepTypeFor,
 } from '../src/events/activitySystem.js';
 import { createSimulationContext } from '../src/world/SimulationContext.js';
+import { transitionState } from '../src/adventurers/stateMachine.js';
 import { upsertMoodFactor } from '../src/adventurers/mood.js';
 import type { Adventurer, ActivityId, MoodFactor, SimulationContext } from '../src/world/types.js';
 
@@ -570,5 +571,40 @@ describe('SLEEPING activity', () => {
     expect(sleepTypeFor(heavyAdv)).toBe('HEAVY');
     // SHORT range max (6) < HEAVY range min (8)
     // → short sleeper's maximum sleep < heavy sleeper's minimum sleep
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regression — returning from a quest must not narrate a stale "wakes from sleep"
+// ---------------------------------------------------------------------------
+
+describe('activitySubscriber — quest return does not fire a stale wake', () => {
+  it('an adventurer who was SLEEPING before departing does not "wake" on return', () => {
+    // Reiko is asleep at the guild, then gets pulled onto a quest and comes back.
+    // Repro of the reported bug: the frozen SLEEPING activityState fired an ACTIVITY_CHANGED
+    // with prevActivity SLEEPING the instant she returned → "Reiko wakes from sleep…", even
+    // though she was away questing, never asleep.
+    const asleep: Adventurer = {
+      ...makeAdventurer('Reiko', { state: 'IDLE' }),
+      activityState: { current: 'SLEEPING', enteredAt: 2, scheduledExitAt: 8, nextMicroEventAt: 99 },
+    };
+
+    // Depart on a quest, then return home to IDLE — many ticks later.
+    const away = transitionState(asleep, 'ON_QUEST', { questId: 'q1', isDev: false });
+    expect(away.activityState).toBeUndefined(); // cleared on departure
+    const home = transitionState(away, 'IDLE', { questId: null, isDev: false });
+
+    // Return happens well past the old scheduledExitAt of 8.
+    const ctx = makeCtx([home], 40);
+    const next = activitySubscriber(ctx);
+
+    // No wake narration: the only activity event is a fresh initial draw (no prevActivity).
+    const wakes = next.eventLog.filter(
+      e => e.kind === 'ACTIVITY' && e.subtype === 'ACTIVITY_CHANGED' && e.prevActivity === 'SLEEPING',
+    );
+    expect(wakes).toHaveLength(0);
+
+    // She re-draws a fresh activity as if newly arrived.
+    expect(next.adventurers.get('Reiko')!.activityState).toBeDefined();
   });
 });

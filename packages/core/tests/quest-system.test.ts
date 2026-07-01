@@ -4,6 +4,7 @@ import {
   questBoardSeedingSubscriber,
   questExpirySubscriber,
   partySelectionSubscriber,
+  questResolutionSubscriber,
   resolveQuest,
 } from '../src/quests/questSystem.js';
 import { createSimulationContext } from '../src/world/SimulationContext.js';
@@ -246,6 +247,58 @@ describe('partySelectionSubscriber', () => {
     expect(questEvents[0]!.renderedText).toBeTruthy();
   });
 
+  it('emits a PREPARES_FOR_QUEST wake beat before QUEST STARTED for a party member who was asleep', () => {
+    let ctx = createSimulationContext('sel-rouse');
+    ctx = { ...ctx, worldTime: { tick: 30, day: 1, hour: 6 } }; // dawn departure hour
+    const sleeper: Adventurer = {
+      ...makeAdventurer('Reiko'),
+      activityState: { current: 'SLEEPING', enteredAt: 24, scheduledExitAt: 33, nextMicroEventAt: 99 },
+    };
+    ctx = { ...ctx, adventurers: new Map(ctx.adventurers).set('Reiko', sleeper) };
+    ctx = withAvailableQuest(ctx, { ...makeQuest(1), id: 'q1', requiredPartySize: 1 });
+
+    const result = partySelectionSubscriber(ctx);
+
+    const prep = result.eventLog.findIndex(
+      e => e.kind === 'ACTIVITY' && (e as { subtype: string }).subtype === 'PREPARES_FOR_QUEST',
+    );
+    const started = result.eventLog.findIndex(
+      e => e.kind === 'QUEST' && (e as { subtype: string }).subtype === 'STARTED',
+    );
+    expect(prep).toBeGreaterThanOrEqual(0);            // the prepare beat fired
+    expect(started).toBeGreaterThanOrEqual(0);         // the party set out
+    expect(prep).toBeLessThan(started);                // prepare is narrated first
+    expect(result.eventLog[prep]!.renderedText).toContain('Reiko');
+    expect(result.eventLog[prep]!.renderedText.toLowerCase()).toContain('sleep'); // roused flavor
+  });
+
+  it('emits a PREPARES_FOR_QUEST beat for every drafted member, naming the activity they left', () => {
+    let ctx = createSimulationContext('sel-prep-all');
+    ctx = { ...ctx, worldTime: { tick: 30, day: 1, hour: 6 } };
+    const reiko: Adventurer = {
+      ...makeAdventurer('Reiko'),
+      activityState: { current: 'SLEEPING', enteredAt: 24, scheduledExitAt: 33, nextMicroEventAt: 99 },
+    };
+    const bran: Adventurer = {
+      ...makeAdventurer('Bran'),
+      activityState: { current: 'TRAINING', enteredAt: 28, scheduledExitAt: 40, nextMicroEventAt: 99 },
+    };
+    ctx = { ...ctx, adventurers: new Map(ctx.adventurers).set('Reiko', reiko).set('Bran', bran) };
+    ctx = withAvailableQuest(ctx, { ...makeQuest(1), id: 'q1', requiredPartySize: 2 });
+
+    const result = partySelectionSubscriber(ctx);
+    const preps = result.eventLog.filter(
+      e => e.kind === 'ACTIVITY' && (e as { subtype: string }).subtype === 'PREPARES_FOR_QUEST',
+    );
+    // One beat per drafted member.
+    expect(preps).toHaveLength(2);
+    const text = preps.map(e => e.renderedText).join('\n');
+    expect(text).toContain('Reiko');
+    expect(text).toContain('Bran');
+    // The awake member's beat names the activity they broke off.
+    expect(preps.find(e => e.renderedText.includes('Bran'))!.renderedText).toContain('training');
+  });
+
   it('avoids assigning ENEMY pairs if a valid alternative exists', () => {
     let ctx = createSimulationContext('sel-enemy');
     ctx = { ...ctx, worldTime: { tick: 24, day: 1, hour: 0 } };
@@ -320,5 +373,56 @@ describe('resolveQuest', () => {
       const failedEv = result.ctx.eventLog.find(e => e.kind === 'QUEST' && (e as { subtype: string }).subtype === 'FAILED');
       expect(failedEv).toBeDefined();
     }
+  });
+
+  it('emits BEAT_LOG within the quest bracket — before the closing QUEST outcome event — and returns the beats', () => {
+    const ctx = { ...createSimulationContext('resolve-order'), worldTime: { tick: 100, day: 4, hour: 4 } };
+    const party = [makeAdventurer('a', 60), makeAdventurer('b', 60)];
+    const quest = { ...makeQuest(3), id: 'q1', requiredPartySize: 2 };
+
+    const result = resolveQuest(quest, party, ctx, 0);
+    const log = result.ctx.eventLog;
+
+    const beatIdx = log.findIndex(e => e.kind === 'COMBAT' && (e as { subtype: string }).subtype === 'BEAT_LOG');
+    const questIdx = log.findIndex(e => e.kind === 'QUEST'); // COMPLETED or FAILED — the closing bracket
+    expect(beatIdx).toBeGreaterThanOrEqual(0);
+    expect(questIdx).toBeGreaterThanOrEqual(0);
+    // The fight report precedes the closing outcome event; combat never trails past the bracket.
+    expect(beatIdx).toBeLessThan(questIdx);
+
+    // Beats are produced in resolveQuest and returned in the result (combat-resolution.md),
+    // and the emitted event carries exactly those beats.
+    expect(result.beats.length).toBeGreaterThan(0);
+    expect((log[beatIdx] as { beats?: unknown }).beats).toEqual(result.beats);
+  });
+});
+
+describe('questResolutionSubscriber — combat stays inside the quest bracket', () => {
+  it('emits exactly one BEAT_LOG, before the closing QUEST outcome event', () => {
+    const base = createSimulationContext('resolve-sub-order');
+    const q: Quest = {
+      ...makeQuest(1), id: 'q1', requiredPartySize: 1,
+      assignedParty: ['a'], status: 'IN_PROGRESS', startedAt: 0,
+    };
+    const adv: Adventurer = { ...makeAdventurer('a', 60), state: 'ON_QUEST', currentQuestId: 'q1' };
+    const ctx: SimulationContext = {
+      ...base,
+      worldTime: { tick: 48, day: 2, hour: 0 }, // 48 ≥ startedAt(0) + duration(48) → resolves
+      adventurers: new Map([['a', adv]]),
+      questBoard: { available: [], active: [q] },
+    };
+
+    const log = questResolutionSubscriber(ctx).eventLog;
+    const beatLogs = log.filter(e => e.kind === 'COMBAT' && (e as { subtype: string }).subtype === 'BEAT_LOG');
+    // Single emission — resolveQuest owns it; the subscriber no longer regenerates a second set.
+    expect(beatLogs).toHaveLength(1);
+
+    const beatIdx = log.findIndex(e => e.kind === 'COMBAT' && (e as { subtype: string }).subtype === 'BEAT_LOG');
+    const outcomeIdx = log.findIndex(
+      e => e.kind === 'QUEST' && ['COMPLETED', 'FAILED'].includes((e as { subtype: string }).subtype),
+    );
+    expect(beatIdx).toBeGreaterThanOrEqual(0);
+    expect(outcomeIdx).toBeGreaterThanOrEqual(0);
+    expect(beatIdx).toBeLessThan(outcomeIdx);
   });
 });

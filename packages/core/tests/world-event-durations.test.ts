@@ -266,6 +266,28 @@ describe('consumer: narrative colour tint', () => {
     expect(tinted(emitSocialLines(stormy, 80))).toBeGreaterThan(0);
     expect(tinted(emitSocialLines(calm, 80))).toBe(0);
   });
+
+  it('a live FESTIVAL span tints guild-local lines but NEVER a COMBAT fight report', () => {
+    // Regression: a COMBAT:BEAT_LOG (the away-quest fight) must not inherit the town festival's
+    // ambient — otherwise the feed reads "The party trudges home from X. Lantern-light and
+    // laughter spill through the streets outside." for a fight that happened out in a dungeon.
+    const festive = withSpan(ctxWithRegions('festival-tint'), { type: 'FESTIVAL', startedAt: 0, expiresAt: 9999 });
+    const FESTIVAL_MARKERS = ['festival', 'lantern', 'laughter', 'streets', 'crowd', 'music'];
+    const tinted = (lines: string[]) =>
+      lines.filter(l => FESTIVAL_MARKERS.some(m => l.toLowerCase().includes(m))).length;
+
+    // Sanity: the span really is live and tinting guild-local (SOCIAL) lines.
+    expect(tinted(emitSocialLines(festive, 80)), 'social tinted').toBeGreaterThan(0);
+
+    // But the away-quest combat report is never tinted.
+    let c = festive;
+    const combatLines: string[] = [];
+    for (let i = 0; i < 80; i++) {
+      c = emitEvent(c, { kind: 'COMBAT', subtype: 'BEAT_LOG', questId: 'q1', involvedIds: ['alice'] });
+      combatLines.push(c.eventLog[c.eventLog.length - 1]!.renderedText);
+    }
+    expect(tinted(combatLines), 'combat never tinted').toBe(0);
+  });
 });
 
 // ---------------------------------------------------------------------------

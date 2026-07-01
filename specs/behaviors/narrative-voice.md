@@ -56,6 +56,11 @@ renderedText = subject + beat + colour
   phrase, a mood tint). Drawn from a **colour pool** that may be keyed by subtype, by the
   participants' mood band, or by an active world-event span (e.g. storm colour while a STORM
   span is active). Colour is omitted on a fraction of lines so the feed is not uniformly ornate.
+  - **Span-tint scope.** A span tint represents the *guild-town region's* ambient weather/mood,
+    so it only decorates **guild-local** lines. Two families never receive it: `WORLD` (the span
+    announcement narrates itself and must not be self-tinted) and `COMBAT` (the away-quest fight
+    report happens out in a dungeon, not the tinted town region — a live `FESTIVAL` must not append
+    "laughter spills through the streets" to a `BEAT_LOG` line about a bloodied party trudging home).
 
 Each pool is a `readonly string[]` (or a small keyed `Record`). Selection is **always** via
 `ctx.rng` — never `Math.random()`. Name/region slots are filled by interpolation (`{a}`,

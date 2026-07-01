@@ -19,6 +19,16 @@ Quest resolution produces a sequence of `CombatBeat` records — a beat-by-beat 
 - Number of beats: `quest.difficulty * 3 + party.length * 2`, randomised ±20% via seeded RNG.
 - Beats represent a narrative reconstruction of what happened — they are generated to be consistent with the already-determined outcome, not to re-determine it.
 
+### Event emission order (quest bracket)
+
+The `COMBAT:BEAT_LOG` event (carrying `beats` + `success`) is emitted **within** `resolveQuest`,
+**before** the closing `QUEST:COMPLETED`/`QUEST:FAILED` event and before any
+`LIFECYCLE:ADVENTURER_DIED` events. The feed therefore reads in causal order — the fight, then its
+casualties, then the outcome — and combat never trails *after* the quest has been announced
+resolved (it stays inside the `[QUEST:STARTED … QUEST:COMPLETED]` bracket). `resolveQuest` returns
+the generated beats in `QuestOutcome.beats`; the resolution subscriber reuses them for history
+derivation rather than regenerating a second, divergent set.
+
 ### Beat action selection
 
 Each beat's action is drawn from a weighted probability table for the acting adventurer:

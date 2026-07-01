@@ -101,13 +101,28 @@ export type DivineInterventionEventInput = {
   targetId?: string;
 };
 
-export type ActivityEventInput = {
-  kind: 'ACTIVITY';
-  subtype: 'ACTIVITY_CHANGED' | 'MICRO_EVENT';
-  adventurerId: AdventurerId;
-  activity: ActivityId;
-  prevActivity?: ActivityId;
-};
+export type ActivityEventInput =
+  | {
+      kind: 'ACTIVITY';
+      subtype: 'ACTIVITY_CHANGED';
+      adventurerId: AdventurerId;
+      activity: ActivityId;
+      prevActivity?: ActivityId;
+    }
+  | {
+      kind: 'ACTIVITY';
+      subtype: 'MICRO_EVENT';
+      adventurerId: AdventurerId;
+      activity: ActivityId;
+    }
+  | {
+      // Per-character beat as a drafted member readies to depart on a quest. `prevActivity` is the
+      // activity they were pulled from (absent if they had not yet drawn one); a sleeper is roused.
+      kind: 'ACTIVITY';
+      subtype: 'PREPARES_FOR_QUEST';
+      adventurerId: AdventurerId;
+      prevActivity?: ActivityId;
+    };
 
 export type SimulationEventInput =
   | SocialEventInput
@@ -466,6 +481,23 @@ const BEAT_POOLS: Record<string, readonly string[]> = {
     '{who} rises, shakes off sleep, and starts {next}.',
     'Newly woken, {who} sets to {next}.',
   ],
+  // A drafted party member readying to depart. WAKE = pulled from sleep; the plain form = pulled
+  // from a waking activity ({prev}); the bare form = no activity drawn yet.
+  'ACTIVITY:PREPARES_FOR_QUEST_WAKE': [
+    '{who} is roused from sleep and readies for the road.',
+    '{who} wakes, shakes off sleep, and gathers their gear for the quest.',
+    'Roused from a deep sleep, {who} rises and prepares to set out.',
+  ],
+  'ACTIVITY:PREPARES_FOR_QUEST': [
+    '{who} sets aside {prev} and readies for the road.',
+    '{who} breaks off {prev}, gathers their gear, and prepares to set out.',
+    'Leaving {prev} behind, {who} readies for the quest.',
+  ],
+  'ACTIVITY:PREPARES_FOR_QUEST_PLAIN': [
+    '{who} gathers their gear and readies for the road.',
+    '{who} straps on their pack and prepares to set out.',
+    '{who} makes ready for the quest ahead.',
+  ],
 };
 
 /** Colour pools keyed by family or context — appended to a fraction of lines. */
@@ -548,9 +580,14 @@ function compose(
   if (colours && ctx.rng.next() < (opts?.colourChance ?? 0.5)) {
     line += ' ' + fill(pick(colours, ctx), slots);
   }
-  // Span tint: an active world span colours unrelated lines (not the world announcements
-  // themselves). rng is only consumed when a span is live, so spanless feeds are unchanged.
-  if (!familyKey.startsWith('WORLD')) {
+  // Span tint: an active world span colours unrelated *guild-local* lines with the tinted
+  // region's ambient weather/mood. Two families are excluded:
+  //  - WORLD  — the span announcements themselves (a storm doesn't narrate itself as tinted);
+  //  - COMBAT — the away-quest fight report happens out in a dungeon, not the guild-town region,
+  //             so a live FESTIVAL's "laughter in the streets" must never bleed onto a combat
+  //             line ("The party trudges home from X. Lantern-light and laughter spill…").
+  // rng is only consumed when a span is live, so spanless feeds are unchanged.
+  if (!familyKey.startsWith('WORLD') && !familyKey.startsWith('COMBAT')) {
     const spanColours = activeSpanColours(ctx);
     if (spanColours.length > 0 && ctx.rng.next() < SPAN_TINT_CHANCE) {
       line += ' ' + pick(spanColours, ctx);
@@ -645,6 +682,16 @@ function renderText(input: SimulationEventInput, ctx: SimulationContext): string
       switch (input.subtype) {
         case 'MICRO_EVENT':
           return `${who} is ${ACTIVITY_GERUND[input.activity]}.`;
+        case 'PREPARES_FOR_QUEST': {
+          if (!input.prevActivity) {
+            return compose('ACTIVITY:PREPARES_FOR_QUEST_PLAIN', { who }, ctx, `${who} gathers their gear and readies for the road.`);
+          }
+          if (input.prevActivity === 'SLEEPING') {
+            return compose('ACTIVITY:PREPARES_FOR_QUEST_WAKE', { who }, ctx, `${who} is roused from sleep and readies for the road.`);
+          }
+          const prev = ACTIVITY_NOUN[input.prevActivity];
+          return compose('ACTIVITY:PREPARES_FOR_QUEST', { who, prev }, ctx, `${who} sets aside ${prev} and readies for the road.`);
+        }
         case 'ACTIVITY_CHANGED': {
           const next = ACTIVITY_NOUN[input.activity];
           if (input.prevActivity) {

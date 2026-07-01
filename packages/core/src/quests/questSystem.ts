@@ -13,6 +13,7 @@ import type {
   AdventurerId,
   RelationshipGraph,
   GoalMilestone,
+  CombatBeat,
 } from '../world/types.js';
 import { strengthToType, createEdge, applyStrengthShift } from '../relationships/graph.js';
 import { isNpc } from '../world/actors.js';
@@ -302,7 +303,10 @@ export function partySelectionSubscriber(ctx: SimulationContext): SimulationCont
 
     const partyIds = draft.map(a => a.id);
 
-    // Assign party + transition adventurers
+    // Snapshot each drafted member's current activity *before* transitionState clears it, so we
+    // can narrate a per-character prepare beat below (a sleeper is roused, others break off).
+    const prepared = draft.map(adv => ({ id: adv.id, prevActivity: adv.activityState?.current }));
+
     const updatedAdventurers = new Map(updatedCtx.adventurers);
     for (const adv of draft) {
       const next = transitionState(adv, 'ON_QUEST', { isDev: false, questId: quest.id });
@@ -320,10 +324,19 @@ export function partySelectionSubscriber(ctx: SimulationContext): SimulationCont
       ],
     };
 
-    updatedCtx = emitEvent(
-      { ...updatedCtx, adventurers: updatedAdventurers, questBoard: updatedBoard },
-      { kind: 'QUEST', subtype: 'STARTED', questId: quest.id, partyIds },
-    );
+    updatedCtx = { ...updatedCtx, adventurers: updatedAdventurers, questBoard: updatedBoard };
+
+    // Every drafted member gets a per-character prepare beat *before* the party sets out, so the
+    // feed shows each adventurer readying — a sleeper is roused, the rest break off their activity —
+    // and never jumps straight into the departure. (social-system.md §2)
+    for (const p of prepared) {
+      updatedCtx = emitEvent(updatedCtx, {
+        kind: 'ACTIVITY', subtype: 'PREPARES_FOR_QUEST', adventurerId: p.id,
+        ...(p.prevActivity ? { prevActivity: p.prevActivity } : {}),
+      });
+    }
+
+    updatedCtx = emitEvent(updatedCtx, { kind: 'QUEST', subtype: 'STARTED', questId: quest.id, partyIds });
   }
 
   return updatedCtx;
@@ -339,6 +352,7 @@ export type QuestOutcomeResult = {
   injuries: AdventurerId[];
   deaths: AdventurerId[];
   loot: number;
+  beats: CombatBeat[];
 };
 
 export function resolveQuest(
@@ -355,6 +369,22 @@ export function resolveQuest(
   const updatedAdventurers = new Map(ctx.adventurers);
   const injuries: AdventurerId[] = [];
   const deaths: AdventurerId[] = [];
+
+  // Combat beats dramatise the already-decided outcome (combat-resolution.md): generate them here,
+  // right after the success/failure roll, and emit the BEAT_LOG fight report BEFORE the closing
+  // QUEST:COMPLETED/FAILED (and any death) events. That keeps combat *inside* the quest bracket —
+  // the fight, then its consequences, then the outcome — instead of the report trailing after the
+  // quest has already been announced resolved. Uses pre-resolution relationships (the fight
+  // predates the co-quest strength shifts applied below).
+  const beats = generateBeats(quest, party, ctx.relationships, updatedCtx.rng, success);
+  updatedCtx = emitEvent(updatedCtx, {
+    kind: 'COMBAT',
+    subtype: 'BEAT_LOG',
+    questId: quest.id,
+    involvedIds: party.map(a => a.id),
+    beats,
+    success,
+  });
 
   if (success) {
     const loot = quest.reward;
@@ -388,7 +418,7 @@ export function resolveQuest(
       { kind: 'QUEST', subtype: 'COMPLETED', questId: quest.id, partyIds: party.map(a => a.id) },
     );
 
-    return { ctx: updatedCtx, success: true, injuries, deaths, loot };
+    return { ctx: updatedCtx, success: true, injuries, deaths, loot, beats };
   } else {
     // Failure: injury + death rolls per party member
     for (const adv of party) {
@@ -430,7 +460,7 @@ export function resolveQuest(
       { kind: 'QUEST', subtype: 'FAILED', questId: quest.id, partyIds: party.map(a => a.id) },
     );
 
-    return { ctx: updatedCtx, success: false, injuries, deaths, loot: 0 };
+    return { ctx: updatedCtx, success: false, injuries, deaths, loot: 0, beats };
   }
 }
 
@@ -494,18 +524,10 @@ export function questResolutionSubscriber(ctx: SimulationContext): SimulationCon
       updatedCtx = { ...updatedCtx, adventurers: injuredMap };
     }
 
-    // Generate beats (uses post-resolve RNG for deterministic continuation)
-    const beats = generateBeats(quest, party, ctx.relationships, updatedCtx.rng, result.success);
-
-    // Emit BEAT_LOG combat event (carries beats for combat replay UI)
-    updatedCtx = emitEvent(updatedCtx, {
-      kind: 'COMBAT',
-      subtype: 'BEAT_LOG',
-      questId: quest.id,
-      involvedIds: party.map(a => a.id),
-      beats,
-      success: result.success,
-    });
+    // Beats + the BEAT_LOG event are produced inside resolveQuest (combat-resolution.md), emitted
+    // before the closing QUEST outcome event so combat stays within the quest bracket. Reuse the
+    // returned beats here for history derivation (NEAR_DEATH, SAVED_BY).
+    const beats = result.beats;
 
     // Credit treasury on success; grant DI burst
     updatedCtx = { ...updatedCtx, treasury: updatedCtx.treasury + result.loot };

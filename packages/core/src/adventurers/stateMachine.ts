@@ -67,5 +67,14 @@ export function transitionState(
     ? null
     : (questId ?? adventurer.currentQuestId);
 
-  return { ...adventurer, state: to, currentQuestId: newQuestId };
+  const next = { ...adventurer, state: to, currentQuestId: newQuestId };
+
+  // Leaving the guild for a quest drops any in-progress home activity. The activity subscriber
+  // skips questing adventurers, so a retained activityState freezes with a now-stale
+  // scheduledExitAt and fires a spurious exit the instant the adventurer returns — e.g. narrating
+  // "wakes from sleep" for someone who was away questing, not asleep. Cleared here, the subscriber
+  // re-draws a fresh activity on return. (social-system.md §2)
+  if (to === 'ON_QUEST' || to === 'IN_DUNGEON') delete next.activityState;
+
+  return next;
 }

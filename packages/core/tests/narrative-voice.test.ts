@@ -126,6 +126,32 @@ describe('narrative-voice — grammar variety', () => {
     });
     expect(wake.size, 'wake').toBeGreaterThanOrEqual(3);
   });
+
+  it('PREPARES_FOR_QUEST yields ≥3 distinct lines for wake, break-off, and plain forms', () => {
+    const roused = distinctRenderings('voice-prep-wake', {
+      kind: 'ACTIVITY', subtype: 'PREPARES_FOR_QUEST', adventurerId: 'alice', prevActivity: 'SLEEPING',
+    });
+    expect(roused.size, 'wake').toBeGreaterThanOrEqual(3);
+    for (const line of roused) {
+      expect(line).toContain('alice');
+      expect(line.toLowerCase()).toContain('sleep'); // sleeper is roused, not just "readies"
+    }
+
+    const breakOff = distinctRenderings('voice-prep-break', {
+      kind: 'ACTIVITY', subtype: 'PREPARES_FOR_QUEST', adventurerId: 'alice', prevActivity: 'TRAINING',
+    });
+    expect(breakOff.size, 'break-off').toBeGreaterThanOrEqual(3);
+    for (const line of breakOff) {
+      expect(line).toContain('alice');
+      expect(line).toContain('training'); // names the activity they left
+    }
+
+    const plain = distinctRenderings('voice-prep-plain', {
+      kind: 'ACTIVITY', subtype: 'PREPARES_FOR_QUEST', adventurerId: 'alice',
+    });
+    expect(plain.size, 'plain').toBeGreaterThanOrEqual(3);
+    for (const line of plain) expect(line).toContain('alice');
+  });
 });
 
 describe('narrative-voice — determinism & integrity', () => {

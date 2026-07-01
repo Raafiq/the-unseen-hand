@@ -113,3 +113,26 @@ to prevent re-fire after the player dismisses the card or it expires.
 
 One-shot detectors (triggered by a specific event firing on a specific tick) don't
 need this — they can't re-trigger unless the triggering event fires again.
+
+### Event rule — a new event subtype needs its own beat pool
+
+`compose()` (`events/eventBus.ts`) returns the single fallback string when
+`BEAT_POOLS` has no `KIND:SUBTYPE` key — no error, no test failure. And
+`narrative-voice.test.ts` enumerates the subtypes it checks by hand, so a newly
+added subtype is uncovered until you add it. Net effect: ship a subtype without a
+beat pool and it renders one monotonous line forever, with green tests.
+
+When adding an event subtype (ACTIVITY, QUEST, LIFECYCLE, …), do all three:
+- add a `BEAT_POOLS['KIND:SUBTYPE']` entry with ≥3 variants;
+- add its render case in `renderText`;
+- add the subtype to the matching per-kind enumeration in `narrative-voice.test.ts`.
+
+### Diagnosing feed/event bugs — reproduce the emitted log
+
+For a bug about what appears in the event feed (wrong text, wrong order, a stray tint or
+beat), reproduce it by exercising the real emission path and asserting on `eventLog`
+(rendered text + relative order) — not by reading individual `emitEvent` sites.
+Composition bugs (a span tint on the wrong event family) and ordering bugs (an event
+emitted after the one that should close it) don't show at any single call site — only in
+the assembled, ordered log. A one-line feed complaint can hide more than one defect;
+account for every part before declaring it fixed.

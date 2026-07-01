@@ -157,6 +157,28 @@ Each activity has a **base duration range** in simulated hours:
 
 When a social encounter fires the JOIN result (§3), the target's current activity duration is extended by `rng.next() * 2 + 0.5` hours (0.5–2.5 hrs). The joining character inherits the remaining duration of the extended window.
 
+**Departing on a quest clears the activity.** The activity pool models guild home life; an
+adventurer who leaves for a quest (`ON_QUEST`/`IN_DUNGEON`) is no longer in any activity, so their
+`activityState` is cleared on departure. This is load-bearing: the activity system skips questing
+adventurers, so a retained `activityState` would freeze with a stale duration endpoint and fire a
+spurious exit the instant the adventurer returns — narrating, e.g., "wakes from sleep" for someone
+who was away questing rather than asleep. On return the adventurer re-draws a fresh activity from
+the pool (a normal `begins <activity>` beat), not a stale wake.
+
+**Every drafted member readies before the party sets out.** Party assignment emits one
+`PREPARES_FOR_QUEST` activity beat per drafted adventurer, ordered **before** the `QUEST:STARTED`
+event, so the feed shows each character readying rather than jumping straight into the departure.
+The beat is keyed off the activity the member was pulled from (captured before departure clears the
+`activityState`):
+
+- pulled from `SLEEPING` → the roused form (`{who} is roused from sleep and readies for the road`);
+- pulled from any waking activity → the break-off form (`{who} sets aside <prev> and readies for the road`);
+- no activity drawn yet (party selection runs before the activity pool on an adventurer's first tick) → the plain form (`{who} gathers their gear and readies for the road`).
+
+This subsumes the wake-first guarantee for the quest path: leaving `SLEEPING` is never silent. For an
+ordinary in-guild exit the wake is instead the `ACTIVITY_CHANGED` wake form
+(`{who} wakes from sleep and begins <next>`).
+
 ---
 
 ### 3. Micro-events

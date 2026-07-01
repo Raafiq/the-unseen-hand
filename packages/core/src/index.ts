@@ -117,6 +117,8 @@ export {
   seedQuestBoard,
 } from './quests/questSystem.js';
 export type { QuestOutcomeResult } from './quests/questSystem.js';
+export { findQuestBracketViolations } from './quests/questBracketInvariant.js';
+export type { QuestBracketViolation } from './quests/questBracketInvariant.js';
 export type { SimulationEventInput, SocialEventInput, CombatEventInput, QuestEventInput,
   LifecycleEventInput, WorldEventInput, DecisionMomentEventInput, DivineInterventionEventInput,
 } from './events/eventBus.js';

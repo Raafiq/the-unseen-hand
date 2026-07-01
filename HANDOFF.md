@@ -1,32 +1,27 @@
 # Handoff — The Unseen Hand (guild-sim)
 
 _Updated 2026-07-01. **Phase 10 (Events Redesign) is COMPLETE — all four plans `done`.** `specops
-next` reports 0 ready · 0 in-progress · 0 blocked. HEAD `0135815` on `main`. Tree has one unrelated
-uncommitted change (`CLAUDE.md` doc addition — left as-is, not mine). No `ready` plan to pick up next;
-the top actionable item is the pre-existing e2e failure below._
+next` reports 0 ready · 0 in-progress · 0 blocked. HEAD `4a06e17` on `main`. Tree has one unrelated
+uncommitted change (`CLAUDE.md` doc addition — left as-is, not mine). No `ready` plan to pick up next._
 
 ---
 
 ## Where things stand
 
 Phase 10 shipped p10a (narrative voice), p10b (world-event durations), p10c (social pressure), and
-now **p10d (town NPC system)** — all `done`. Verified at p10d closeout: **504 core Vitest green**,
-`tsc --noEmit` (core + client) clean, `svelte-check` 0/0, no `Math.random()` in `packages/core/src`.
-Playwright: **10/12 green** — the 2 failures are pre-existing (see below).
+now **p10d (town NPC system)** — all `done`. Fully green: **504 core Vitest**, **12/12 Playwright
+e2e**, `tsc --noEmit` (core + client) clean, `svelte-check` 0/0, no `Math.random()` in
+`packages/core/src`.
 
-## TOP ITEM — pre-existing E2E failure (needs a design call)
+## Fixed this session — the long-standing choice-card e2e
 
-`apps/game-client/tests/choice-card.spec.ts` (2 tests) **fails on clean HEAD too** — proven by
-stashing all p10d work, rebuilding, and re-running. It is NOT caused by the NPC work.
-
-- **Root cause:** the single-adventurer scenario-1 board (seed `scenario-1`) seeds no low-probability
-  **size-1** quest. The only size-1 quest is Investigation d3 at 0.70 success; the d7/d9 quests are
-  size 2–3 and Kara is alone, so she can neither be auto-assigned to them nor trigger a
-  `PARTY_SELECTION` decision (which needs `requiredPartySize ≤ idle count`). The card never appears →
-  the 12 s wait times out. In fact the single-Kara scenario produces **no** decision moments at all.
-- **Fix options (pick one):** (a) seed a size-1 high-difficulty quest in scenario-1; (b) add a
-  deterministic decision-injection test seam to the store; (c) rewrite the test to force the state.
-  All are out of p10d scope. Details in `plans/p10d-npc-system.md` Follow-ups.
+`apps/game-client/tests/choice-card.spec.ts` had been failing on clean HEAD (a deferred gap, not
+p10d): the single-Kara scenario produces no decision moments organically — no low-prob size-1 quest,
+and Kara alone can't field the size-2/3 quests, so `PARTY_SELECTION` never fires. Fixed with a
+query-param-gated e2e seam (`?e2e=decision`) in `simulationStore.svelte.ts` that injects one
+deterministic PARTY_SELECTION at load; the spec now targets `/?e2e=decision` and still drives the
+real ChoiceCard render path. The deeper gameplay gap (a solo scenario yielding zero decisions) is
+left for a future scenario-balance pass.
 
 ## What p10d added (for context)
 

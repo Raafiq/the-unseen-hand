@@ -100,9 +100,8 @@ Three EventFeed updates; NPC-name resolution in `getInvolvedIds` and character/r
 - [x] Live FESTIVAL raises Social-cluster weight + social pressure gain; reverts on END.
 - [x] No `Math.random()` anywhere in the NPC path (grep clean).
 - [x] EventFeed renders the `NPC` kind (`KIND_LABELS`/`ALL_KINDS`/`getInvolvedIds` all updated).
-- [x] `tsc --noEmit` and `svelte-check` pass; Vitest green (504). Playwright: 10/12 green; the 2
-  `choice-card.spec.ts` failures are **pre-existing** (fail identically on clean HEAD — see Follow-ups),
-  unrelated to the NPC path.
+- [x] `tsc --noEmit` and `svelte-check` pass; Vitest green (504); Playwright 12/12 green (the 2
+  pre-existing `choice-card.spec.ts` failures were fixed in the same session — see Follow-ups).
 
 ## Risks / unknowns
 
@@ -147,15 +146,14 @@ Three EventFeed updates; NPC-name resolution in `getInvolvedIds` and character/r
 
 ## Follow-ups
 
-- **PRE-EXISTING E2E FAILURE (not p10d):** `apps/game-client/tests/choice-card.spec.ts` (2 tests) fails
-  on clean HEAD as well as this branch. Root cause: the single-Kara scenario board (seed `scenario-1`)
-  seeds no low-probability **size-1** quest — the only size-1 quest is Investigation d3 at 0.70 success,
-  and Kara alone can't field the size-2/3 quests — so a `PARTY_SELECTION` decision moment can never fire
-  organically, and the test waits forever for `.primary-card`. The single-adventurer scenario in fact
-  produces no decision moments at all (Kara never quests, never despairs). This is a scenario/test drift
-  that predates and is orthogonal to the NPC work. Fix options: (a) seed a size-1 high-difficulty quest
-  in scenario-1; (b) add a deterministic decision-injection test seam; (c) rewrite the test to force the
-  state. Needs a design call — deferred, flagged to the user.
+- **RESOLVED — pre-existing e2e failure (was not p10d):** `apps/game-client/tests/choice-card.spec.ts`
+  (2 tests) had been failing on clean HEAD too. Root cause: the single-Kara scenario board seeds no
+  low-probability **size-1** quest, so a `PARTY_SELECTION` decision never fires organically (the solo
+  scenario produces no decision moments at all). Fixed by rewriting the spec against a new
+  query-param-gated e2e seam (`?e2e=decision`) in `simulationStore.svelte.ts` that injects one
+  deterministic PARTY_SELECTION at load — still exercises the real ChoiceCard render path. **12/12 e2e
+  green.** The deeper gameplay gap (a solo scenario yielding zero decisions) is left as a design note
+  for a future scenario-balance pass.
 - **FEUD span (p10c follow-up #2):** subtype union + `WORLD:FEUD:START/END` grammar now exist; a p10c
   follow-up can open a FEUD span from `resolveEncounter` on ESTRANGEMENT+crisis. Add a `WorldEventType`
   entry + `SPAN_DURATIONS` when wired.

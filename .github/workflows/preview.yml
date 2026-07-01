@@ -1,0 +1,65 @@
+name: Preview deploy
+
+# Builds the game client and publishes it to GitHub Pages so a running preview
+# is viewable from a phone/browser. Deploys on every push (latest push wins) and
+# can be run on demand. The live URL is https://raafiq.github.io/the-unseen-hand/.
+
+on:
+  push:
+  workflow_dispatch:
+
+# One in-flight Pages deploy at a time; a newer push cancels an older build.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    name: Build & deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build @ugs/core
+        run: pnpm --filter @ugs/core build
+
+      - name: Build game client for Pages
+        run: pnpm --filter @ugs/game-client build
+        env:
+          BASE_PATH: /the-unseen-hand/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/game-client/dist
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

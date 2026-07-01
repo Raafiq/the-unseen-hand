@@ -90,6 +90,16 @@ work from the first prompt. Node is pinned to `22` via `.nvmrc`. Commits push to
 working branch, and `.github/workflows/ci.yml` (typecheck, `svelte-check`, build,
 test, and Playwright e2e) validates every push.
 
+**Live preview from your phone:** `.github/workflows/preview.yml` builds the game
+client and deploys it to **GitHub Pages** on every push — open
+`https://raafiq.github.io/the-unseen-hand/` on any device to view the latest
+pushed build (latest push wins; one-time repo setup: Settings → Pages → Source →
+"GitHub Actions"). The Pages build sets `BASE_PATH=/the-unseen-hand/` so assets
+resolve under the project-site subpath; local dev, `vite preview`, and e2e stay on
+`/`. There is no live dev-server port-forwarding from cloud sessions — to *see* UI
+changes mid-session, have Claude screenshot the app with Playwright (Chromium is
+pre-provisioned).
+
 **What does _not_ travel to web/mobile sessions:** only committed repo content is
 cloned. Anything under your local `~/.claude/` — personal/global `CLAUDE.md`,
 personal skills (e.g. specops), and personal commands — stays on your device and

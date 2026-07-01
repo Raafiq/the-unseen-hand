@@ -1,5 +1,5 @@
 ---
-status: planned
+status: in-progress
 depends: [p10c-social-pressure, p10a-narrative-voice]
 specs:
   - specs/behaviors/npc-system.md

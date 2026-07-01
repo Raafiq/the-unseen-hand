@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    name: Typecheck, build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck @ugs/core
+        run: pnpm --filter @ugs/core exec tsc --noEmit
+
+      - name: Build @ugs/core
+        run: pnpm --filter @ugs/core build
+
+      - name: svelte-check @ugs/game-client
+        run: pnpm --filter @ugs/game-client check
+
+      - name: Build all
+        run: pnpm build
+
+      - name: Test all
+        run: pnpm test
+
+  e2e:
+    name: Playwright e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build @ugs/core
+        run: pnpm --filter @ugs/core build
+
+      - name: Install Playwright browser
+        run: pnpm --filter @ugs/game-client exec playwright install --with-deps chromium
+
+      - name: Run e2e tests
+        run: pnpm --filter @ugs/game-client test:e2e

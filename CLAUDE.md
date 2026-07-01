@@ -78,3 +78,40 @@ when you work in that subtree:
   EventFeed three-update rule, no manual browser gates, auto-pause speed restore.
 
 For a task that spans both packages, consult both files.
+
+---
+
+## Working from the Claude mobile app / web
+
+This repo is set up for **Claude Code on the web** (claude.ai/code) — the same
+backend the Claude mobile app uses. To send prompts against this repo remotely:
+open the app or claude.ai/code → select `raafiq/the-unseen-hand` → start a
+session and describe the change.
+
+Each web/mobile session runs in a **fresh, ephemeral Linux container** (the repo
+is cloned clean, no `node_modules`). The `.claude/hooks/session-start.sh`
+SessionStart hook bootstraps it automatically — enabling pnpm `10.12.1`, running
+`pnpm install --frozen-lockfile`, and building `@ugs/core` — so builds and tests
+work from the first prompt. The hook is **cloud-only**: it early-exits unless
+`CLAUDE_CODE_REMOTE_SESSION_ID` is set, so it no-ops on local devices (which
+already have `node_modules` and may lack a bash interpreter on Windows). Node is pinned to `22` via `.nvmrc`. Commits push to a
+working branch, and `.github/workflows/ci.yml` (typecheck, `svelte-check`, build,
+test, and Playwright e2e) validates every push.
+
+**Live preview from your phone:** `.github/workflows/preview.yml` builds the game
+client and deploys it to **GitHub Pages** on every push — open
+`https://raafiq.github.io/the-unseen-hand/` on any device to view the latest
+pushed build (latest push wins; one-time repo setup: Settings → Pages → Source →
+"GitHub Actions"). The Pages build sets `BASE_PATH=/the-unseen-hand/` so assets
+resolve under the project-site subpath; local dev, `vite preview`, and e2e stay on
+`/`. There is no live dev-server port-forwarding from cloud sessions — to *see* UI
+changes mid-session, have Claude screenshot the app with Playwright (Chromium is
+pre-provisioned).
+
+**What does _not_ travel to web/mobile sessions:** only committed repo content is
+cloned. Anything under your local `~/.claude/` — personal/global `CLAUDE.md`,
+personal skills (e.g. specops), and personal commands — stays on your device and
+is **absent** in web sessions. To use them from mobile they must be committed into
+the repo (`.claude/skills/`, repo `CLAUDE.md`, etc.). The specops skill is
+currently local-only (root references point at a `C:\Users\...` path); vendoring
+it into the repo is tracked as follow-up work.

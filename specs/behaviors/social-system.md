@@ -29,15 +29,15 @@ Adventurers living inside the guild lead autonomous daily lives. Each adventurer
 
 #### Activity vocabulary
 
-Thirteen named activities in three clusters:
+Fifteen named activities in three clusters:
 
 | Cluster | Activities |
 |---|---|
 | **Physical** | `TRAINING`, `SPARRING`, `PATROL`, `HUNTING` |
 | **Social** | `DRINKING`, `GAMBLING`, `COOKING`, `EATING`, `GOSSIPING` |
-| **Private** | `READING`, `BROODING`, `RESTING`, `PRAYING`, `CRAFTING` |
+| **Private** | `READING`, `BROODING`, `RESTING`, `PRAYING`, `CRAFTING`, `SLEEPING` |
 
-An adventurer is always in exactly one activity. On completing or exiting an activity, they draw the next from the weighted pool.
+An adventurer is always in exactly one activity. On completing or exiting an activity, they draw the next from the weighted pool. `SLEEPING` is drawn from the same pool but carries the special handling described under **Sleep and sleep deprivation** below (own duration table, night pressure, no micro-events, no mood-threshold exit).
 
 #### Activity weight calculation
 
@@ -97,6 +97,40 @@ New transient factors that carry activity weights:
 | `HANGOVER` | DRINKING activity completed | −8 | DRINKING ×0.15, TRAINING ×0.5 | 0.0 (expires next day) |
 | `QUEST_INJURY` | Quest resolution with injury flag | −12 | TRAINING ×0.3, SPARRING ×0.3, PATROL ×0.5 | 0.05 |
 | `WELL_RESTED` | RESTING activity completed with CONTENT mood | +10 | TRAINING ×1.4, SPARRING ×1.4 | 0.0 (expires next day) |
+| `SLEEP_DEPRIVED` | Stayed awake through the deep-night window (see below) | −12 | TRAINING ×0.5, SPARRING ×0.4, PATROL ×0.6 | 0.0 (expires `(day+1)×24 + 18`) |
+
+#### Sleep and sleep deprivation
+
+`SLEEPING` is the nightly rest activity. It is drawn from the same weighted pool as every other
+activity but differs in four ways:
+
+**Sleep type and duration.** Each adventurer has a *sleep type* derived from personality, which
+sets the sleep duration range (in simulated hours):
+
+| Sleep type | Condition | Duration |
+|---|---|---|
+| `SHORT` | `ambition ≥ 65` (drive overrides tiredness) | 4–6 hrs |
+| `HEAVY` | `empathy ≥ 65 AND courage ≤ 40` | 8–11 hrs |
+| `NORMAL` | all other adventurers | 6–9 hrs |
+
+Sleep type also tilts the draw weight: `SHORT` sleepers weight `SLEEPING` ×0.7 (they resist
+sleep), `HEAVY` sleepers ×1.4 (they are drawn to it).
+
+**Night pressure.** During night hours (`hour ≥ 22 OR hour ≤ 5`) the `SLEEPING` weight is
+multiplied ×12 and Physical-cluster weights ×0.25, so adventurers strongly tend to sleep at
+night and rarely train. Low mood also raises the pull toward sleep (CONTENT ×0.6, UNSATISFIED
+×1.5, DESPAIRING ×2.5).
+
+**No interruptions.** `SLEEPING` fires no micro-events and does **not** honour the mood-threshold
+early exit (§2) — an adventurer sleeps through mood swings until the drawn duration elapses.
+
+**Sleep deprivation.** Staying *awake* through the deep-night window incurs a mood penalty. When
+an adventurer exits an activity during hours `00:00–04:00` (`hour ≤ 4`) and the activity being
+left is **not** `SLEEPING` and the next activity drawn is **not** `SLEEPING`, the `SLEEP_DEPRIVED`
+factor above is applied. The `prevActivity ≠ SLEEPING` guard is load-bearing: **waking naturally
+from a completed sleep inside the deep-night window is not deprivation** — only staying up is.
+Without it, `NORMAL`/`HEAVY` sleepers who go to bed in the evening and wake in the 00:00–04:00
+window are falsely branded sleep-deprived every night for sleeping correctly.
 
 ---
 
@@ -109,6 +143,8 @@ Each activity has a **base duration range** in simulated hours:
 | Physical | 1–3 hrs |
 | Social | 1–4 hrs |
 | Private | 2–6 hrs |
+
+`SLEEPING` overrides the Private range with its sleep-type range (§1, Sleep and sleep deprivation): SHORT 4–6, NORMAL 6–9, HEAVY 8–11 hrs.
 
 **Scaling factors:**
 - `stubborn ≥ 70`: multiply upper bound ×1.5 (difficult to break off)
@@ -363,6 +399,9 @@ narrator sits above it as one of the three LLM set-pieces (`behaviors/narrative-
 - An adventurer's current activity changes no more frequently than its minimum duration allows.
 - HANGOVER MoodFactor suppresses DRINKING weight to ≤ 15% of its baseline for the following day.
 - An adventurer with `stubborn ≥ 70` and a QUEST_INJURY MoodFactor has `stubbornOverride: true` on the factor and does NOT have suppressed TRAINING/SPARRING weights.
+- A sleeper who wakes from a completed `SLEEPING` activity inside the deep-night window (`hour ≤ 4`) is NOT given the `SLEEP_DEPRIVED` factor (waking from sleep is not deprivation).
+- An adventurer who exits a non-`SLEEPING` activity during `hour ≤ 4` and draws a non-`SLEEPING` next activity IS given the `SLEEP_DEPRIVED` factor.
+- A `NORMAL` sleeper (default personality) has a sleep duration in 6–9 hrs; a `SHORT` sleeper (`ambition ≥ 65`) in 4–6 hrs; a `HEAVY` sleeper (`empathy ≥ 65`, `courage ≤ 40`) in 8–11 hrs.
 - Enemy pairs (`strength ≤ −51`) accumulate zero pressure and never fire in a 24-tick run (absent crisis flag).
 - A pair kept apart (one always in a Private activity) has its pressure decay toward 0 and never crosses THRESHOLD.
 - A pair under sustained proximity + mood-strain accumulates pressure monotonically until it crosses THRESHOLD (measured on the accumulator, not on a rolled outcome).

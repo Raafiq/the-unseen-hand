@@ -404,9 +404,11 @@ export function activitySubscriber(ctx: SimulationContext): SimulationContext {
       const prevActivity = currActivity;
       const nextActivity = drawActivity(current, updatedCtx);
 
-      // Sleep deprivation: staying up during the deep-night hours (00:00–04:00) incurs a penalty
+      // Sleep deprivation: staying up during the deep-night hours (00:00–04:00) incurs a penalty.
+      // Waking naturally *from* sleep in this window is not deprivation — only staying awake is,
+      // so an adventurer leaving a non-sleep activity (prevActivity) is the one who stayed up.
       const hour = ctx.worldTime.hour;
-      if (nextActivity !== 'SLEEPING' && hour <= 4) {
+      if (nextActivity !== 'SLEEPING' && prevActivity !== 'SLEEPING' && hour <= 4) {
         const factor: MoodFactor = {
           id: 'SLEEP_DEPRIVED',
           label: 'Sleep Deprived',

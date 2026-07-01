@@ -102,7 +102,7 @@ describe('computeActivityWeights', () => {
     const ctx = makeCtx([adv]);
     const weights = computeActivityWeights(adv, ctx);
 
-    expect(Object.keys(weights)).toHaveLength(ALL_ACTIVITY_IDS.length); // 14 activities (spec list is authoritative)
+    expect(Object.keys(weights)).toHaveLength(ALL_ACTIVITY_IDS.length); // 15 activities incl. SLEEPING (spec list is authoritative)
     for (const id of ALL_ACTIVITY_IDS) {
       expect(weights[id]).toBeDefined();
       expect(weights[id]!).toBeGreaterThanOrEqual(0);
@@ -508,6 +508,53 @@ describe('SLEEPING activity', () => {
     const updated = next.adventurers.get('a')!;
     expect(updated.activityState!.current).not.toBe('SLEEPING');
     expect(updated.activityState!.enteredAt).toBe(exitAt);
+  });
+
+  it('does NOT brand a full sleep ending in the deep-night window as SLEEP_DEPRIVED', () => {
+    // Reiko-style NORMAL sleeper wakes at 03:00 after a complete sleep.
+    // Waking from sleep in the 00:00–04:00 window must not add SLEEP_DEPRIVED.
+    const exitAt = 24 + 3; // day 1, hour 3
+    const adv: Adventurer = {
+      ...makeAdventurer('Reiko', { mood: 60 }),
+      activityState: {
+        current: 'SLEEPING',
+        enteredAt: 20,
+        scheduledExitAt: exitAt,
+        nextMicroEventAt: 99,
+      },
+    };
+    const ctx = makeCtx([adv], exitAt); // hour = exitAt % 24 = 3
+    const next = activitySubscriber(ctx);
+
+    const updated = next.adventurers.get('Reiko')!;
+    expect(updated.activityState!.current).not.toBe('SLEEPING'); // she did wake
+    expect(updated.moodFactors.find(f => f.id === 'SLEEP_DEPRIVED')).toBeUndefined();
+  });
+
+  it('DOES brand staying up (non-sleep → non-sleep) in the deep-night window as SLEEP_DEPRIVED', () => {
+    // BROODING through the night, exiting at 03:00 and not going to sleep → deprivation.
+    const exitAt = 24 + 3; // day 1, hour 3
+    const adv: Adventurer = {
+      // mood high enough that the next draw is unlikely to be SLEEPING; if it is, the guard
+      // on nextActivity handles it and the assertion below still holds.
+      ...makeAdventurer('NightOwl', { mood: 70, ambition: 70 }), // SHORT sleeper resists sleep
+      activityState: {
+        current: 'BROODING',
+        enteredAt: 20,
+        scheduledExitAt: exitAt,
+        nextMicroEventAt: 99,
+      },
+    };
+    const ctx = makeCtx([adv], exitAt);
+    const next = activitySubscriber(ctx);
+
+    const updated = next.adventurers.get('NightOwl')!;
+    const deprived = updated.moodFactors.find(f => f.id === 'SLEEP_DEPRIVED');
+    // Only assert the penalty when she actually stayed awake (didn't roll back into SLEEPING).
+    if (updated.activityState!.current !== 'SLEEPING') {
+      expect(deprived).toBeDefined();
+      expect(deprived!.value).toBeLessThan(0);
+    }
   });
 
   it('HEAVY sleeper sleeps longer than SHORT sleeper on average', () => {

@@ -72,3 +72,28 @@ when you work in that subtree:
   EventFeed three-update rule, no manual browser gates, auto-pause speed restore.
 
 For a task that spans both packages, consult both files.
+
+---
+
+## Working from the Claude mobile app / web
+
+This repo is set up for **Claude Code on the web** (claude.ai/code) — the same
+backend the Claude mobile app uses. To send prompts against this repo remotely:
+open the app or claude.ai/code → select `raafiq/the-unseen-hand` → start a
+session and describe the change.
+
+Each web/mobile session runs in a **fresh, ephemeral Linux container** (the repo
+is cloned clean, no `node_modules`). The `.claude/hooks/session-start.sh`
+SessionStart hook bootstraps it automatically — enabling pnpm `10.12.1`, running
+`pnpm install --frozen-lockfile`, and building `@ugs/core` — so builds and tests
+work from the first prompt. Node is pinned to `22` via `.nvmrc`. Commits push to a
+working branch, and `.github/workflows/ci.yml` (typecheck, `svelte-check`, build,
+test, and Playwright e2e) validates every push.
+
+**What does _not_ travel to web/mobile sessions:** only committed repo content is
+cloned. Anything under your local `~/.claude/` — personal/global `CLAUDE.md`,
+personal skills (e.g. specops), and personal commands — stays on your device and
+is **absent** in web sessions. To use them from mobile they must be committed into
+the repo (`.claude/skills/`, repo `CLAUDE.md`, etc.). The specops skill is
+currently local-only (root references point at a `C:\Users\...` path); vendoring
+it into the repo is tracked as follow-up work.

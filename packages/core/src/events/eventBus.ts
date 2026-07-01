@@ -26,6 +26,13 @@ export type SocialEventInput = {
   relationshipDelta: number;
 };
 
+export type NPCEventInput = {
+  kind: 'NPC';
+  subtype: 'TOWN_FLAVOUR';
+  adventurerId: AdventurerId;
+  role: import('../world/types.js').TownRole;
+};
+
 export type CombatEventInput = {
   kind: 'COMBAT';
   subtype: 'BEAT_LOG' | 'QUEST_RESOLVED';
@@ -66,6 +73,8 @@ export type WorldEventInput = {
     | 'MONSTER_SURGE'
     | 'TRAVELLING_MERCHANT'
     | 'RUMOUR'
+    | 'FEUD'
+    | 'FESTIVAL'
     | 'QUEST_DROUGHT'
     | 'REGION_UNLOCKED'
     | 'SCENARIO_GOAL_ACHIEVED'
@@ -102,6 +111,7 @@ export type ActivityEventInput = {
 
 export type SimulationEventInput =
   | SocialEventInput
+  | NPCEventInput
   | CombatEventInput
   | QuestEventInput
   | LifecycleEventInput
@@ -308,6 +318,89 @@ const BEAT_POOLS: Record<string, readonly string[]> = {
     'The caravan rolls out of town, its trading done.',
     'The pedlar strikes the stall and departs.',
   ],
+  // Town-level festival span (npc-system.md) — START (opens) vs END (passes).
+  'WORLD:FESTIVAL:START': [
+    'A festival opens in the town square, and the streets fill with colour.',
+    'Bunting goes up and the taverns throw their doors wide — the festival has begun.',
+    'Music and lantern-light spill through the streets as the town gives itself to festival.',
+  ],
+  'WORLD:FESTIVAL:END': [
+    'The festival winds down, and the town returns to its quieter round.',
+    'The last stalls come down and the square empties — the festival is over.',
+    'The music fades and the lanterns gutter out; the festival has passed.',
+  ],
+  // Feud span (world-expansion.md) — emitted by a p10c follow-up; grammar kept ahead of use.
+  'WORLD:FEUD:START': [
+    'A bitter feud hardens into the open.',
+    'Old bad blood curdles into a standing quarrel.',
+    'The cold war between them settles in for the long haul.',
+  ],
+  'WORLD:FEUD:END': [
+    'The feud finally cools.',
+    'The long quarrel burns itself out at last.',
+    'Whatever fed the feud runs dry, and the cold eases.',
+  ],
+  // Tier B nameless-role town flavour (npc-system.md). Subject slot {who} = the adventurer.
+  'NPC:GATE_GUARD': [
+    'The gate guard waves {who} through with a bored nod.',
+    'A gate guard stops {who} for a word before letting them pass.',
+    '{who} trades a nod with the guard on the gate.',
+  ],
+  'NPC:SHOPKEEPER': [
+    'A shopkeeper haggles cheerfully with {who} over a trifle.',
+    '{who} lingers at a stall while the shopkeeper talks up the wares.',
+    'The shopkeeper presses a small sample on {who} to try.',
+  ],
+  'NPC:URCHIN': [
+    'A street urchin trails {who} for a few hopeful steps.',
+    '{who} shoos off an urchin eyeing their purse.',
+    'An urchin darts past {who}, quick as a sparrow.',
+  ],
+  'NPC:DRUNK': [
+    'A drunk slurs a greeting at {who} from a doorway.',
+    '{who} steps around a drunk sprawled across the lane.',
+    'A tavern drunk tries to draw {who} into some rambling tale.',
+  ],
+  'NPC:PRIEST': [
+    'A priest offers {who} a blessing as they pass the shrine.',
+    '{who} pauses while a priest murmurs a few pious words.',
+    'A roadside priest presses a token into {who}\'s hand.',
+  ],
+  'NPC:MERCHANT': [
+    'A merchant hails {who}, eager to describe far-off wares.',
+    '{who} listens to a merchant boast of goods from distant ports.',
+    'A merchant tries to talk {who} into a bargain.',
+  ],
+  'NPC:BEGGAR': [
+    'A beggar holds out a cupped hand as {who} passes.',
+    '{who} drops a coin into a beggar\'s bowl.',
+    'A beggar mutters a blessing after {who}.',
+  ],
+  'NPC:BARD': [
+    'A bard strikes up a tune as {who} walks by.',
+    '{who} catches a snatch of a bard\'s song in the square.',
+    'A bard works {who}\'s guild into a verse, half in jest.',
+  ],
+  'NPC:STABLEHAND': [
+    'A stablehand nods to {who} over a barrow of hay.',
+    '{who} exchanges a word with a stablehand mucking out a stall.',
+    'A stablehand leads a horse past {who}, whistling.',
+  ],
+  'NPC:BLACKSMITH': [
+    'The clang of the smithy follows {who} down the lane.',
+    'A blacksmith calls a greeting to {who} over the ring of the anvil.',
+    '{who} pauses to watch a blacksmith draw glowing iron from the forge.',
+  ],
+  'NPC:GUARD_CAPTAIN': [
+    'The guard captain gives {who} a curt, measuring look.',
+    '{who} steps aside as the guard captain strides past on some errand.',
+    'The guard captain trades a brief word with {who} about the roads.',
+  ],
+  'NPC:INNKEEPER': [
+    'The innkeeper waves {who} toward a free table.',
+    '{who} swaps the day\'s news with the innkeeper over the bar.',
+    'The innkeeper sets a cup before {who} without being asked.',
+  ],
   'WORLD:QUEST_DROUGHT': [
     'Work dries up across the region.',
     'The flow of work thins to nothing.',
@@ -410,6 +503,11 @@ const SPAN_COLOUR_POOLS: Record<string, readonly string[]> = {
     'The smell of strange spices hangs in the air.',
     'A pedlar\'s cry carries faintly from outside.',
   ],
+  FESTIVAL: [
+    'Festival music drifts in from the square.',
+    'Lantern-light and laughter spill through the streets outside.',
+    'The festival crowd hums somewhere beyond the walls.',
+  ],
 };
 
 /** Chance a live span tints an unrelated feed line. */
@@ -465,9 +563,18 @@ function compose(
 // Template engine
 // ---------------------------------------------------------------------------
 
-function advName(ctx: SimulationContext, id: AdventurerId): string {
-  return ctx.adventurers.get(id)?.identity.name ?? id;
+/** Resolve any actor id (adventurer or Tier A notable NPC) to a display name. */
+function actorName(ctx: SimulationContext, id: string): string {
+  return ctx.adventurers.get(id)?.identity.name ?? ctx.notableNpcs.get(id)?.name ?? id;
 }
+
+/** Human-readable label for a Tier B nameless town role (e.g. GATE_GUARD → "the gate guard"). */
+const TOWN_ROLE_LABELS: Record<import('../world/types.js').TownRole, string> = {
+  GATE_GUARD: 'the gate guard', SHOPKEEPER: 'the shopkeeper', URCHIN: 'a street urchin',
+  DRUNK: 'a drunk', PRIEST: 'a priest', MERCHANT: 'a merchant', BEGGAR: 'a beggar',
+  BARD: 'a bard', STABLEHAND: 'a stablehand', BLACKSMITH: 'the blacksmith',
+  GUARD_CAPTAIN: 'the guard captain', INNKEEPER: 'the innkeeper',
+};
 
 function questLabel(ctx: SimulationContext, questId: QuestId): string {
   const quest = [...ctx.questBoard.available, ...ctx.questBoard.active].find(q => q.id === questId);
@@ -479,10 +586,16 @@ function renderText(input: SimulationEventInput, ctx: SimulationContext): string
     case 'SOCIAL': {
       // 2–4 participants; the beat pools name the first two ({a}/{b}). Group scenes (3–4)
       // still fill both slots so the line is slot-free (3rd+ are carried on the event, not the prose).
-      const a = advName(ctx, input.participantIds[0] ?? 'someone');
-      const b = advName(ctx, input.participantIds[1] ?? 'another');
+      const a = actorName(ctx, input.participantIds[0] ?? 'someone');
+      const b = actorName(ctx, input.participantIds[1] ?? 'another');
       const slots = { a, b };
       return compose(`SOCIAL:${input.subtype}`, slots, ctx, `${a} and ${b} share words.`, { colourKey: 'SOCIAL' });
+    }
+    case 'NPC': {
+      // Tier B town flavour: the adventurer is the subject; the role supplies the beat pool.
+      const who = actorName(ctx, input.adventurerId);
+      const role = TOWN_ROLE_LABELS[input.role];
+      return compose(`NPC:${input.role}`, { who, role }, ctx, `${who} crosses paths with ${role}.`);
     }
     case 'COMBAT': {
       const label = questLabel(ctx, input.questId);
@@ -493,8 +606,8 @@ function renderText(input: SimulationEventInput, ctx: SimulationContext): string
       return compose(`QUEST:${input.subtype}`, { label }, ctx, `${label} — the quest board stirs.`);
     }
     case 'LIFECYCLE': {
-      const who = input.involvedIds[0] ? advName(ctx, input.involvedIds[0]) : 'An adventurer';
-      const other = input.involvedIds[1] ? advName(ctx, input.involvedIds[1]) : 'another';
+      const who = input.involvedIds[0] ? actorName(ctx, input.involvedIds[0]) : 'An adventurer';
+      const other = input.involvedIds[1] ? actorName(ctx, input.involvedIds[1]) : 'another';
       return compose(`LIFECYCLE:${input.subtype}`, { who, other }, ctx, `${who} reaches a turning point.`);
     }
     case 'WORLD': {
@@ -514,7 +627,7 @@ function renderText(input: SimulationEventInput, ctx: SimulationContext): string
     case 'DIVINE':
       return compose(`DIVINE:${input.subtype}`, {}, ctx, `The unseen hand stirs.`);
     case 'ACTIVITY': {
-      const who = advName(ctx, input.adventurerId);
+      const who = actorName(ctx, input.adventurerId);
       const ACTIVITY_NOUN: Record<ActivityId, string> = {
         TRAINING: 'training', SPARRING: 'sparring', PATROL: 'patrol', HUNTING: 'hunting',
         DRINKING: 'drinking', GAMBLING: 'gambling', COOKING: 'cooking', EATING: 'eating',

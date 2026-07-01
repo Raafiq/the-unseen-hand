@@ -18,10 +18,11 @@
  */
 import type {
   SimulationContext,
-  Adventurer,
-  AdventurerId,
   ActorId,
   ActivityId,
+  ActivityState,
+  AdventurerState,
+  NotableNpc,
   PairKey,
   RelationshipEdge,
   RelationshipGraph,
@@ -35,10 +36,53 @@ import {
   detectThresholdEvents,
   createEdge,
 } from '../relationships/graph.js';
+import { isNpc } from '../world/actors.js';
 import { upsertMoodFactor } from '../adventurers/mood.js';
 import { emitEvent } from './eventBus.js';
-import { updateReputation } from '../world/WorldExpansion.js';
+import { updateReputation, hasActiveSpan } from '../world/WorldExpansion.js';
 import { grantDI } from '../divine/DivineInfluence.js';
+
+// ---------------------------------------------------------------------------
+// Encounter actors — adventurers and Tier A notable NPCs both participate in
+// encounters. An `EncounterActor` is the minimal shape the pressure/stats/outcome
+// machinery reads; an Adventurer satisfies it structurally, and a notable NPC is
+// projected into it (npc-system.md — "honorary adventurers in the graph").
+// ---------------------------------------------------------------------------
+
+export type EncounterActor = {
+  id: ActorId;
+  mood: number;
+  personality: PersonalityAxes;
+  state: AdventurerState;
+  activityState?: ActivityState;
+};
+
+/** Neutral fill for a notable NPC's partial trait axes (NPCs carry only enough to
+ *  drive encounter valence/intensity; unset axes read as the 50 midpoint). */
+function npcPersonality(traits: Partial<PersonalityAxes>): PersonalityAxes {
+  return {
+    courage: traits.courage ?? 50,
+    greed: traits.greed ?? 50,
+    empathy: traits.empathy ?? 50,
+    loyalty: traits.loyalty ?? 50,
+    ambition: traits.ambition ?? 50,
+    stubborn: traits.stubborn ?? 0,
+  };
+}
+
+/** Project a notable NPC into an encounter actor. NPCs are always present and awake
+ *  (no activity pool); mood defaults to the 50 midpoint when unset. */
+function npcToActor(npc: NotableNpc): EncounterActor {
+  return { id: npc.id, mood: npc.mood ?? 50, personality: npcPersonality(npc.traits), state: 'IDLE' };
+}
+
+/** Resolve an actor id to its encounter view — a real adventurer or a projected NPC. */
+export function actorView(ctx: SimulationContext, id: ActorId): EncounterActor | undefined {
+  const adv = ctx.adventurers.get(id);
+  if (adv) return adv;
+  const npc = ctx.notableNpcs.get(id);
+  return npc ? npcToActor(npc) : undefined;
+}
 
 // ---------------------------------------------------------------------------
 // Tuning constants — frozen by the pressure-accumulator grill (plan Notes D1–D7).
@@ -56,6 +100,15 @@ const ESTRANGEMENT_COOLDOWN = 120; // 5-day approach lock after ESTRANGEMENT (D5
 const THRESHOLD_PROB = 0.4;      // rare-outcome (BREAKTHROUGH/ESTRANGEMENT) escalation gate (D6)
 const ENEMY_FLOOR = -51;         // strength ≤ this never accumulates voluntarily (spec §4 step 1)
 const MAX_GROUP = 4;             // group scene participant cap (spec §3)
+
+/** While a FESTIVAL town span is live, social pressure builds faster guild-wide
+ *  (npc-system.md — festivals raise approach pressure). */
+export const FESTIVAL_PRESSURE_MULT = 1.5;
+
+/** Per-tick pressure-gain multiplier for the current festival state. */
+export function festivalPressureMultiplier(ctx: SimulationContext): number {
+  return hasActiveSpan(ctx, 'FESTIVAL') ? FESTIVAL_PRESSURE_MULT : 1;
+}
 
 /** Compatibility multiplier per solo activity (spec §4 table). Scales how readily proximity
  *  becomes a scene. Unlisted activities (PATROL/HUNTING/GAMBLING/SLEEPING) take sensible
@@ -83,7 +136,7 @@ const COMPAT: Record<ActivityId, number> = {
 // ---------------------------------------------------------------------------
 
 /** Canonical sorted pair key "A-B". */
-export function pairKey(idA: AdventurerId, idB: AdventurerId): PairKey {
+export function pairKey(idA: ActorId, idB: ActorId): PairKey {
   return [idA, idB].sort().join('-');
 }
 
@@ -97,22 +150,22 @@ function isNearBoundary(strength: number): boolean {
   return BOUNDARIES.some(b => Math.abs(strength - b) <= 5);
 }
 
-function activityCompat(adv: Adventurer): number {
+function activityCompat(adv: EncounterActor): number {
   const act = adv.activityState?.current;
   return act !== undefined ? COMPAT[act] : 1.0;
 }
 
 /** Pair compatibility = the more-withdrawn member gates the pair (min of the two). */
-function compatibilityFor(a: Adventurer, b: Adventurer): number {
+function compatibilityFor(a: EncounterActor, b: EncounterActor): number {
   return Math.min(activityCompat(a), activityCompat(b));
 }
 
-function isAwake(adv: Adventurer): boolean {
+function isAwake(adv: EncounterActor): boolean {
   return adv.activityState?.current !== 'SLEEPING';
 }
 
 /** Present = available to socialise this tick (not away on a quest, not gone). */
-function isPresent(adv: Adventurer): boolean {
+function isPresent(adv: EncounterActor): boolean {
   return adv.state !== 'ON_QUEST'
     && adv.state !== 'IN_DUNGEON'
     && adv.state !== 'DEAD'
@@ -129,8 +182,8 @@ function isPresent(adv: Adventurer): boolean {
  *   gain = (proximity + moodStrain + relationshipTension) × compatibilityMult × empathyMult
  */
 export function computePressureGain(
-  a: Adventurer,
-  b: Adventurer,
+  a: EncounterActor,
+  b: EncounterActor,
   edge: RelationshipEdge | undefined,
 ): number {
   const proximity = PROXIMITY;
@@ -155,7 +208,7 @@ export function computePressureGain(
 
 export type ApproachResult = 'JOIN' | 'INTERRUPT';
 
-export function decideApproach(approacher: Adventurer, compatibility: number): ApproachResult {
+export function decideApproach(approacher: EncounterActor, compatibility: number): ApproachResult {
   const { empathy, courage } = approacher.personality;
   if (empathy >= 55) return 'JOIN';
   if (empathy < 40 && courage >= 60) return 'INTERRUPT';
@@ -243,7 +296,7 @@ function maxAxisDiff(pa: PersonalityAxes, pb: PersonalityAxes): number {
 }
 
 /** Aggregate per-encounter stats across 2–4 participants. */
-function computeStats(participants: Adventurer[], graph: RelationshipGraph): EncounterStats {
+function computeStats(participants: EncounterActor[], graph: RelationshipGraph): EncounterStats {
   const moods = participants.map(p => p.mood);
   const moodAvg = moods.reduce((s, m) => s + m, 0) / moods.length;
 
@@ -265,7 +318,7 @@ function computeStats(participants: Adventurer[], graph: RelationshipGraph): Enc
 }
 
 /** Ensure a symmetric edge exists for the pair (default STRANGER strength 0). */
-function ensureEdge(graph: RelationshipGraph, idA: AdventurerId, idB: AdventurerId): RelationshipGraph {
+function ensureEdge(graph: RelationshipGraph, idA: ActorId, idB: ActorId): RelationshipGraph {
   if (graph.get(idA)?.get(idB) && graph.get(idB)?.get(idA)) return graph;
   const next = new Map(graph);
   const a = new Map(next.get(idA) ?? []);
@@ -295,7 +348,7 @@ export function resolveEncounter(
   opts: ResolveEncounterOptions = {},
 ): SimulationContext {
   const ids = participantIds.slice(0, MAX_GROUP);
-  const participants = ids.map(id => ctx.adventurers.get(id)).filter((a): a is Adventurer => a !== undefined);
+  const participants = ids.map(id => actorView(ctx, id)).filter((a): a is EncounterActor => a !== undefined);
   if (participants.length < 2) return ctx;
 
   const tick = ctx.worldTime.tick;
@@ -379,23 +432,23 @@ export function resolveEncounter(
 // Group aggregation — union-find over pairs firing in the same tick
 // ---------------------------------------------------------------------------
 
-function groupFiringPairs(firing: Array<[AdventurerId, AdventurerId]>): AdventurerId[][] {
-  const parent = new Map<AdventurerId, AdventurerId>();
-  const find = (x: AdventurerId): AdventurerId => {
+function groupFiringPairs(firing: Array<[ActorId, ActorId]>): ActorId[][] {
+  const parent = new Map<ActorId, ActorId>();
+  const find = (x: ActorId): ActorId => {
     let r = x;
     while (parent.get(r) !== undefined && parent.get(r) !== r) r = parent.get(r)!;
     parent.set(x, r);
     return r;
   };
-  const union = (x: AdventurerId, y: AdventurerId): void => {
+  const union = (x: ActorId, y: ActorId): void => {
     if (parent.get(x) === undefined) parent.set(x, x);
     if (parent.get(y) === undefined) parent.set(y, y);
     parent.set(find(x), find(y));
   };
   for (const [a, b] of firing) union(a, b);
 
-  const groups = new Map<AdventurerId, AdventurerId[]>();
-  const members = new Set<AdventurerId>();
+  const groups = new Map<ActorId, ActorId[]>();
+  const members = new Set<ActorId>();
   for (const [a, b] of firing) { members.add(a); members.add(b); }
   for (const m of members) {
     const root = find(m);
@@ -411,17 +464,26 @@ function groupFiringPairs(firing: Array<[AdventurerId, AdventurerId]>): Adventur
 // ---------------------------------------------------------------------------
 
 export function socialPressureSubscriber(ctx: SimulationContext): SimulationContext {
-  const present = [...ctx.adventurers.values()].filter(isPresent);
-  if (present.length < 2) return ctx;
+  // Adventurers present this tick + all notable NPCs (always present as honorary actors).
+  const actors: EncounterActor[] = [
+    ...[...ctx.adventurers.values()].filter(isPresent),
+    ...[...ctx.notableNpcs.values()].map(npcToActor),
+  ];
+  if (actors.length < 2) return ctx;
 
   const tick = ctx.worldTime.tick;
+  const festivalMult = festivalPressureMultiplier(ctx);
   const pressure = new Map(ctx.socialPressure);
-  const firing: Array<[AdventurerId, AdventurerId]> = [];
+  const firing: Array<[ActorId, ActorId]> = [];
 
-  for (let i = 0; i < present.length; i++) {
-    for (let j = i + 1; j < present.length; j++) {
-      const a = present[i]!;
-      const b = present[j]!;
+  for (let i = 0; i < actors.length; i++) {
+    for (let j = i + 1; j < actors.length; j++) {
+      const a = actors[i]!;
+      const b = actors[j]!;
+
+      // No NPC↔NPC relationships in scope (npc-system.md) — skip NPC-only pairs.
+      if (isNpc(a.id) && isNpc(b.id)) continue;
+
       const key = pairKey(a.id, b.id);
 
       // Post-fire / ESTRANGEMENT cooldown — no accumulation while active.
@@ -435,7 +497,7 @@ export function socialPressureSubscriber(ctx: SimulationContext): SimulationCont
       // Frozen when either is asleep — sleep is a nightly pause, not a reset.
       if (!isAwake(a) || !isAwake(b)) continue;
 
-      const gain = computePressureGain(a, b, edge);
+      const gain = computePressureGain(a, b, edge) * festivalMult;
       const nextP = Math.max(0, (pressure.get(key) ?? 0) + gain - DECAY);
       pressure.set(key, nextP);
 

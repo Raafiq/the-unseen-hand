@@ -18,6 +18,7 @@
     PLAGUE:              'Plague',
     TRAVELLING_MERCHANT: 'Travelling Merchant',
     RUMOUR:              'Rumour',
+    FESTIVAL:            'Festival', // town-level span; autonomous, not a divine-seed option
   };
 
   const EVENT_OPTIONS: Array<{ type: WorldEventType; label: string; description: string; cost: number }> = [

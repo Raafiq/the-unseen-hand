@@ -224,11 +224,13 @@
       <div class="section-label">Relationships</div>
       {#each sortedEdges as [otherId, edge] (otherId)}
         {@const other = ctx.adventurers.get(otherId)}
-        <div class="rel-row" role="button" tabindex="0"
-          onclick={() => onSelectAdventurer(otherId)}
-          onkeydown={(e) => e.key === 'Enter' && onSelectAdventurer(otherId)}>
+        {@const npc = ctx.notableNpcs.get(otherId)}
+        <div class="rel-row" class:rel-npc-row={!!npc} role="button" tabindex="0"
+          onclick={() => other && onSelectAdventurer(otherId)}
+          onkeydown={(e) => e.key === 'Enter' && other && onSelectAdventurer(otherId)}>
           <span class="rel-name">
-            {other?.identity.name ?? otherId}
+            {other?.identity.name ?? npc?.name ?? otherId}
+            {#if npc} <em>[townsfolk]</em>{/if}
             {#if other?.state === 'DEAD'} <em>[deceased]</em>{/if}
             {#if other?.state === 'RETIRED'} <em>[departed]</em>{/if}
           </span>
@@ -338,6 +340,8 @@
     border-bottom: 1px solid #1e1c24; cursor: pointer;
   }
   .rel-row:hover .rel-name { color: #c9b8ff; }
+  .rel-npc-row { cursor: default; }
+  .rel-npc-row:hover .rel-name { color: #aaa; }
   .rel-name { flex: 1; font-size: 12px; color: #aaa; }
   .rel-name em { color: #555; font-size: 10px; }
   .rel-type { font-size: 10px; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; }

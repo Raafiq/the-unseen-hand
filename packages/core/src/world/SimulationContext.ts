@@ -27,6 +27,7 @@ export function createSimulationContext(seed: string): SimulationContext {
     worldTime: { tick: 0, day: 0, hour: 0 },
     rng: new SeededRNG(seed),
     adventurers: new Map(),
+    notableNpcs: new Map(),
     relationships: new Map(),
     lastSharedActivity: {},
     questBoard: { available: [], active: [] },

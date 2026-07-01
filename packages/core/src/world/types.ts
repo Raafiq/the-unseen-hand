@@ -20,10 +20,13 @@ export type WorldTime = {
 
 export type AdventurerId = string;
 
-/** A participant in a social encounter. Aliased to AdventurerId for p10c
- *  (adventurer↔adventurer only); p10d widens this to include NPCs without an
- *  event-shape change. */
-export type ActorId = AdventurerId;
+/** A notable (Tier A) NPC id. Distinct namespace ("npc:" prefix); see world/actors.ts. */
+export type NpcId = string;
+
+/** A participant in a social encounter or relationship edge. Adventurers and Tier A
+ *  notable NPCs share one actor id space (see npc-system.md). Use `isNpc(id)` (world/actors.ts)
+ *  to tell them apart — NPCs lack the full Adventurer shape, so adventurer-only logic must guard. */
+export type ActorId = AdventurerId | NpcId;
 
 export type PersonalGoal =
   | 'HEROISM'
@@ -166,7 +169,28 @@ export type RelationshipEdge = {
   history: RelationshipEvent[];
 };
 
-export type RelationshipGraph = Map<AdventurerId, Map<AdventurerId, RelationshipEdge>>;
+export type RelationshipGraph = Map<ActorId, Map<ActorId, RelationshipEdge>>;
+
+// ---------------------------------------------------------------------------
+// Town NPCs (spec: specs/behaviors/npc-system.md)
+// ---------------------------------------------------------------------------
+
+/** A town role. Doubles as a nameless Tier B label and a notable NPC's role. */
+export type TownRole =
+  | 'GATE_GUARD' | 'SHOPKEEPER' | 'URCHIN' | 'DRUNK' | 'PRIEST'
+  | 'MERCHANT' | 'BEGGAR' | 'BARD' | 'STABLEHAND' | 'BLACKSMITH'
+  | 'GUARD_CAPTAIN' | 'INNKEEPER';
+
+/** Tier A — a named, persistent town NPC that lives in the relationship graph as an
+ *  honorary actor. NPCs are not full adventurers (no quests, goal, or divine touch). */
+export type NotableNpc = {
+  id: NpcId;
+  name: string;
+  role: TownRole;
+  traits: Partial<PersonalityAxes>; // enough to drive encounter valence/intensity
+  bio: string;                      // 1–2 sentences, shown in UI; stable
+  mood?: number;                    // optional, coarse; NPCs are not full mood-system citizens
+};
 
 /** Keyed by sorted pair id "A-B"; value is the tick of last shared activity. */
 export type LastSharedActivity = Record<string, number>;
@@ -268,6 +292,15 @@ export type SocialEvent = EventBase & {
   relationshipDelta: number;
 };
 
+/** Tier B (nameless-role) town flavour. Carries no outcome and no relationship/mood
+ *  effect — a single grammar-rendered line. Spec: npc-system.md, event-bus.md. */
+export type NPCEvent = EventBase & {
+  kind: 'NPC';
+  subtype: 'TOWN_FLAVOUR';
+  adventurerId: AdventurerId;
+  role: TownRole;
+};
+
 export type CombatEvent = EventBase & {
   kind: 'COMBAT';
   subtype: 'BEAT_LOG' | 'QUEST_RESOLVED';
@@ -308,6 +341,8 @@ export type WorldEvent = EventBase & {
     | 'MONSTER_SURGE'
     | 'TRAVELLING_MERCHANT'
     | 'RUMOUR'
+    | 'FEUD'          // weighty social span (world-expansion.md); emitted by p10c follow-up
+    | 'FESTIVAL'      // town-level span (npc-system.md)
     | 'QUEST_DROUGHT'
     | 'REGION_UNLOCKED'
     | 'SCENARIO_GOAL_ACHIEVED'
@@ -344,6 +379,7 @@ export type ActivityEvent = EventBase & {
 
 export type SimulationEvent =
   | SocialEvent
+  | NPCEvent
   | CombatEvent
   | QuestEvent
   | LifecycleEvent
@@ -396,7 +432,8 @@ export type WorldEventType =
   | 'WINDFALL'
   | 'MONSTER_SURGE'
   | 'TRAVELLING_MERCHANT'
-  | 'RUMOUR';
+  | 'RUMOUR'
+  | 'FESTIVAL'; // town-level span (npc-system.md); seeded separately, not via the weather table
 
 export type WorldEventInstance = {
   type: WorldEventType;
@@ -491,6 +528,7 @@ export type SimulationContext = {
   worldTime: WorldTime;
   rng: SeededRNG;
   adventurers: Map<AdventurerId, Adventurer>;
+  notableNpcs: Map<NpcId, NotableNpc>; // Tier A town NPCs; honorary actors in `relationships`
   relationships: RelationshipGraph;
   lastSharedActivity: LastSharedActivity; // updated by Phase 2 quest + social event systems
   questBoard: QuestBoard;

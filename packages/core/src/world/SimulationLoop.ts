@@ -12,11 +12,12 @@ import { moodSubscriber } from '../adventurers/mood.js';
 import { relationshipDecaySubscriber } from '../relationships/graph.js';
 import { socialPressureSubscriber } from '../events/socialResolver.js';
 import { activitySubscriber } from '../events/activitySystem.js';
+import { npcFlavourSubscriber } from '../events/npcFlavour.js';
 import { departureSubscriber } from '../adventurers/departureSystem.js';
 import { diTrickleSubscriber } from '../divine/DivineInfluence.js';
 import { decisionMomentSubscriber } from '../events/DecisionMomentDetector.js';
 import { scenarioEvaluatorSubscriber } from '../scenarios/ScenarioEngine.js';
-import { worldExpansionSubscriber } from './WorldExpansion.js';
+import { worldExpansionSubscriber, festivalSeedingSubscriber } from './WorldExpansion.js';
 import {
   questBoardSeedingSubscriber,
   createQuestExpirySubscriber,
@@ -64,8 +65,12 @@ export class SimulationLoop {
       departureSubscriber,       // slot 10: departure system (day ticks)
       diTrickleSubscriber,       // DI trickle (every tick)
       scenarioEvaluatorSubscriber, // scenario evaluation (every tick, after all systems)
-      worldEventSeedingSubscriber, // autonomous world flavour events (~1/day, spread across clock)
+      worldEventSeedingSubscriber, // autonomous world flavour events (~1/day, spread across clock) + span END-sweep
+      festivalSeedingSubscriber, // autonomous town-festival cadence (npc-system.md); END swept above
       worldExpansionSubscriber,  // region unlocks (every tick, after scenario)
+      // Tier B town flavour runs LAST so its per-tick rng draws never shift the stream seen by
+      // the decision/quest/social systems within a tick (npc-system.md; p10b span-tint precedent).
+      npcFlavourSubscriber,
     );
   }
 

@@ -18,6 +18,7 @@
 
   const KIND_LABELS: Record<EventKind, { label: string; cls: string }> = {
     SOCIAL:         { label: 'Social',    cls: 'tag-social' },
+    NPC:            { label: 'Townsfolk', cls: 'tag-social' },
     COMBAT:         { label: 'Combat',    cls: 'tag-combat' },
     QUEST:          { label: 'Quest',     cls: 'tag-quest' },
     LIFECYCLE:      { label: 'Lifecycle', cls: 'tag-lifecycle' },
@@ -27,7 +28,7 @@
     ACTIVITY:       { label: 'Activity',  cls: 'tag-world' },
   };
 
-  const ALL_KINDS: EventKind[] = ['SOCIAL', 'COMBAT', 'QUEST', 'LIFECYCLE', 'WORLD', 'DIVINE', 'ACTIVITY'];
+  const ALL_KINDS: EventKind[] = ['SOCIAL', 'NPC', 'COMBAT', 'QUEST', 'LIFECYCLE', 'WORLD', 'DIVINE', 'ACTIVITY'];
 
   function toggleFilter(key: FilterKey) {
     if (key === 'ALL') {
@@ -88,9 +89,17 @@
     return `hsl(${hash % 360}, 50%, 40%)`;
   }
 
+  // Resolve any actor id — adventurer or Tier A notable NPC — to a display name.
   function advName(id: string): string {
-    return ctx.adventurers.get(id)?.identity.name ?? id;
+    return ctx.adventurers.get(id)?.identity.name ?? ctx.notableNpcs.get(id)?.name ?? id;
   }
+
+  // Character-filter chips: adventurers plus notable NPCs (both are graph actors and can be
+  // event participants, so both must be filterable — npc-system.md).
+  const filterActors = $derived([
+    ...[...ctx.adventurers.values()].map(a => ({ id: a.id, name: a.identity.name })),
+    ...[...ctx.notableNpcs.values()].map(n => ({ id: n.id, name: n.name })),
+  ]);
 
   // ---------------------------------------------------------------------------
   // Combat Replay modal
@@ -139,14 +148,14 @@
       class:active={!adventurerFilter}
       onclick={() => adventurerFilter = null}
     >All chars</button>
-    {#each [...ctx.adventurers.values()] as adv (adv.id)}
+    {#each filterActors as actor (actor.id)}
       <button
         class="filter-btn char-btn"
-        class:active={adventurerFilter === adv.id}
-        onclick={() => adventurerFilter = adventurerFilter === adv.id ? null : adv.id}
+        class:active={adventurerFilter === actor.id}
+        onclick={() => adventurerFilter = adventurerFilter === actor.id ? null : actor.id}
       >
-        <span class="char-dot" style="background:{portraitColor(adv.id)}"></span>
-        {adv.identity.name}
+        <span class="char-dot" style="background:{portraitColor(actor.id)}"></span>
+        {actor.name}
       </button>
     {/each}
   </div>
@@ -179,7 +188,7 @@
                     class="portrait-init"
                     title={advName(id)}
                     style="background:{portraitColor(id)}"
-                    onclick={() => onSelectAdventurer(id)}
+                    onclick={() => ctx.adventurers.has(id) && onSelectAdventurer(id)}
                   >
                     {advName(id)[0] ?? '?'}
                   </button>

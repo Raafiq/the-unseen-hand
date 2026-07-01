@@ -130,6 +130,7 @@ export const SPAN_DURATIONS: Record<WorldEventType, [number, number] | null> = {
   PLAGUE: [72, 192],
   RUMOUR: null,
   WINDFALL: null,
+  FESTIVAL: [48, 96], // 2–4 days; town-level span (npc-system.md), seeded separately
 };
 
 /** Roll a span duration via ctx.rng over the inclusive range; null for instant types. */
@@ -198,6 +199,38 @@ function sweepExpiredSpans(ctx: SimulationContext): SimulationContext {
     next = emitEvent(next, { kind: 'WORLD', subtype: type, phase: 'END', regionId });
   }
   return next;
+}
+
+/** The town's home region for town-level spans (festivals) — the starting region if unlocked,
+ *  else the first unlocked region. */
+function townRegionId(ctx: SimulationContext): RegionId | null {
+  if (ctx.activeRegions.get('THORNVALE')?.unlocked) return 'THORNVALE';
+  const firstUnlocked = [...ctx.activeRegions.values()].find(r => r.unlocked);
+  return firstUnlocked?.id ?? null;
+}
+
+/**
+ * Open a FESTIVAL town span (npc-system.md) via the shared span lifecycle. A festival is a
+ * town-level span attached to the town's home region; while live it raises Social-cluster
+ * activity weights, social pressure gain, and Tier B flavour frequency (its consumers read
+ * `hasActiveSpan(ctx, 'FESTIVAL')`). No-ops if a festival is already live. The END phase is
+ * swept by `worldEventSeedingSubscriber` like any other span.
+ */
+export function openFestivalSpan(ctx: SimulationContext): SimulationContext {
+  const regionId = townRegionId(ctx);
+  if (regionId === null) return ctx;
+  const region = ctx.activeRegions.get(regionId)!;
+  if (region.activeWorldEvents.some(s => s.type === 'FESTIVAL')) return ctx; // no stacking
+  return openSpan(ctx, 'FESTIVAL', regionId);
+}
+
+/** Autonomous festival cadence — a low per-tick roll to open a town festival. */
+export const FESTIVAL_SEED_PROB = 1 / 1440; // ≈ once per 60 in-game days on average
+
+/** Per-tick festival seeder. Register in the loop; the END phase is handled by the span sweep. */
+export function festivalSeedingSubscriber(ctx: SimulationContext): SimulationContext {
+  if (ctx.rng.next() >= FESTIVAL_SEED_PROB) return ctx;
+  return openFestivalSpan(ctx);
 }
 
 /** Open a span: roll duration, push a WorldEventInstance, and emit `phase:'START'`. */

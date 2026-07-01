@@ -15,6 +15,7 @@ import type {
   GoalMilestone,
 } from '../world/types.js';
 import { strengthToType, createEdge, applyStrengthShift } from '../relationships/graph.js';
+import { isNpc } from '../world/actors.js';
 import { transitionState } from '../adventurers/stateMachine.js';
 import { upsertMoodFactor } from '../adventurers/mood.js';
 import { questVolunteerWeight } from '../adventurers/personality.js';
@@ -325,6 +326,9 @@ export function resolveQuest(
     // Strengthen relationships for party pairs
     let graph = updatedCtx.relationships;
     for (const [idA, idB] of allPairs(party.map(a => a.id))) {
+      // Co-quest deltas never apply to an NPC-endpoint edge — NPCs do not quest
+      // (npc-system.md). Parties are adventurer-only, so this is a belt-and-braces guard.
+      if (isNpc(idA) || isNpc(idB)) continue;
       if (!graph.get(idA)?.has(idB)) {
         graph = new Map(graph);
         graph.set(idA, new Map(graph.get(idA) ?? []).set(idB, createEdge(0)));

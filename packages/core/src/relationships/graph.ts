@@ -7,7 +7,7 @@
  * - Separation decay: -1/day for edges inactive > 14 days; not below STRANGER floor.
  */
 import type {
-  AdventurerId,
+  ActorId,
   RelationshipGraph,
   RelationshipEdge,
   RelationshipEvent,
@@ -40,8 +40,8 @@ export function createEdge(strength: number): RelationshipEdge {
 /** Apply a delta to a symmetric edge, clamp to [-100,+100], re-derive type, optionally append history. */
 export function applyStrengthShift(
   graph: RelationshipGraph,
-  idA: AdventurerId,
-  idB: AdventurerId,
+  idA: ActorId,
+  idB: ActorId,
   delta: number,
   tick?: number,
   kind?: string,
@@ -80,16 +80,16 @@ export type ThresholdEventType =
 
 export type ThresholdEvent = {
   type: ThresholdEventType;
-  adventurerId1: AdventurerId;
-  adventurerId2: AdventurerId;
+  adventurerId1: ActorId;
+  adventurerId2: ActorId;
   newType: RelationshipType;
   priorType: RelationshipType;
   strength: number;
 };
 
 export function detectThresholdEvents(
-  idA: AdventurerId,
-  idB: AdventurerId,
+  idA: ActorId,
+  idB: ActorId,
   priorStrength: number,
   newStrength: number,
 ): ThresholdEvent[] {
@@ -120,7 +120,7 @@ export function detectThresholdEvents(
 // Separation decay
 // ---------------------------------------------------------------------------
 
-function edgeKey(a: AdventurerId, b: AdventurerId): string {
+function edgeKey(a: ActorId, b: ActorId): string {
   return [a, b].sort().join('-');
 }
 
@@ -132,7 +132,7 @@ export function applyDayTickDecay(
   graph: RelationshipGraph,
   lastActivity: LastSharedActivity,
   currentTick: number,
-  adventurers?: Map<AdventurerId, { state: string }>,
+  adventurers?: Map<ActorId, { state: string }>,
 ): RelationshipGraph {
   let next = graph;
   const visitedPairs = new Set<string>();

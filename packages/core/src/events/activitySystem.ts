@@ -14,6 +14,7 @@ import type {
 } from '../world/types.js';
 import { upsertMoodFactor } from '../adventurers/mood.js';
 import { emitEvent } from './eventBus.js';
+import { hasActiveSpan } from '../world/WorldExpansion.js';
 
 // ---------------------------------------------------------------------------
 // Activity catalogue
@@ -32,6 +33,20 @@ const CLUSTER: Record<ActivityId, ActivityCluster> = {
   READING: 'PRIVATE',   BROODING: 'PRIVATE',  RESTING: 'PRIVATE', PRAYING: 'PRIVATE', CRAFTING: 'PRIVATE',
   SLEEPING: 'PRIVATE',
 };
+
+/** The cluster an activity belongs to. `PRIVATE` activities are not town-eligible (npc-system.md). */
+export function activityCluster(id: ActivityId): ActivityCluster {
+  return CLUSTER[id];
+}
+
+/** True if an activity represents time among others (non-Private) — the eligibility used for
+ *  both adventurer↔adventurer encounters and Tier B town flavour (npc-system.md). */
+export function isTownEligible(id: ActivityId): boolean {
+  return CLUSTER[id] !== 'PRIVATE';
+}
+
+/** While a FESTIVAL town span is live, Social-cluster activities are more appealing guild-wide. */
+export const FESTIVAL_SOCIAL_WEIGHT_MULT = 1.5;
 
 // Base duration ranges in ticks (1 tick = 1 simulated hour)
 const DURATION_RANGE: Record<ActivityCluster, [number, number]> = {
@@ -123,10 +138,14 @@ export function computeActivityWeights(
   const stubborn = adv.personality.stubborn ?? 0;
   const hour = ctx.worldTime.hour;
   const isNight = hour >= 22 || hour <= 5;
+  // A live FESTIVAL draws everyone toward Social-cluster activities (npc-system.md).
+  const festivalActive = hasActiveSpan(ctx, 'FESTIVAL');
 
   const result: Partial<Record<ActivityId, number>> = {};
   for (const id of ALL_ACTIVITY_IDS) {
     let w = baseAffinity(id, adv) * moodMultiplier(id, adv.mood);
+
+    if (festivalActive && CLUSTER[id] === 'SOCIAL') w *= FESTIVAL_SOCIAL_WEIGHT_MULT;
 
     // Night-time pressure: strongly pull towards sleep in night hours
     if (isNight) {

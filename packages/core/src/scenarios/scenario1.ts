@@ -10,6 +10,7 @@ import type { Scenario, SimulationContext, Adventurer } from '../world/types.js'
 import { createSimulationContext } from '../world/SimulationContext.js';
 import { registerScenario } from './ScenarioEngine.js';
 import { createStartingRegions } from '../world/WorldExpansion.js';
+import { createThornvaleNpcs } from './notableNpcs.js';
 import { seedQuestBoard } from '../quests/questSystem.js';
 
 export const SCENARIO_1_ID = 'FAILING_GUILD';
@@ -134,6 +135,7 @@ export function createScenario1Context(seed = 'scenario-1'): SimulationContext {
     ...base,
     worldTime: { tick: START_TICK, day: 0, hour: START_TICK },
     adventurers,
+    notableNpcs: createThornvaleNpcs(),
     relationships,
     activeRegions: createStartingRegions(),
     treasury: 50,

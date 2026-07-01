@@ -4,6 +4,7 @@
 export { SeededRNG } from './world/SeededRNG.js';
 export { createSimulationContext } from './world/SimulationContext.js';
 export type { SimulationContext } from './world/SimulationContext.js';
+export { isNpc, makeNpcId, NPC_ID_PREFIX } from './world/actors.js';
 export { WorldClock } from './world/WorldClock.js';
 export type { SpeedMultiplier } from './world/WorldClock.js';
 export { SimulationLoop } from './world/SimulationLoop.js';
@@ -49,12 +50,23 @@ export {
   resolveOutcome,
   decideApproach,
   computePressureGain,
+  actorView,
+  festivalPressureMultiplier,
+  FESTIVAL_PRESSURE_MULT,
   pairKey,
 } from './events/socialResolver.js';
+export type { EncounterActor } from './events/socialResolver.js';
 export {
   computeDepartureProbability,
   departureSubscriber,
 } from './adventurers/departureSystem.js';
+export {
+  npcFlavourSubscriber,
+  rollTownFlavour,
+  townFlavourChance,
+  TOWN_ROLES,
+  TOWN_FLAVOUR_CHANCE,
+} from './events/npcFlavour.js';
 
 // Combat resolution
 export { generateBeats, selectBeatActionWeights, renderBeat } from './combat/beatGenerator.js';
@@ -73,6 +85,7 @@ export { narrativeDistance, applyDivineShift } from './divine/ProbabilityShifter
 // Scenario engine
 export { registerScenario, scenarioEvaluatorSubscriber } from './scenarios/ScenarioEngine.js';
 export { createScenario1Context, SCENARIO_1_ID, S1_IDS } from './scenarios/scenario1.js';
+export { createThornvaleNpcs, THORNVALE_NPCS } from './scenarios/notableNpcs.js';
 
 // Personal goals
 export { checkGoalCompletion, applyGoalCompletion } from './adventurers/PersonalGoals.js';
@@ -84,6 +97,11 @@ export { contextualModifier, appendHistoryEvent } from './adventurers/HistoryLay
 export {
   createStartingRegions,
   worldExpansionSubscriber,
+  worldEventSeedingSubscriber,
+  festivalSeedingSubscriber,
+  openFestivalSpan,
+  hasActiveSpan,
+  activeSpans,
   updateReputation,
 } from './world/WorldExpansion.js';
 export type { ReputationEvent } from './world/WorldExpansion.js';

@@ -20,9 +20,9 @@ Chronological list of simulation events, newest at top (reverse chronological). 
 
 Each row shows:
 - **Time label**: "Day {day}, hour {hour}" derived from the event's `tick`.
-- **Type tag**: small colored pill indicating event `kind`: Social (teal), Combat (red), Quest (amber), Lifecycle (purple), World (blue), Divine (gold).
+- **Type tag**: small colored pill indicating event `kind`: Social (teal), Combat (red), Quest (amber), Lifecycle (purple), World (blue), Divine (gold), Thought (muted grey — row text renders italic; see `thought-system.md`).
 - **Rendered text**: `event.renderedText` — the pre-rendered narrative string. Never empty.
-- **Involved adventurers**: if `involvedIds` or `participantIds` are present, show a small row of portrait initials below the text. Clicking a portrait navigates to that adventurer's character detail in the right panel.
+- **Involved adventurers**: if `involvedIds` or `participantIds` are present, show a small row of portrait initials below the text. Clicking a portrait navigates to that adventurer's character detail in the right panel. A `THOUGHT` event's single participant is its `actorId` (the thinker) — it must resolve in `getInvolvedIds` so whispers appear under that actor's character filter.
 
 ### Day summary blocks (Phase 6)
 
@@ -38,6 +38,7 @@ A filter bar above the list. Filter toggles per type:
 - Lifecycle
 - World
 - Divine
+- Thought
 
 Selecting a specific type deselects "All" and filters the list to matching `kind` values. Selecting "All" clears all type filters. Multiple specific types can be selected simultaneously.
 

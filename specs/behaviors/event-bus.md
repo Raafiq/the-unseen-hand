@@ -40,7 +40,8 @@ type SimulationEvent =
   | LifecycleEvent
   | WorldEvent
   | DecisionMomentEvent
-  | DivineInterventionEvent;
+  | DivineInterventionEvent
+  | ThoughtEvent;
 ```
 
 ### SocialEvent
@@ -76,6 +77,22 @@ type NPCEvent = EventBase & {
 Tier B (nameless-role) town flavour. Carries no outcome and no relationship/mood effect — a
 single grammar-rendered line. Tier A (notable) NPC interactions are **not** `NPCEvent`s; they
 reuse `SocialEvent` with the NPC id in `participantIds`.
+
+### ThoughtEvent
+
+```typescript
+type ThoughtEvent = EventBase & {
+  kind: 'THOUGHT';
+  actorId: ActorId;      // the thinker — adventurer or Tier A notable NPC
+  subjectKey: string;    // fragment-family id for anti-repetition; never rendered
+};
+```
+
+A feed **whisper** of an actor's inner monologue (see `thought-system.md`). Strictly solo —
+`actorId` is the only participant. Its `renderedText` is composed by the thought grammar via the
+derived `(worldSeed, actorId, tick)` stream and passed **pre-rendered** to `emitEvent` (the
+whisper subscriber decides *whether* on `ctx.rng`; the text itself must byte-match the on-demand
+render for the same actor and tick). Carries no relationship, mood, or state effect.
 
 ### CombatEvent
 

@@ -34,6 +34,14 @@ Display format: horizontal bars for each axis, labeled, with numeric value shown
 - **Mood score**: `{mood}/100` as a number + a colored label badge (`CONTENT` / `NEUTRAL` / `UNSATISFIED` / `DESPAIRING`).
 - **Top 3 mood factors**: listed as `{label}: {value > 0 ? '+' : ''}{value}` (e.g. "Lost a companion: −35", "Quest success: +15"). Sorted by `|value|` descending.
 
+### Inner voice section
+
+- The actor's **current thought** (`thought-system.md`), rendered via the pure on-demand path
+  (`renderThought`) — italic prose, 1–3 sentences. Hidden entirely when no thought renders
+  (DEAD/RETIRED). Re-renders as the tick advances; while paused it is stable (same tick → same
+  text, guaranteed by the derived stream). This section also appears on the townsfolk detail
+  (`npc-system.md#ui--townsfolk-detail`), along with the NPC's `want`.
+
 ### Relationships section
 
 Listed as rows, one per edge (adventurer with at least `ACQUAINTANCE` relationship or higher — `STRANGER` edges not shown unless they are known faces from long proximity):

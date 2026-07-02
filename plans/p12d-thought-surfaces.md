@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 depends: [p12c-thought-whispers]
 specs:
   - specs/behaviors/thought-system.md
@@ -53,10 +53,12 @@ specs:
 
 ## Validation
 
-- [ ] All 4 new e2e green; existing e2e stay green.
-- [ ] svelte-check 0 errors / 0 warnings.
-- [ ] No `.replace(/_/g, ' ')` label fallbacks introduced (typed Records only).
-- [ ] Screen specs merged alongside.
+- [x] New e2e green (3 active + 1 flag-skip); existing e2e stay green (13 passed,
+      6 skipped — the choice-card thought test skips off `FEATURES.divineIntervention`
+      exactly like the pre-existing choice-card specs, and activates with the flag).
+- [x] svelte-check 0 errors / 0 warnings; client tsc clean.
+- [x] No `.replace(/_/g, ' ')` label fallbacks introduced (typed Records only).
+- [x] Screen specs merged (landed with the spec batch).
 
 ## Risks / unknowns
 
@@ -69,6 +71,11 @@ specs:
 - The tick advances between renders while unpaused, so the Inner voice legitimately changes
   every tick at speed — this is by design (thought follows the moment); the derived stream
   guarantees stability only per-tick.
+- ChoiceCard receives a `getSubjectThoughts(moment)` resolver prop instead of a precomputed
+  array — the primary moment is selected *inside* the card, so a resolver stays correct when
+  the player promotes a secondary moment. The card itself remains ctx-free.
+- Divine intervention is currently flag-hidden (`featureFlags.ts`), so the decision-card
+  surface ships dark; it lights up (with its e2e) when the flag flips.
 
 ## Follow-ups
 

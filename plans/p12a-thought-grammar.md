@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 depends: []
 specs:
   - specs/behaviors/thought-system.md
@@ -58,12 +58,12 @@ specs:
 
 ## Validation
 
-- [ ] Twin-context rng-purity test green.
-- [ ] Stability + independent-streams + slot-free sweep green.
-- [ ] Coverage ≥ 3 per pool key.
-- [ ] `tsc --noEmit` + full core suite green with **zero re-baselines** (this plan consumes no
-      `ctx.rng`).
-- [ ] `data-model.md` lists `worldSeed`; `thought-system.md` merged with the p9c note.
+- [x] Twin-context rng-purity test green.
+- [x] Stability + independent-streams + slot-free sweep green.
+- [x] Coverage ≥ 3 per pool key (131 fragments across 43 pool keys).
+- [x] `tsc --noEmit` + full core suite green (556 tests) with **zero re-baselines** (this plan
+      consumes no `ctx.rng`).
+- [x] `data-model.md` lists `worldSeed`; `thought-system.md` merged with the p9c note.
 
 ## Risks / unknowns
 

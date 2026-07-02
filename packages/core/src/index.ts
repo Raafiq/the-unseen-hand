@@ -24,6 +24,12 @@ export {
 } from './adventurers/mood.js';
 export type { MoodLabel } from './adventurers/mood.js';
 
+// Thoughts (spec: specs/behaviors/thought-system.md)
+export { renderThought, THOUGHT_POOLS } from './thoughts/thoughtGrammar.js';
+export type { RenderedThought, RenderThoughtOptions } from './thoughts/thoughtGrammar.js';
+export { deriveBeliefs } from './thoughts/beliefs.js';
+export type { Belief, BeliefKind } from './thoughts/beliefs.js';
+
 // Relationships
 export {
   strengthToType,

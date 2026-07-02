@@ -527,6 +527,7 @@ export type Scenario = {
 export type SimulationContext = {
   worldTime: WorldTime;
   rng: SeededRNG;
+  worldSeed: string; // world-gen seed, read-only after creation; lets thought-system.md build derived read-only rng streams without touching ctx.rng
   adventurers: Map<AdventurerId, Adventurer>;
   notableNpcs: Map<NpcId, NotableNpc>; // Tier A town NPCs; honorary actors in `relationships`
   relationships: RelationshipGraph;

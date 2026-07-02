@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 depends: []
 specs:
   - specs/behaviors/npc-system.md
@@ -56,11 +56,11 @@ specs:
 
 ## Validation
 
-- [ ] All subscriber-routed tests above green.
-- [ ] Existing suite untouched (mood decay and history appends are roll-free — no rng
-      re-baselines).
-- [ ] npc-system.md exclusion/interiority sections merged in the same change.
-- [ ] `grep -r "Math.random" packages/` clean.
+- [x] All subscriber-routed tests above green (tests/npc-interiority.test.ts; 564 core tests).
+- [x] Existing suite untouched (mood decay and history appends are roll-free — no rng
+      re-baselines; scenario1-baseline unchanged).
+- [x] npc-system.md exclusion/interiority sections merged (landed with the spec batch).
+- [x] `grep -r "Math.random" packages/` clean.
 
 ## Risks / unknowns
 

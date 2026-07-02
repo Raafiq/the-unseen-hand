@@ -21,7 +21,7 @@ import { transitionState } from '../adventurers/stateMachine.js';
 import { upsertMoodFactor } from '../adventurers/mood.js';
 import { questVolunteerWeight } from '../adventurers/personality.js';
 import { emitEvent } from '../events/eventBus.js';
-import { appendHistoryEvent } from '../adventurers/HistoryLayer.js';
+import { appendHistoryEvent, witnessLossForBondedNpcs } from '../adventurers/HistoryLayer.js';
 import { generateBeats } from '../combat/beatGenerator.js';
 import { updateReputation, monsterSurgeThreatBonus } from '../world/WorldExpansion.js';
 import { grantDI } from '../divine/DivineInfluence.js';
@@ -435,6 +435,8 @@ export function resolveQuest(
         updatedCtx = emitEvent(updatedCtx, {
           kind: 'LIFECYCLE', subtype: 'ADVENTURER_DIED', involvedIds: [adv.id],
         });
+        // Bonded townsfolk register the loss (npc-system.md interiority write site).
+        updatedCtx = witnessLossForBondedNpcs(updatedCtx, adv.id);
       } else if (injRoll < quest.risk.injuryChance) {
         injuries.push(adv.id);
         updatedAdventurers.set(adv.id, {

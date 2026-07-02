@@ -45,17 +45,38 @@ export function topMoodFactors(factors: MoodFactor[], n: number): MoodFactor[] {
 // Subscriber
 // ---------------------------------------------------------------------------
 
-/** Day-tick subscriber: applies mood decay and recalculation to all adventurers. */
+/** Day-tick subscriber: applies mood decay and recalculation to all adventurers
+ *  and notable NPCs (npc-system.md — NPCs are mood-system citizens with no
+ *  despairStreak and no departure consequence). */
 export function moodSubscriber(ctx: SimulationContext): SimulationContext {
   if (ctx.worldTime.hour !== 0) return ctx;
-  if (ctx.adventurers.size === 0) return ctx;
-  let changed = false;
-  const updated = new Map(ctx.adventurers);
-  for (const [id, adv] of ctx.adventurers) {
-    const next = applyDayTickMood(adv, ctx.worldTime);
-    if (next !== adv) { updated.set(id, next); changed = true; }
+  let next = ctx;
+
+  if (ctx.adventurers.size > 0) {
+    let changed = false;
+    const updated = new Map(ctx.adventurers);
+    for (const [id, adv] of ctx.adventurers) {
+      const nextAdv = applyDayTickMood(adv, ctx.worldTime);
+      if (nextAdv !== adv) { updated.set(id, nextAdv); changed = true; }
+    }
+    if (changed) next = { ...next, adventurers: updated };
   }
-  return changed ? { ...ctx, adventurers: updated } : ctx;
+
+  if (ctx.notableNpcs.size > 0) {
+    let changed = false;
+    const updated = new Map(ctx.notableNpcs);
+    for (const [id, npc] of ctx.notableNpcs) {
+      const decayed = decayMoodFactors(npc.moodFactors, ctx.worldTime.tick);
+      const mood = recalculateMood(decayed);
+      if (mood !== npc.mood || decayed.length !== npc.moodFactors.length) {
+        updated.set(id, { ...npc, moodFactors: decayed, mood });
+        changed = true;
+      }
+    }
+    if (changed) next = { ...next, notableNpcs: updated };
+  }
+
+  return next;
 }
 
 /** Apply mood decay + recalculation on day ticks only. Updates despairStreak. */

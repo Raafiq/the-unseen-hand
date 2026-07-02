@@ -50,7 +50,7 @@ function makeAdv(id: string, opts: Partial<{ mood: number; activity: ActivityId 
   };
 }
 
-function makeNpc(slug: string, traits: Partial<NotableNpc['traits']> = {}, mood?: number): NotableNpc {
+function makeNpc(slug: string, traits: Partial<NotableNpc['traits']> = {}, mood = 50): NotableNpc {
   return {
     id: makeNpcId(slug),
     name: `NPC-${slug}`,
@@ -58,6 +58,9 @@ function makeNpc(slug: string, traits: Partial<NotableNpc['traits']> = {}, mood?
     traits: { empathy: 60, courage: 50, ...traits },
     bio: 'A townsperson.',
     mood,
+    moodFactors: [],
+    history: [],
+    want: { id: 'WANT_TEST', text: 'a quieter town' },
   };
 }
 

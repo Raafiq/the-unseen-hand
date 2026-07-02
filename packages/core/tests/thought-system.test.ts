@@ -189,7 +189,7 @@ describe('renderThought — rendering rules', () => {
     expect(renderThought(ctx, 'nobody')).toBeUndefined();
   });
 
-  it('renders a thought for a notable NPC (pre-p12b shape: bio-only)', () => {
+  it('renders a thought for a notable NPC', () => {
     const npcId = makeNpcId('brenna-blacksmith');
     const npc: NotableNpc = {
       id: npcId,
@@ -198,6 +198,9 @@ describe('renderThought — rendering rules', () => {
       traits: { stubborn: 75 },
       bio: 'The town blacksmith.',
       mood: 55,
+      moodFactors: [],
+      history: [],
+      want: { id: 'WANT_CRAFT_HONOURED', text: 'to see her blades come home carried, not sold' },
     };
     const base = makeCtx([]);
     const ctx = { ...base, notableNpcs: new Map([[npcId, npc]]) };

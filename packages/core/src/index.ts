@@ -97,7 +97,7 @@ export { createThornvaleNpcs, THORNVALE_NPCS } from './scenarios/notableNpcs.js'
 export { checkGoalCompletion, applyGoalCompletion } from './adventurers/PersonalGoals.js';
 
 // History layer
-export { contextualModifier, appendHistoryEvent } from './adventurers/HistoryLayer.js';
+export { contextualModifier, appendHistoryEvent, witnessLossForBondedNpcs } from './adventurers/HistoryLayer.js';
 
 // World expansion
 export {

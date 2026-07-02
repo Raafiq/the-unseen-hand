@@ -182,14 +182,19 @@ export type TownRole =
   | 'GUARD_CAPTAIN' | 'INNKEEPER';
 
 /** Tier A — a named, persistent town NPC that lives in the relationship graph as an
- *  honorary actor. NPCs are not full adventurers (no quests, goal, or divine touch). */
+ *  honorary actor. NPCs are not full adventurers (no quests, goal, or divine touch),
+ *  but carry earned interiority: real mood, event-driven history, and a static want
+ *  (npc-system.md#interiority-earned-event-driven). */
 export type NotableNpc = {
   id: NpcId;
   name: string;
   role: TownRole;
   traits: Partial<PersonalityAxes>; // enough to drive encounter valence/intensity
   bio: string;                      // 1–2 sentences, shown in UI; stable
-  mood?: number;                    // optional, coarse; NPCs are not full mood-system citizens
+  mood: number;                     // 0–100; seeded 50; day-tick decay like adventurers (no despairStreak)
+  moodFactors: MoodFactor[];        // written by social encounters; decayed on day ticks
+  history: HistoryEvent[];          // 50-cap FIFO via appendHistoryEvent; event-driven writes only
+  want: { id: string; text: string }; // static longing; feeds thought-system.md; never mutated
 };
 
 /** Keyed by sorted pair id "A-B"; value is the tick of last shared activity. */

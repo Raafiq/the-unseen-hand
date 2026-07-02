@@ -8,9 +8,11 @@
  * `appendHistoryEvent` maintains the 50-event FIFO cap.
  */
 import type {
+  AdventurerId,
   PersonalityAxes,
   HistoryEvent,
   BehaviourContext,
+  SimulationContext,
 } from '../world/types.js';
 
 const MAX_HISTORY = 50;
@@ -102,4 +104,34 @@ export function appendHistoryEvent(
 ): HistoryEvent[] {
   const next = [...history, event];
   return next.length > MAX_HISTORY ? next.slice(next.length - MAX_HISTORY) : next;
+}
+
+/** Bond threshold at which a notable NPC registers an adventurer's loss. */
+const NPC_WITNESS_BOND = 20;
+
+/**
+ * Record an adventurer's death/departure in the history of every notable NPC
+ * bonded to them (|edge strength| ≥ 20) — npc-system.md's event-driven
+ * interiority write site. Stranger NPCs are untouched.
+ */
+export function witnessLossForBondedNpcs(
+  ctx: SimulationContext,
+  lostId: AdventurerId,
+): SimulationContext {
+  if (ctx.notableNpcs.size === 0) return ctx;
+  const tick = ctx.worldTime.tick;
+  let changed = false;
+  const updated = new Map(ctx.notableNpcs);
+  for (const [npcId, npc] of ctx.notableNpcs) {
+    const strength = ctx.relationships.get(npcId)?.get(lostId)?.strength ?? 0;
+    if (Math.abs(strength) < NPC_WITNESS_BOND) continue;
+    updated.set(npcId, {
+      ...npc,
+      history: appendHistoryEvent(npc.history, {
+        tick, kind: 'WITNESSED_DEATH', involvedIds: [lostId], weight: 3,
+      }),
+    });
+    changed = true;
+  }
+  return changed ? { ...ctx, notableNpcs: updated } : ctx;
 }

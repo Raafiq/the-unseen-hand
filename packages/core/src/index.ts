@@ -29,6 +29,11 @@ export { renderThought, THOUGHT_POOLS } from './thoughts/thoughtGrammar.js';
 export type { RenderedThought, RenderThoughtOptions } from './thoughts/thoughtGrammar.js';
 export { deriveBeliefs } from './thoughts/beliefs.js';
 export type { Belief, BeliefKind } from './thoughts/beliefs.js';
+export {
+  thoughtWhisperSubscriber,
+  rollThoughtWhispers,
+  THOUGHT_WHISPER_CHANCE,
+} from './thoughts/thoughtWhispers.js';
 
 // Relationships
 export {
@@ -127,4 +132,5 @@ export { findQuestBracketViolations } from './quests/questBracketInvariant.js';
 export type { QuestBracketViolation } from './quests/questBracketInvariant.js';
 export type { SimulationEventInput, SocialEventInput, CombatEventInput, QuestEventInput,
   LifecycleEventInput, WorldEventInput, DecisionMomentEventInput, DivineInterventionEventInput,
+  ThoughtEventInput,
 } from './events/eventBus.js';

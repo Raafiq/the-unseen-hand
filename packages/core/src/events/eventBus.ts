@@ -8,6 +8,7 @@
 import type {
   SimulationContext,
   SimulationEvent,
+  ActorId,
   AdventurerId,
   QuestId,
   RegionId,
@@ -124,6 +125,17 @@ export type ActivityEventInput =
       prevActivity?: ActivityId;
     };
 
+/** THOUGHT whispers arrive pre-rendered: the whisper subscriber composes the text
+ *  through the derived (worldSeed, actorId, tick) stream so it byte-matches the
+ *  on-demand render for the same actor and tick (thought-system.md). Passing it on
+ *  the input keeps emitEvent the single append path. */
+export type ThoughtEventInput = {
+  kind: 'THOUGHT';
+  actorId: ActorId;
+  subjectKey: string;
+  renderedText: string;
+};
+
 export type SimulationEventInput =
   | SocialEventInput
   | NPCEventInput
@@ -133,7 +145,8 @@ export type SimulationEventInput =
   | WorldEventInput
   | DecisionMomentEventInput
   | DivineInterventionEventInput
-  | ActivityEventInput;
+  | ActivityEventInput
+  | ThoughtEventInput;
 
 // ---------------------------------------------------------------------------
 // Template grammar (spec: behaviors/narrative-voice.md)
@@ -665,6 +678,10 @@ function renderText(input: SimulationEventInput, ctx: SimulationContext): string
       return input.situationText;
     case 'DIVINE':
       return compose(`DIVINE:${input.subtype}`, {}, ctx, `The unseen hand stirs.`);
+    case 'THOUGHT':
+      // Pre-rendered by the thought grammar via the derived stream (thought-system.md);
+      // must byte-match the on-demand render — never re-rendered here.
+      return input.renderedText;
     case 'ACTIVITY': {
       const who = actorName(ctx, input.adventurerId);
       const ACTIVITY_NOUN: Record<ActivityId, string> = {

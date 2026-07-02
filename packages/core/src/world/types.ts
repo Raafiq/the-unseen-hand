@@ -382,6 +382,14 @@ export type ActivityEvent = EventBase & {
   prevActivity?: ActivityId;
 };
 
+/** A THOUGHT whisper — an actor's inner monologue surfacing into the feed
+ *  (thought-system.md). Strictly solo; carries no relationship/mood/state effect. */
+export type ThoughtEvent = EventBase & {
+  kind: 'THOUGHT';
+  actorId: ActorId;   // the thinker — adventurer or Tier A notable NPC
+  subjectKey: string; // fragment-family id for anti-repetition; never rendered
+};
+
 export type SimulationEvent =
   | SocialEvent
   | NPCEvent
@@ -391,7 +399,8 @@ export type SimulationEvent =
   | WorldEvent
   | DecisionMomentEvent
   | DivineInterventionEvent
-  | ActivityEvent;
+  | ActivityEvent
+  | ThoughtEvent;
 
 // ---------------------------------------------------------------------------
 // Decision moments

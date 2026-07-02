@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 depends: [p12a-thought-grammar, p12b-npc-interiority]
 specs:
   - specs/behaviors/thought-system.md
@@ -61,12 +61,15 @@ specs:
 
 ## Validation
 
-- [ ] Subscriber tests green (incl. equality + suppression + referential no-op).
-- [ ] 500-tick replay byte-equality green.
-- [ ] Three-update rule complete — `KIND_LABELS` (tsc-enforced), `ALL_KINDS` + `getInvolvedIds`
-      (test-enforced; tsc does NOT catch these).
-- [ ] Re-baselines documented in Notes (old → new values).
-- [ ] Full core suite + `pnpm --filter @ugs/game-client check` green.
+- [x] Subscriber tests green (incl. equality + suppression + referential no-op) —
+      tests/thought-whispers.test.ts.
+- [x] 500-tick replay byte-equality green, THOUGHT lines present.
+- [x] Three-update rule complete — `KIND_LABELS` (tsc-enforced), `ALL_KINDS` +
+      `getInvolvedIds` `actorId` branch (muted italic row styling added).
+- [x] Re-baselines: **none needed** — existing baseline tests assert structural
+      properties, not exact cross-tick rng values; dead-last registration left all
+      intra-tick streams untouched.
+- [x] Full core suite (573 tests) + `pnpm --filter @ugs/game-client check` (0 errors) green.
 
 ## Risks / unknowns
 
@@ -78,7 +81,12 @@ specs:
 
 ## Notes
 
-- (fill at implementation: re-baselined values old → new)
+- No re-baselines were required: scenario1-baseline / playtest / p2 / p4 headless
+  validations assert structural invariants rather than exact seeded values, so the
+  new dead-last rng consumer displaced nothing they check.
+- Whisper == panel byte-equality holds for identical suppression sets; the detail
+  panel renders with no suppression, which matches whenever the actor has no
+  whisper inside the 96-tick window (the common case).
 
 ## Follow-ups
 

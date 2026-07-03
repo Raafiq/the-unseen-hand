@@ -172,5 +172,6 @@ state added. Follow TDD: one failing test per driver behaviour and per surfacing
 - **p13b (`plans/p13b-townsfolk-familiarity.md`)** — now unblocked. Seeds NPC familiarity edges +
   approach bias, and is where **NPC rivalry** becomes reachable (needs goal/feud data an NPC lacks
   in p13a). p13a leaves NPC rivalry adventurer-only by design.
-- **User review of the symmetric-edge decision** (see Notes) — the one open question if the
-  designer wants directional edges instead; would be a much larger change.
+- **~~User review of the symmetric-edge decision~~ SIGNED OFF (2026-07-04).** User confirmed:
+  keep symmetric edges with per-actor belief/mood asymmetry. The directional-edge alternative is
+  **rejected**, not deferred — do not reopen without a new explicit request.

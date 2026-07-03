@@ -28,21 +28,20 @@ next real work is new planning (a phase-14 batch) or the one open design sign-of
 - core `tsc` clean · **621 core tests** · `svelte-check` clean · **16/16 e2e**.
 - Nothing uncommitted except this HANDOFF.
 
-## Open item to raise with the user (carried from p13a, still unresolved)
+## Symmetric-edge decision — SIGNED OFF (user confirmed 2026-07-04)
 
-- **Symmetric-edge decision sign-off.** The p13a specs' driver deltas were *per-direction asymmetric*,
-  but `RelationshipEdge.strength` is symmetric by a hard invariant. Resolved by best judgment: one
-  symmetric delta per driver; asymmetry lives in per-actor surfaces (`SAVED_BY`→`OWES`,
-  `BETRAYED_BY`→`DISTRUSTS`, larger recipient mood for KINDNESS). All specs reconciled to match.
-  If the designer wants literal directional deltas, that's a much larger change (directional edges
-  ripple through beliefs/decay/thresholds/drift/UI). Re-ask if you want their call.
+- Edge `strength` stays **symmetric** (one shared number per pair). Each driver applies **one
+  symmetric delta**; the "who feels it more" asymmetry lives in per-actor surfaces
+  (`SAVED_BY`→`OWES`, `BETRAYED_BY`→`DISTRUSTS`, larger recipient mood for KINDNESS). This is now
+  **final** — the directional-edge alternative (two numbers per edge, rippling through
+  beliefs/decay/thresholds/drift/UI) is **rejected**, not deferred. Don't reopen without a new
+  explicit request.
 
 ## Next steps
 
-1. **(user) Confirm the symmetric-edge decision** above, or greenlight it as final.
-2. **New planning.** No ready plans remain. When starting phase 14, use the **specops** skill: map the
+1. **New planning.** No ready plans remain. When starting phase 14, use the **specops** skill: map the
    spec batch first, then propose the set of plans (don't ad-hoc it).
-3. Nothing else pending — trunk is clean.
+2. Nothing else pending — trunk is clean, symmetric-edge decision is final.
 
 ## Key files (phase 13)
 

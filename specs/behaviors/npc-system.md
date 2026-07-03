@@ -53,6 +53,7 @@ type NotableNpc = {
   moodFactors: MoodFactor[]; // same decaying factors as adventurers; written by encounters
   history: HistoryEvent[];   // 50-cap FIFO, same shape as adventurers (see history-layer.md)
   want: { id: string; text: string };  // static longing; read by thought-system.md, never mutated
+  familiarity: number;       // 0–100; static, seeded at world gen; how embedded in town life (see Townsfolk familiarity)
 };
 ```
 
@@ -77,6 +78,42 @@ type NotableNpc = {
 - **Exclusions.** Co-quest strength deltas never apply (NPCs do not quest). NPCs do not draw from
   the activity pool, do not have departures, do not have a `despairStreak` or personal goal, and
   do not die unless a scenario scripts it. Their edges are otherwise live (social deltas, decay).
+
+### Townsfolk familiarity
+
+Notable NPCs are **townsfolk**: they have lived alongside each other for years, while adventurers
+are **newcomers** who just arrived at the guild. A townsperson does not treat a stranger the way one
+stranger treats another - the innkeeper is already warm to a new face; the priest already offers
+counsel. This is captured by a single **static familiarity scalar** per NPC, deliberately cheaper
+than a live NPC↔NPC relationship graph (which remains out of scope).
+
+- **`familiarity: number` (0–100)** is seeded per NPC at world generation and **never churns per
+  tick**. It represents how embedded in town life that NPC is - service/social roles are high, a
+  reclusive or newly-arrived rival is low.
+- **Service-role warmth.** Service and craft roles (`INNKEEPER`, `PRIEST`, `SHOPKEEPER`,
+  `MERCHANT`, `BARD`, `STABLEHAND`, `BLACKSMITH`) seed **high** familiarity - the town craftsperson
+  everyone deals with is as embedded as the innkeeper; guarded/martial roles (`GUARD_CAPTAIN`,
+  `GATE_GUARD`) seed **moderate**; marginal/transient roles (`URCHIN`, `DRUNK`, `BEGGAR`) seed
+  **low**; and a scenario may seed any NPC low or negative-leaning as a **rival exception**. This is
+  the fix for service NPCs reading as "too unfriendly": a warm service NPC no longer starts as a cold
+  stranger.
+
+**Familiarity does two things, both static — it does not evolve the way an edge does:**
+
+1. **Seeds a warmer starting edge toward newcomer adventurers.** At world generation, each
+   adventurer↔notable-NPC edge is created with an initial `strength` biased by `familiarity` (a high
+   familiarity seeds an `ACQUAINTANCE`-band opening; a low or rival-flagged familiarity seeds
+   `STRANGER` or a mild negative). Once seeded, that edge is an ordinary `RelationshipEdge` and
+   evolves through the normal driver/encounter/decay machinery like any other — familiarity is the
+   **starting condition**, not an ongoing force.
+2. **Adds a small static approach bias.** A high-familiarity NPC contributes a small constant to the
+   social-pressure `gain` (`social-system.md` §4) for their adventurer pairs, so an embedded,
+   sociable NPC more readily strikes up encounters with newcomers. The bias is a fixed function of
+   `familiarity`, applied every tick but never itself changing.
+
+Familiarity is a scalar **on the NPC**, not a graph — there is no townsfolk↔townsfolk edge state. A
+rival NPC is simply one seeded with low familiarity (and, if a scenario wants an active feud, a
+seeded negative starting edge to a specific adventurer).
 
 ### Tier B — nameless roles
 
@@ -198,6 +235,14 @@ character-filtering.
   re-targets the drawer to that actor; clicking the adventurer the townsfolk is bonded to returns
   to that adventurer's detail.
 - A notable-NPC name in the event feed is clickable and opens that townsfolk's detail view.
+- A high-familiarity service NPC (e.g. `INNKEEPER`) seeds adventurer edges in the `ACQUAINTANCE`
+  band at world generation, not `STRANGER`; a rival-flagged low-familiarity NPC seeds `STRANGER` or
+  a mild negative.
+- `npc.familiarity` is never mutated by any subscriber across a long seeded run (static, like `want`).
+- A high-familiarity NPC contributes a larger constant approach-bias to social-pressure gain than a
+  low-familiarity NPC (assert the gain difference, not a rolled encounter).
+- Once seeded, a townsfolk↔adventurer edge evolves through the ordinary driver/encounter/decay
+  machinery (familiarity does not re-apply after seeding).
 
 ## Principles
 

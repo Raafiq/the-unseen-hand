@@ -46,11 +46,18 @@ describe('Scenario 1 — createScenario1Context', () => {
     expect(kara.identity.name).toBe('Reiko');
   });
 
-  it('Reiko starts with no relationship edges', () => {
+  it('Reiko starts with a seeded familiarity edge to each notable NPC (townsfolk warmth), and no peer edges', () => {
+    // npc-system.md#townsfolk-familiarity: newcomer adventurers open at a familiarity-biased edge
+    // to each embedded townsperson, not a blank graph.
     const ctx = createScenario1Context();
     const kara = [...ctx.adventurers.values()][0]!;
     const edges = ctx.relationships.get(kara.id);
-    expect(!edges || edges.size === 0).toBe(true);
+    expect(edges).toBeDefined();
+    for (const npcId of ctx.notableNpcs.keys()) {
+      expect(edges!.get(npcId)).toBeDefined();
+    }
+    // The only adventurer has no adventurer↔adventurer edge.
+    expect([...edges!.keys()].every(id => ctx.notableNpcs.has(id as never))).toBe(true);
   });
 
   it('scenario is ACTIVE at start with correct scenarioId', () => {

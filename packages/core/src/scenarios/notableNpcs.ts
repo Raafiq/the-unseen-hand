@@ -10,6 +10,7 @@
  */
 import type { MoodFactor, NotableNpc, NpcId } from '../world/types.js';
 import { makeNpcId } from '../world/actors.js';
+import { familiarityForRole } from '../relationships/familiarity.js';
 
 const npcBaseline = (label: string): MoodFactor[] => [
   { id: 'BASELINE', label, value: 50, decayRate: 0 },
@@ -27,6 +28,7 @@ export const THORNVALE_NPCS: NotableNpc[] = [
     moodFactors: npcBaseline('Steady trade'),
     history: [],
     want: { id: 'WANT_CRAFT_HONOURED', text: 'to see her blades come home carried, not sold' },
+    familiarity: familiarityForRole('BLACKSMITH'), // a town craftsperson everyone deals with → high
   },
   {
     id: makeNpcId('halden-captain'),
@@ -38,6 +40,7 @@ export const THORNVALE_NPCS: NotableNpc[] = [
     moodFactors: npcBaseline('The watch holds'),
     history: [],
     want: { id: 'WANT_QUIET_WATCH', text: 'one full season where the walls are never tested' },
+    familiarity: familiarityForRole('GUARD_CAPTAIN'), // present but keeps the town at arm's length → moderate
   },
   {
     id: makeNpcId('marsa-inn'),
@@ -49,6 +52,7 @@ export const THORNVALE_NPCS: NotableNpc[] = [
     moodFactors: npcBaseline('A full common room'),
     history: [],
     want: { id: 'WANT_FULL_TABLES', text: 'to see the common room loud and every bed spoken for' },
+    familiarity: familiarityForRole('INNKEEPER'), // hears every rumour, knows every face → high
   },
   {
     id: makeNpcId('father-oswin'),
@@ -60,6 +64,7 @@ export const THORNVALE_NPCS: NotableNpc[] = [
     moodFactors: npcBaseline('The small congregation'),
     history: [],
     want: { id: 'WANT_NO_MORE_GRAVES', text: 'to go one year without digging a young grave' },
+    familiarity: familiarityForRole('PRIEST'), // offers counsel to all comers → high
   },
 ];
 

@@ -49,6 +49,13 @@ export { relationshipDecaySubscriber } from './relationships/graph.js';
 export { computeEdgeDrift, DRIFT_WINDOW_TICKS, TREND_EPS } from './relationships/drift.js';
 export type { EdgeDrift, DriftDirection } from './relationships/drift.js';
 export { townDriverSubscriber, applyPerilResponse } from './relationships/drivers.js';
+export {
+  familiarityForRole,
+  openingStrengthForFamiliarity,
+  familiarityApproachBias,
+  seedFamiliarityEdges,
+  FAMILIARITY_APPROACH_BIAS,
+} from './relationships/familiarity.js';
 
 // Event bus
 export { emitEvent } from './events/eventBus.js';

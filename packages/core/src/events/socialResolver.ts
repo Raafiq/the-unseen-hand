@@ -37,6 +37,7 @@ import {
   createEdge,
 } from '../relationships/graph.js';
 import { isNpc } from '../world/actors.js';
+import { familiarityApproachBias } from '../relationships/familiarity.js';
 import { upsertMoodFactor } from '../adventurers/mood.js';
 import { emitEvent } from './eventBus.js';
 import { updateReputation, hasActiveSpan } from '../world/WorldExpansion.js';
@@ -55,6 +56,9 @@ export type EncounterActor = {
   personality: PersonalityAxes;
   state: AdventurerState;
   activityState?: ActivityState;
+  /** Static town-life embeddedness (0–100), present only on projected notable NPCs; feeds a small
+   *  approach bias in the pressure gain (npc-system.md#townsfolk-familiarity). */
+  familiarity?: number;
 };
 
 /** Neutral fill for a notable NPC's partial trait axes (NPCs carry only enough to
@@ -73,7 +77,7 @@ function npcPersonality(traits: Partial<PersonalityAxes>): PersonalityAxes {
 /** Project a notable NPC into an encounter actor. NPCs are always present and awake
  *  (no activity pool); mood is live (day-tick decayed, encounter-written). */
 function npcToActor(npc: NotableNpc): EncounterActor {
-  return { id: npc.id, mood: npc.mood, personality: npcPersonality(npc.traits), state: 'IDLE' };
+  return { id: npc.id, mood: npc.mood, personality: npcPersonality(npc.traits), state: 'IDLE', familiarity: npc.familiarity };
 }
 
 /** Resolve an actor id to its encounter view — a real adventurer or a projected NPC. */
@@ -196,10 +200,15 @@ export function computePressureGain(
   const nearBoundary = edge !== undefined && isNearBoundary(edge.strength);
   const relationshipTension = 0.005 + (isRival ? 0.025 : 0) + (nearBoundary ? 0.015 : 0);
 
+  // Static familiarity approach bias — an embedded, sociable notable NPC more readily strikes up
+  // encounters with newcomer adventurers (npc-system.md#townsfolk-familiarity). Only NPCs carry
+  // familiarity, so adventurer↔adventurer pairs contribute nothing here.
+  const familiarityBias = familiarityApproachBias(a.familiarity ?? b.familiarity ?? 0);
+
   const empathyMult = 0.5 + Math.max(a.personality.empathy, b.personality.empathy) / 100;
   const compatibilityMult = compatibilityFor(a, b);
 
-  return (proximity + moodStrain + relationshipTension) * compatibilityMult * empathyMult;
+  return (proximity + moodStrain + relationshipTension + familiarityBias) * compatibilityMult * empathyMult;
 }
 
 // ---------------------------------------------------------------------------

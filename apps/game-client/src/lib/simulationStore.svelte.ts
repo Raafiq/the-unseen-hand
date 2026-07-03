@@ -44,10 +44,9 @@ if (typeof location !== 'undefined' && new URLSearchParams(location.search).get(
   initialCtx.pendingDecisions = [e2eDecision];
 }
 
-// E2E seam (test-only): townsfolk↔adventurer edges form only after emergent town encounters,
-// so — gated behind `?e2e=npc` — seed one deterministic FRIEND edge between Reiko and the guard
-// captain (Halden). This lets the townsfolk-detail spec exercise the real relationship-row →
-// NpcDetail path without waiting on emergent state. Never runs in normal play.
+// E2E seam (test-only): familiarity seeds a STRANGER-band opening to the guard captain, but the
+// townsfolk-detail spec wants a FRIEND edge to exercise the warmer render path — so, gated behind
+// `?e2e=npc`, override Reiko↔Halden to a deterministic FRIEND (≥40). Never runs in normal play.
 if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('e2e') === 'npc') {
   const advId = 's1-reiko';
   const haldenId = makeNpcId('halden-captain');

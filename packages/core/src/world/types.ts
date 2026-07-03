@@ -195,6 +195,7 @@ export type NotableNpc = {
   moodFactors: MoodFactor[];        // written by social encounters; decayed on day ticks
   history: HistoryEvent[];          // 50-cap FIFO via appendHistoryEvent; event-driven writes only
   want: { id: string; text: string }; // static longing; feeds thought-system.md; never mutated
+  familiarity: number;              // 0–100; static, seeded at world gen; how embedded in town life (npc-system.md#townsfolk-familiarity)
 };
 
 /** Keyed by sorted pair id "A-B"; value is the tick of last shared activity. */

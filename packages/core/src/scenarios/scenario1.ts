@@ -11,6 +11,7 @@ import { createSimulationContext } from '../world/SimulationContext.js';
 import { registerScenario } from './ScenarioEngine.js';
 import { createStartingRegions } from '../world/WorldExpansion.js';
 import { createThornvaleNpcs } from './notableNpcs.js';
+import { seedFamiliarityEdges } from '../relationships/familiarity.js';
 import { seedQuestBoard } from '../quests/questSystem.js';
 
 export const SCENARIO_1_ID = 'FAILING_GUILD';
@@ -127,7 +128,11 @@ export function createScenario1Context(seed = 'scenario-1'): SimulationContext {
     )],
   ]);
 
-  const relationships: SimulationContext['relationships'] = new Map();
+  const notableNpcs = createThornvaleNpcs();
+  // Seed a warmer starting edge from each embedded townsperson toward the newcomer adventurers,
+  // biased by familiarity (npc-system.md#townsfolk-familiarity). Scenario1 starts with no other
+  // edges, so this is the whole opening graph; the edges then evolve through the normal machinery.
+  const relationships = seedFamiliarityEdges(adventurers, notableNpcs);
 
   const START_TICK = 9; // Day 0, 09:00
 
@@ -135,7 +140,7 @@ export function createScenario1Context(seed = 'scenario-1'): SimulationContext {
     ...base,
     worldTime: { tick: START_TICK, day: 0, hour: START_TICK },
     adventurers,
-    notableNpcs: createThornvaleNpcs(),
+    notableNpcs,
     relationships,
     activeRegions: createStartingRegions(),
     treasury: 50,

@@ -1,57 +1,72 @@
-# Handoff — The Unseen Hand (guild-sim)
+# Handoff — The Unseen Hand: p13a + p13b shipped & committed (2026-07-04)
 
-_Updated 2026-07-01. **Phase 10 (Events Redesign) is COMPLETE — all four plans `done`.** `specops
-next` reports 0 ready · 0 in-progress · 0 blocked. HEAD `4a06e17` on `main`. Tree has one unrelated
-uncommitted change (`CLAUDE.md` doc addition — left as-is, not mine). No `ready` plan to pick up next._
+Phase 13 (relationship drivers + townsfolk familiarity) is **built, verified, and committed to
+`main`**. `specops next` shows **0 ready / 27 done** — no queued plan work remains. The DAG is clean;
+next real work is new planning (a phase-14 batch) or the one open design sign-off below.
 
----
+## What shipped this session (3 commits on `main`)
 
-## Where things stand
+1. **`60e6ffb` p13a — relationship driver events** (was built-but-uncommitted at session start).
+   Peril drivers (SHARED_DANGER +12, BETRAYAL −18 writing `BETRAYED_BY`→`DISTRUSTS` + crisis flag),
+   town drivers (KINDNESS +7, RIVALRY_SPARK −10), `RELATIONSHIP` feed kind, drift indicator.
+   Symmetric edge deltas; asymmetry lives in per-actor surfaces. (See its plan Notes for the
+   symmetric-vs-directional decision.)
+2. **`1909e0c` consume the crisis flag** (p13a follow-up, TDD). `pendingCrises` was written but never
+   read. `socialPressureSubscriber` now forces **exactly one** escalation encounter for each flagged,
+   co-present, awake pair (`crisis:true` bypasses enemy gate + pressure threshold + post-fire
+   cooldown → `ESTRANGEMENT` reachable), then clears the flag; an unavailable pair keeps its flag.
+   Gated on a non-empty `pendingCrises`, so scenario1/existing suites saw **zero rng churn**.
+   Tightened `social-system.md` §4. 3 new tests.
+3. **`486f182` p13b — townsfolk familiarity.** Static per-NPC `familiarity` scalar (0–100, seeded at
+   world gen, never churned): seeds a warmer adventurer↔NPC opening edge (service/craft → ACQUAINTANCE,
+   guard → warm STRANGER, marginal/rival → low/negative) + a small static approach bias in the
+   pressure gain. New module `relationships/familiarity.ts`. scenario1 now seeds the opening graph
+   (was empty). 17 new core tests + 1 e2e (plain `/`, no seam).
 
-Phase 10 shipped p10a (narrative voice), p10b (world-event durations), p10c (social pressure), and
-now **p10d (town NPC system)** — all `done`. Fully green: **504 core Vitest**, **12/12 Playwright
-e2e**, `tsc --noEmit` (core + client) clean, `svelte-check` 0/0, no `Math.random()` in
-`packages/core/src`.
+## Guardrails (all green at last commit)
 
-## Fixed this session — the long-standing choice-card e2e
+- core `tsc` clean · **621 core tests** · `svelte-check` clean · **16/16 e2e**.
+- Nothing uncommitted except this HANDOFF.
 
-`apps/game-client/tests/choice-card.spec.ts` had been failing on clean HEAD (a deferred gap, not
-p10d): the single-Kara scenario produces no decision moments organically — no low-prob size-1 quest,
-and Kara alone can't field the size-2/3 quests, so `PARTY_SELECTION` never fires. Fixed with a
-query-param-gated e2e seam (`?e2e=decision`) in `simulationStore.svelte.ts` that injects one
-deterministic PARTY_SELECTION at load; the spec now targets `/?e2e=decision` and still drives the
-real ChoiceCard render path. The deeper gameplay gap (a solo scenario yielding zero decisions) is
-left for a future scenario-balance pass.
+## Open item to raise with the user (carried from p13a, still unresolved)
 
-## What p10d added (for context)
+- **Symmetric-edge decision sign-off.** The p13a specs' driver deltas were *per-direction asymmetric*,
+  but `RelationshipEdge.strength` is symmetric by a hard invariant. Resolved by best judgment: one
+  symmetric delta per driver; asymmetry lives in per-actor surfaces (`SAVED_BY`→`OWES`,
+  `BETRAYED_BY`→`DISTRUSTS`, larger recipient mood for KINDNESS). All specs reconciled to match.
+  If the designer wants literal directional deltas, that's a much larger change (directional edges
+  ripple through beliefs/decay/thresholds/drift/UI). Re-ask if you want their call.
 
-- **Actor id space:** `ActorId = AdventurerId | NpcId`; `isNpc`/`makeNpcId`/`NPC_ID_PREFIX` in
-  `world/actors.ts`. Graph keys widened to `ActorId` (type-level only — both are `string`).
-- **Tier A:** `EncounterActor` + `actorView` in `events/socialResolver.ts` — notable NPCs are honorary
-  actors in the p10c pressure/outcome model. NPC↔NPC pairs skipped; NPCs get no mood factors.
-- **Tier B:** `events/npcFlavour.ts` — flavour-only `NPCEvent`s during non-Private activities.
-- **FESTIVAL:** a `WorldEventType` town span (p10b lifecycle) in `world/WorldExpansion.ts`
-  (`openFestivalSpan`, `festivalSeedingSubscriber`); effects on pressure, Social activity weight, Tier
-  B frequency. `FEUD` subtype + grammar exist but are not seeded (p10c follow-up).
-- **Data + UI:** 4 Thornvale NPCs (`scenarios/notableNpcs.ts`); EventFeed 3-update rule + NPC filter
-  chips; CharacterDetail resolves NPC edge names (`[townsfolk]`, non-navigable).
+## Next steps
 
-## Gotchas & precedents (still true)
+1. **(user) Confirm the symmetric-edge decision** above, or greenlight it as final.
+2. **New planning.** No ready plans remain. When starting phase 14, use the **specops** skill: map the
+   spec batch first, then propose the set of plans (don't ad-hoc it).
+3. Nothing else pending — trunk is clean.
 
-- **Rebuild core (`pnpm --filter @ugs/core build`) before `svelte-check`** — client resolves `@ugs/core`
-  from `dist/` (gitignored).
-- **rng-stream discipline (p10b precedent, reinforced by p10d):** any new per-tick rng consumer must run
-  **after** the decision/quest/social systems so it doesn't shift their stream. p10d's Tier B flavour
-  subscriber is registered dead-last for exactly this reason.
-- **`createSimulationContext()` needs a seed arg.** Clock: 1 tick = 1 hour, 720 ticks = 30 days.
-- **`vitest run` "failed files" for Playwright specs = false alarm** (mis-collected); run e2e via the
-  game-client `test:e2e` script.
+## Key files (phase 13)
 
-## Carryover (not blocking)
+- Engine: `relationships/drivers.ts` (peril + town drivers), `relationships/drift.ts`,
+  `relationships/familiarity.ts` (p13b — role→familiarity, opening-strength map, edge seeding,
+  approach bias), `events/socialResolver.ts` (crisis consumption in `socialPressureSubscriber`;
+  familiarity bias in `computePressureGain`; `EncounterActor.familiarity`), `scenarios/scenario1.ts`
+  (`seedFamiliarityEdges` at world gen), `scenarios/notableNpcs.ts` (per-NPC familiarity),
+  `world/types.ts` (`NotableNpc.familiarity`, `pendingCrises`), `index.ts` (exports).
+- UI: `EventFeed.svelte`, `CharacterDetail.svelte` (drift row + seeded rel rows render),
+  `simulationStore.svelte.ts` (`?e2e=drivers|npc` seams).
+- Tests: `packages/core/tests/relationship-drivers.test.ts` (+crisis consumption),
+  `packages/core/tests/townsfolk-familiarity.test.ts`, e2e `relationship-drivers.spec.ts` +
+  `townsfolk-familiarity.spec.ts`.
+- Plans (both `done`): `plans/p13a-relationship-driver-events.md`, `plans/p13b-townsfolk-familiarity.md`.
 
-- **FEUD span (p10c follow-up):** subtype union + `WORLD:FEUD:START/END` grammar now exist; wire an
-  open-from-`resolveEncounter`-on-ESTRANGEMENT path + a `WorldEventType`/`SPAN_DURATIONS` entry.
-- **p10d tuning constants** (`TOWN_FLAVOUR_CHANCE`, festival multipliers/duration/seed-prob) are
-  first-pass — confirm against a 30-day playtest. See plan Notes.
-- **p10b follow-ups** (STORM-suppresses-departures; TRAVELLING_MERCHANT trade variants — the latter
-  blocked on a trade/restock `QuestType`). See `plans/p10b-world-event-durations.md`.
+## Gotchas (still current)
+
+- **`townDriverSubscriber` MUST stay dead-last** in `SimulationLoop` (rng-stream discipline).
+- **Familiarity is static:** the invariant holds because every subscriber that writes `notableNpcs`
+  spreads `{...npc, ...}`, preserving the field. Don't add a familiarity write site.
+- **Opening-strength map** = `clamp(round(0.4·familiarity − 14), −30, 39)` — never seeds FRIEND/ENEMY.
+  Calibration is a tuning knob; watch that service-NPC encounters don't dominate the feed.
+- **NPC id prefix is `npc:`** (colon), and `pairKey` joins ids with `-` (don't parse it back — match
+  membership instead, as the crisis path does).
+- **Beat model has no target** → peril attribution is party-wide; solo-party near-death produces no
+  peril pairs (why scenario1 shows 0 peril events — not a bug).

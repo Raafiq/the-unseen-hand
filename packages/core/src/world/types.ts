@@ -390,6 +390,22 @@ export type ThoughtEvent = EventBase & {
   subjectKey: string; // fragment-family id for anti-repetition; never rendered
 };
 
+/** Relationship driver subtypes (relationship-events.md). Peril-response has two branches
+ *  (SHARED_DANGER / BETRAYAL); the town-life drivers are KINDNESS / RIVALRY_SPARK. */
+export type RelationshipDriverSubtype =
+  | 'SHARED_DANGER'
+  | 'BETRAYAL'
+  | 'KINDNESS'
+  | 'RIVALRY_SPARK';
+
+/** A discrete relationship driver surfacing as one feed line (relationship-events.md#surfacing).
+ *  `participantIds` are ActorIds so Tier-A NPCs can participate in the town-life drivers. */
+export type RelationshipDriverEvent = EventBase & {
+  kind: 'RELATIONSHIP';
+  subtype: RelationshipDriverSubtype;
+  participantIds: ActorId[]; // both actors; ActorId so notable NPCs participate (KINDNESS / RIVALRY_SPARK)
+};
+
 export type SimulationEvent =
   | SocialEvent
   | NPCEvent
@@ -400,7 +416,8 @@ export type SimulationEvent =
   | DecisionMomentEvent
   | DivineInterventionEvent
   | ActivityEvent
-  | ThoughtEvent;
+  | ThoughtEvent
+  | RelationshipDriverEvent;
 
 // ---------------------------------------------------------------------------
 // Decision moments
@@ -553,6 +570,7 @@ export type SimulationContext = {
   decisionCooldowns: Map<string, number>; // cooldownKey → expiry tick; prevents re-fire after dismiss/expiry
   socialPressure: Map<PairKey, number>;   // per-pair accumulated social tension; built up then discharged (social-system.md §4)
   socialCooldowns: Map<PairKey, number>;  // per-pair post-fire / ESTRANGEMENT cooldown expiry tick; no accumulation while tick < value
+  pendingCrises: Set<PairKey>;            // pairs carrying a peril BETRAYAL crisis flag; the next social encounter for the pair escalates (relationship-events.md), then clears it
   divineInfluence: number; // 0–100
   activeRegions: Map<RegionId, Region>;
   scenario: ScenarioState | null;

@@ -46,6 +46,9 @@ export {
 export type { ThresholdEvent, ThresholdEventType } from './relationships/graph.js';
 export { moodSubscriber } from './adventurers/mood.js';
 export { relationshipDecaySubscriber } from './relationships/graph.js';
+export { computeEdgeDrift, DRIFT_WINDOW_TICKS, TREND_EPS } from './relationships/drift.js';
+export type { EdgeDrift, DriftDirection } from './relationships/drift.js';
+export { townDriverSubscriber, applyPerilResponse } from './relationships/drivers.js';
 
 // Event bus
 export { emitEvent } from './events/eventBus.js';

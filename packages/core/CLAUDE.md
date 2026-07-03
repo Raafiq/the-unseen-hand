@@ -60,6 +60,18 @@ const result = resolveQuest(quest, party, ctx);
 expect(result.milestones).toContain('DUNGEON_SUCCESS');
 ```
 
+### Testing rule — build the condition; don't wait for a full-sim run to produce it
+
+A full scenario1 loop is a poor way to exercise emergent multi-actor behavior
+(social/relationship drivers, group encounters). Over 30 days the roster collapses
+toward few survivors, quests often run solo, and idle edges decay negative — so the
+condition you need (a multi-member `NEAR_DEATH`, two warm co-present actors) may never
+occur, and the test passes green while covering nothing. Construct the condition
+directly: build a `SimulationContext` with the roster/edges/beats you need and drive
+the owning subscriber. If you need integration proof that a per-tick detector fires,
+seed-search a handful of seeds for one that triggers it and assert reproducibility.
+Reserve full-loop runs for invariant sweeps, not feature coverage.
+
 ### No Math.random()
 
 All randomness flows through `SimulationContext.rng` (seeded PRNG). No module in

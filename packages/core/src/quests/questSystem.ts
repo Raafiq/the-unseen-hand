@@ -16,6 +16,7 @@ import type {
   CombatBeat,
 } from '../world/types.js';
 import { strengthToType, createEdge, applyStrengthShift } from '../relationships/graph.js';
+import { applyPerilResponse } from '../relationships/drivers.js';
 import { isNpc } from '../world/actors.js';
 import { transitionState } from '../adventurers/stateMachine.js';
 import { upsertMoodFactor } from '../adventurers/mood.js';
@@ -627,6 +628,14 @@ export function questResolutionSubscriber(ctx: SimulationContext): SimulationCon
     }
 
     updatedCtx = { ...updatedCtx, adventurers: updatedAdventurers };
+
+    // Peril response (relationship-events.md): where an ally hit NEAR_DEATH, a defender forges a
+    // SHARED_DANGER bond and a hesitator commits a BETRAYAL. Runs here — after SAVED_BY/NEAR_DEATH
+    // tokens are written and the co-quest +8 (success) is applied — so SHARED_DANGER is additive
+    // and the saved side's OWES belief resolves. Wires the previously dead-end SAVED_BY / (new)
+    // BETRAYED_BY tokens to actually move the graph.
+    const survivorIds = party.filter(a => !result.deaths.includes(a.id)).map(a => a.id);
+    updatedCtx = applyPerilResponse(updatedCtx, survivorIds, result.beats);
 
     // Update reputation
     updatedCtx = {

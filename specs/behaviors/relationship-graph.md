@@ -56,8 +56,45 @@ Applied at the end of each tick where a relevant event fires:
 | Time apart (> 14 days, no shared activity) | −1 per day |
 | DEFEND_ALLY action (defender → defended) | +12; (defended → defender) +8 |
 | HESITATE when ally needed help (in RIVAL relationship) | −5 |
+| Driver: SHARED_DANGER bond (peril-response +) | +12 (additive to the co-quest +8) |
+| Driver: BETRAYAL (peril-response −) | −18 |
+| Driver: KINDNESS (town-life +) | +7 |
+| Driver: RIVALRY_SPARK (town-life −) | −10; −14 when it crosses into ENEMY |
 
 Strength is clamped to [−100, +100] after each shift.
+
+The **driver** rows above are discrete, personality-triggered relationship events defined in
+`behaviors/relationship-events.md` (their triggers, feed surfacing, and NPC participation).
+SHARED_DANGER and BETRAYAL are the two branches of one **peril-response** moment (an ally at
+`NEAR_DEATH`); KINDNESS and RIVALRY_SPARK are town-life drivers. The delta magnitudes are canonical
+**here**; that spec references these rows. Driver deltas are applied through the same
+`applyStrengthShift` path and recorded in edge `history` like every other shift. (SHARED_DANGER is
+**additive** to the routine co-quest `+8`, not a replacement — it fires only on a genuine peril
+moment.)
+
+**Edges are symmetric, so each driver moves the bond by one delta** (`graph[A][B].strength ===
+graph[B][A].strength` is a hard invariant). The "who feels it more" asymmetry these drivers carry
+does not live in a directional edge strength — it lives in **per-actor surfaces**: the saved side
+gets a `SAVED_BY` history token (→ `OWES` belief, `thoughts/beliefs.md`); the betrayed side gets a
+`BETRAYED_BY` token (→ `DISTRUSTS`) while the betrayer gets none; and a KINDNESS gives the
+**recipient** a larger mood lift than the giver. The single symmetric edge delta is the shared bond
+change; the tokens/beliefs/mood carry the felt asymmetry.
+
+### Edge history and drift indicator
+
+Every strength shift is recorded on the edge as a `history` entry `{tick, kind, delta}` (written by
+`applyStrengthShift`). This log is the source for the **drift indicator** shown on the
+character-detail relationship row (`screens/character-detail.md`), the quiet channel for ambient
+shifts that never reach the feed (`behaviors/relationship-events.md#surfacing`):
+
+- **Trend** — net sum of `delta` over the last 7 in-game days (168 ticks): `> +TREND_EPS` →
+  warming, `< −TREND_EPS` → cooling, otherwise steady. `TREND_EPS` is a small constant that keeps a
+  single stray `±1` from reading as a trend.
+- **Most-recent cause** — the `kind` of the latest history entry, mapped to a short human label
+  (e.g. `SEPARATION_DECAY` → "drifted apart", a kindness → "an act of kindness"). Never a raw token.
+
+The indicator is **derived on read** from `history`; no separate trend state is stored. This keeps
+sub-threshold drift legible without emitting a feed line per shift.
 
 ### Threshold events
 

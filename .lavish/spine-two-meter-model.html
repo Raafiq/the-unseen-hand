@@ -1,0 +1,485 @@
+<style>
+  :root {
+    --bg: #0b0c10;
+    --bg-2: #12141c;
+    --panel: #171a24;
+    --panel-2: #1d212e;
+    --ink: #e8e6df;
+    --ink-dim: #a4a294;
+    --ink-faint: #6f6d63;
+    --line: #2a2e3c;
+    --gold: #d9b45b;
+    --gold-soft: #b9974a;
+    --hate: #c8503f;
+    --hate-soft: #8f3a2e;
+    --cult: #8b5cd6;
+    --cult-soft: #6a45a6;
+    --good: #5fa872;
+    --di: #4a90c4;
+    --radius: 14px;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; min-width: 0; }
+
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #1a1d2b 0%, transparent 60%),
+      var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 940px; margin: 0 auto; padding: 56px 24px 96px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--gold-soft);
+    margin: 0 0 14px;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(30px, 5vw, 46px);
+    line-height: 1.16;
+    margin: 0 0 16px;
+    padding-bottom: 2px;
+    letter-spacing: -0.01em;
+  }
+  h1 .faint { color: var(--ink-faint); font-style: italic; }
+
+  .lede {
+    font-size: 18px;
+    color: var(--ink-dim);
+    max-width: 62ch;
+    margin: 0 0 8px;
+  }
+
+  section { margin-top: 56px; }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: 25px;
+    font-weight: 600;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  .section-note {
+    color: var(--ink-faint);
+    font-size: 14px;
+    margin: 0 0 22px;
+    font-family: var(--mono);
+    letter-spacing: 0.02em;
+  }
+
+  /* ---------- Faith meter / balance beam ---------- */
+  .meter {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 30px 28px 26px;
+  }
+  .meter-track {
+    position: relative;
+    height: 20px;
+    border-radius: 999px;
+    background: linear-gradient(90deg,
+      var(--hate) 0%,
+      var(--hate-soft) 14%,
+      #3a3d2c 32%,
+      var(--good) 50%,
+      #3a3548 68%,
+      var(--cult-soft) 86%,
+      var(--cult) 100%);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+    margin: 40px 0 10px;
+  }
+  .zone-safe {
+    position: absolute;
+    top: -7px; bottom: -7px;
+    left: 34%; right: 34%;
+    border: 1.5px dashed rgba(232,230,223,0.45);
+    border-radius: 999px;
+  }
+  .needle {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    width: 16px; height: 48px;
+    transform: translateX(-50%);
+    background: linear-gradient(var(--ink), var(--ink)) center / 2px 100% no-repeat;
+  }
+  .needle::after {
+    content: "";
+    position: absolute;
+    top: -7px; left: 50%;
+    width: 11px; height: 11px;
+    background: var(--ink);
+    border-radius: 50%;
+    transform: translateX(-50%) rotate(45deg);
+  }
+  .meter-labels {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+    margin-top: 18px;
+  }
+  .meter-labels > * { min-width: 0; }
+  .m-end p, .m-mid p { overflow-wrap: anywhere; }
+  .m-end { max-width: 30ch; }
+  .m-end.left { text-align: left; }
+  .m-end.right { text-align: right; justify-self: end; }
+  .m-end .cap {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 999px;
+    margin-bottom: 8px;
+  }
+  .cap.hate { color: #f0a99a; background: rgba(200,80,63,0.16); border: 1px solid rgba(200,80,63,0.4); }
+  .cap.cult { color: #cbb0f2; background: rgba(139,92,214,0.16); border: 1px solid rgba(139,92,214,0.4); }
+  .cap.safe { color: #a9dab7; background: rgba(95,168,114,0.16); border: 1px solid rgba(95,168,114,0.4); }
+  .m-end p { margin: 0; font-size: 13.5px; color: var(--ink-dim); }
+  .m-mid { text-align: center; }
+  .m-mid p { margin: 0; font-size: 13.5px; color: var(--ink-dim); max-width: 26ch; }
+
+  .drivers {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 26px;
+  }
+  .driver {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 13.5px;
+    color: var(--ink-dim);
+  }
+  .driver b { color: var(--ink); font-weight: 600; }
+  .driver .arrow { font-family: var(--mono); font-weight: 700; }
+  .arrow.down { color: var(--hate); }
+  .arrow.up { color: var(--cult); }
+
+  /* ---------- Two meters ---------- */
+  .cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 18px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 24px 24px 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: "";
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+  .card.di::before { background: var(--di); }
+  .card.faith::before { background: var(--gold); }
+  .card h3 {
+    font-family: var(--serif);
+    font-size: 20px;
+    margin: 0 0 2px;
+  }
+  .card .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .card .tag.di-t { color: #7fb8e0; }
+  .card .tag.faith-t { color: var(--gold); }
+  .card dl { margin: 16px 0 0; display: grid; gap: 11px; }
+  .card .row { display: grid; grid-template-columns: 78px 1fr; gap: 12px; align-items: baseline; }
+  .card .row dt {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .card .row dd { margin: 0; font-size: 14px; color: var(--ink-dim); }
+  .card .row dd b { color: var(--ink); font-weight: 600; }
+
+  .interplay {
+    margin-top: 18px;
+    background: linear-gradient(90deg, rgba(74,144,196,0.10), rgba(217,180,91,0.10));
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 22px;
+    font-size: 15px;
+    color: var(--ink);
+  }
+  .interplay .k { color: var(--gold); font-weight: 600; }
+  .interplay .di-k { color: #7fb8e0; font-weight: 600; }
+
+  /* ---------- inversion ---------- */
+  .flip {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    align-items: center;
+  }
+  @media (max-width: 640px) { .flip { grid-template-columns: 1fr; } .flip .vs { display:none; } }
+  .flip .side {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+  }
+  .flip .side.old { opacity: 0.72; }
+  .flip .side .lbl {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 10px;
+  }
+  .flip .side.new .lbl { color: var(--gold); }
+  .flip .side p { margin: 0; font-size: 14.5px; color: var(--ink-dim); }
+  .flip .side.new p { color: var(--ink); }
+  .flip .vs {
+    font-family: var(--serif);
+    font-style: italic;
+    color: var(--ink-faint);
+    font-size: 15px;
+  }
+
+  /* ---------- questions ---------- */
+  .q {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--gold);
+    border-radius: var(--radius);
+    padding: 22px 24px 20px;
+    margin-top: 16px;
+  }
+  .q .qhead { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+  .q .qid {
+    font-family: var(--mono);
+    font-weight: 700;
+    color: var(--gold);
+    font-size: 14px;
+  }
+  .q .qtitle { font-family: var(--serif); font-size: 19px; font-weight: 600; }
+  .q .qbody { color: var(--ink-dim); font-size: 14.5px; margin: 0 0 16px; }
+  .q .qbody b { color: var(--ink); }
+
+  form.opts { display: grid; gap: 9px; margin: 0; }
+  form.opts label {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 15px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  form.opts label:hover { border-color: var(--gold-soft); background: var(--panel-2); }
+  form.opts input[type="radio"] { margin-top: 3px; accent-color: var(--gold); width: 16px; height: 16px; flex: none; }
+  form.opts .otext { font-size: 14px; }
+  form.opts .otext b { color: var(--ink); font-weight: 600; display: block; margin-bottom: 1px; }
+  form.opts .otext span { color: var(--ink-faint); font-size: 13px; }
+  .qactions { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+  button.queue {
+    font-family: var(--sans);
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #16130a;
+    background: var(--gold);
+    border: none;
+    border-radius: 9px;
+    padding: 9px 18px;
+    cursor: pointer;
+    transition: filter 0.15s;
+  }
+  button.queue:hover { filter: brightness(1.08); }
+  .qhint { font-size: 12.5px; color: var(--ink-faint); font-family: var(--mono); }
+  textarea.freeform {
+    width: 100%;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 14px;
+    padding: 11px 14px;
+    resize: vertical;
+    min-height: 58px;
+    margin-top: 4px;
+  }
+  textarea.freeform:focus { outline: none; border-color: var(--gold-soft); }
+
+  .foot {
+    margin-top: 60px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-faint);
+    font-size: 13px;
+    font-family: var(--mono);
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f4f1e9; --bg-2: #ebe7db; --panel: #fbf9f3; --panel-2: #f2eee3;
+      --ink: #23211b; --ink-dim: #55524a; --ink-faint: #8a8578; --line: #ddd7c7;
+      --gold-soft: #9a7a2e;
+    }
+    body { background: radial-gradient(1200px 600px at 50% -10%, #fffdf5 0%, transparent 60%), var(--bg); }
+    button.queue { color: #fff; }
+  }
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">The Unseen Hand · Direction Notes · Set 1</p>
+  <h1>The Spine, refined:<br><span class="faint">a tightrope between two damnations</span></h1>
+  <p class="lede">Your Q1.2 quietly changed the whole game. The old design had one failure mode. The new one has two, on opposite ends of a single gauge, and the skill is never touching either.</p>
+
+  <section>
+    <h2>The core tension, visualized</h2>
+    <p class="section-note">// FAITH drifts on world outcomes — both ends are a loss</p>
+
+    <div class="meter">
+      <div class="meter-track">
+        <div class="zone-safe"></div>
+        <div class="needle"></div>
+      </div>
+
+      <div class="meter-labels">
+        <div class="m-end left">
+          <span class="cap hate">Hated · 0</span>
+          <p>Adventurers turn on god. They resist interference and actively hunt you. <b style="color:var(--ink)">Bad end: they fight you.</b></p>
+        </div>
+        <div class="m-mid">
+          <span class="cap safe">The sustainable middle</span>
+          <p>Loved enough to steer, not so adored they lose their minds.</p>
+        </div>
+        <div class="m-end right">
+          <span class="cap cult">Worshipped · max</span>
+          <p>Fanatic cultists roam the world, sacrificing and cannibalising to drag god into being. <b style="color:var(--ink)">Bad end: delusion warps the world.</b></p>
+        </div>
+      </div>
+
+      <div class="drivers">
+        <div class="driver"><span class="arrow down">▼</span> <b>Bad outcomes</b> drag faith down — <i>whether or not you intervened.</i></div>
+        <div class="driver"><span class="arrow up">▲</span> <b>Favourable outcomes</b> nudge faith up.</div>
+        <div class="driver"><span class="arrow up">▲▲</span> <b>Miracles</b> (big DI spends) spike faith fast — the cultist trap.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The untangling: two meters, not one</h2>
+    <p class="section-note">// Q1.2 blends a spendable tool with a reputation gauge — they must be distinct</p>
+
+    <div class="cols">
+      <div class="card di">
+        <div class="tag di-t">Your tool</div>
+        <h3>Divine Influence</h3>
+        <dl>
+          <div class="row"><dt>Is</dt><dd>A <b>spendable currency</b> for interventions (the original one).</dd></div>
+          <div class="row"><dt>Moves</dt><dd>Trickles in passively; you <b>burn it</b> on nudges, touches, seeded events.</dd></div>
+          <div class="row"><dt>At zero</dt><dd>You simply can't intervene until it refills. Not a loss state.</dd></div>
+        </dl>
+      </div>
+      <div class="card faith">
+        <div class="tag faith-t">Your tightrope</div>
+        <h3>Faith / Favour</h3>
+        <dl>
+          <div class="row"><dt>Is</dt><dd>A <b>reputation gauge</b> the world holds toward god.</dd></div>
+          <div class="row"><dt>Moves</dt><dd>Drifts on <b>world outcomes</b> — good, bad, and miraculous — not on your button-presses directly.</dd></div>
+          <div class="row"><dt>At extremes</dt><dd>Triggers the <b>two bad ends</b>. This is the meter you're really managing.</dd></div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="interplay">
+      The elegant hook: a big <span class="di-k">DI</span> spend is exactly what creates a <b>miracle</b>, and a miracle is exactly what shoves <span class="k">Faith</span> toward the cultist cliff. Your tool and your tightrope are wired together — power used loudly is power that damns you.
+    </div>
+  </section>
+
+  <section>
+    <h2>Why this is a stronger spine</h2>
+    <p class="section-note">// the pivot, stated plainly</p>
+    <div class="flip">
+      <div class="side old">
+        <div class="lbl">Old tension</div>
+        <p>One-sided. Spend DI carefully, let the world breathe, grow stronger. The <i>only</i> failure was DI bankruptcy from over-saving.</p>
+      </div>
+      <div class="vs">becomes</div>
+      <div class="side new">
+        <div class="lbl">New tension</div>
+        <p>Two-sided. <b>Neglect</b> drops faith toward hatred; <b>over-intervention</b> spikes it toward fanaticism. Both extremes end you. The game lives in the middle.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Three questions to lock the spine</h2>
+    <p class="section-note">// answer inline, or just talk to me — I'll transcribe into the roadmap</p>
+
+    <div class="q">
+      <div class="qhead"><span class="qid">A</span><span class="qtitle">Two meters, confirmed?</span></div>
+      <p class="qbody">Is the <b>DI-vs-Faith split</b> above right — a spendable tool and a separate reputation tightrope — or did you intend a single unified meter?</p>
+      <form class="opts" data-lavish-question="q-a" onsubmit="event.preventDefault(); const v = new FormData(event.currentTarget).get('a'); if(v) window.lavish.queuePrompt('Spine Q-A (two meters): '+v, {tag:'answer', text:'A: '+v, data:{q:'two-meters', answer:v}});">
+        <label><input type="radio" name="a" value="Two separate meters — DI (tool) + Faith (tightrope)"><span class="otext"><b>Two separate meters</b><span>DI is the spendable tool, Faith is the reputation tightrope. (My recommendation.)</span></span></label>
+        <label><input type="radio" name="a" value="One unified meter"><span class="otext"><b>One unified meter</b><span>Spending and reputation are the same gauge.</span></span></label>
+        <label><input type="radio" name="a" value="Something else — see note"><span class="otext"><b>Something else</b><span>I'll explain in the note below.</span></span></label>
+        <textarea class="freeform" name="a-note" placeholder="Optional: nuance, e.g. 'DI cap scales with Faith'..."></textarea>
+        <div class="qactions"><button class="queue" type="submit">Queue answer A</button><span class="qhint">sends one prompt</span></div>
+      </form>
+    </div>
+
+    <div class="q">
+      <div class="qhead"><span class="qid">B</span><span class="qtitle">Where does Faith want to sit?</span></div>
+      <p class="qbody">Is the healthy zone a <b>wide middle band</b>, or is there an ideal setpoint? And does Faith <b>drift on its own</b> over time — e.g. slowly toward hatred — so you must periodically intervene just to stay loved?</p>
+      <form class="opts" data-lavish-question="q-b" onsubmit="event.preventDefault(); const v = new FormData(event.currentTarget).get('b'); if(v) window.lavish.queuePrompt('Spine Q-B (faith resting behaviour): '+v, {tag:'answer', text:'B: '+v, data:{q:'faith-rest', answer:v}});">
+        <label><input type="radio" name="b" value="Wide neutral band, no natural drift"><span class="otext"><b>Wide band, stable</b><span>Only outcomes move it; left alone it stays put.</span></span></label>
+        <label><input type="radio" name="b" value="Drifts toward hatred over time — must earn love"><span class="otext"><b>Decays toward hatred</b><span>Neglect is punished automatically; you must keep earning faith.</span></span></label>
+        <label><input type="radio" name="b" value="Decays toward a neutral center from both ends"><span class="otext"><b>Reverts to center</b><span>Both extremes slowly pull back to neutral if left alone.</span></span></label>
+        <textarea class="freeform" name="b-note" placeholder="Optional: rate, thresholds, ideal setpoint..."></textarea>
+        <div class="qactions"><button class="queue" type="submit">Queue answer B</button><span class="qhint">sends one prompt</span></div>
+      </form>
+    </div>
+
+    <div class="q">
+      <div class="qhead"><span class="qid">C</span><span class="qtitle">Symmetric threats, or is one the real danger?</span></div>
+      <p class="qbody">Are hatred and cultism <b>equal-weight</b> threats, or is one the slow-burn you fight all game while the other is a trap for a specific playstyle?</p>
+      <form class="opts" data-lavish-question="q-c" onsubmit="event.preventDefault(); const v = new FormData(event.currentTarget).get('c'); if(v) window.lavish.queuePrompt('Spine Q-C (threat symmetry): '+v, {tag:'answer', text:'C: '+v, data:{q:'threat-symmetry', answer:v}});">
+        <label><input type="radio" name="c" value="Symmetric — both equally present all game"><span class="otext"><b>Symmetric</b><span>Two cliffs, equal pull, constant balancing act.</span></span></label>
+        <label><input type="radio" name="c" value="Hatred is the main threat; cultism traps miracle-spammers"><span class="otext"><b>Hatred is the default danger</b><span>Cultism is the punishment for over-relying on flashy miracles.</span></span></label>
+        <label><input type="radio" name="c" value="Cultism is the main threat; hatred traps the passive"><span class="otext"><b>Cultism is the default danger</b><span>Hatred is the trap for players who never engage.</span></span></label>
+        <textarea class="freeform" name="c-note" placeholder="Optional..."></textarea>
+        <div class="qactions"><button class="queue" type="submit">Queue answer C</button><span class="qhint">sends one prompt</span></div>
+      </form>
+    </div>
+  </section>
+
+  <p class="foot">Design source: hand-authored CSS (informational artifact, not an app UI mockup). // Next: Set 2 — Keep / Cut / Rethink. Nothing here is a spec yet.</p>
+
+</div>

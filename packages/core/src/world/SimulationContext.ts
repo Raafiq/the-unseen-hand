@@ -38,6 +38,7 @@ export function createSimulationContext(seed: string): SimulationContext {
     decisionCooldowns: new Map(),
     socialPressure: new Map(),
     socialCooldowns: new Map(),
+    pendingCrises: new Set(),
     divineInfluence: 50,
     activeRegions: new Map(),
     scenario: null,

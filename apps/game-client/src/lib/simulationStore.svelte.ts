@@ -12,6 +12,7 @@ import {
   type DispatchCommand,
   type DecisionMoment,
   type SimulationContext,
+  type SimulationEvent,
 } from '@ugs/core';
 import { fetchDaySummary } from './narrator.js';
 import { FEATURES, hiddenEventKinds } from './featureFlags.js';
@@ -58,6 +59,30 @@ if (typeof location !== 'undefined' && new URLSearchParams(location.search).get(
   };
   link(advId, haldenId);
   link(haldenId, advId); // edges are symmetric (relationship-graph.md)
+}
+
+// E2E seam (test-only): relationship driver events + drift fire only from emergent peril/town
+// state, so — gated behind `?e2e=drivers` — seed one warming edge (a recent KINDNESS in its
+// history → a warming drift glyph on the detail row) and inject one RELATIONSHIP:KINDNESS feed
+// line. Lets the drivers spec exercise both surfaces deterministically. Never runs in normal play.
+if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('e2e') === 'drivers') {
+  const advId = 's1-reiko';
+  const haldenId = makeNpcId('halden-captain');
+  const now = initialCtx.worldTime.tick;
+  // ACQUAINTANCE edge whose recent history nets a warming trend (KINDNESS +7 within the 7-day window).
+  const warmingEdge = { strength: 30, type: createEdge(30).type, history: [{ tick: now, kind: 'KINDNESS', delta: 7 }] };
+  const link = (a: string, b: string) => {
+    const row = new Map(initialCtx.relationships.get(a) ?? new Map());
+    row.set(b, { ...warmingEdge, history: [...warmingEdge.history] });
+    initialCtx.relationships.set(a, row);
+  };
+  link(advId, haldenId);
+  link(haldenId, advId);
+  initialCtx.eventLog = [...initialCtx.eventLog, {
+    id: 'e2e-rel-kindness', tick: now, kind: 'RELATIONSHIP', subtype: 'KINDNESS',
+    participantIds: [advId, haldenId],
+    renderedText: 'Reiko quietly does Captain Halden a kindness, asking nothing in return.',
+  } as SimulationEvent];
 }
 
 // Single SimulationLoop instance

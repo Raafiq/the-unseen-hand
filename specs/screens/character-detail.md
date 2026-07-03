@@ -50,9 +50,20 @@ Each row:
 - Counterpart's name
 - Relationship type badge (`FRIEND`, `RIVAL`, etc.)
 - Strength bar (−100 to +100, color-coded: blue for positive, red for negative)
+- **Drift indicator** — a small warming (▲) or cooling (▼) glyph plus a short most-recent-cause
+  label ("an act of kindness", "shared a quest", "drifted apart", "a betrayal"), derived on read
+  from the edge's `history` (`behaviors/relationship-graph.md#edge-history-and-drift-indicator`).
+  This is the quiet surface for ambient sub-threshold drift that is deliberately kept out of the
+  event feed (`behaviors/relationship-events.md#surfacing`). Shown **only when the bond is actually
+  moving** — a **steady** edge (net 7-day drift within `±TREND_EPS`) shows **no glyph**, so settled
+  relationships stay visually quiet. Also hidden when the edge has no recent history.
 - `[deceased]` or `[departed]` annotation if the counterpart is dead/retired
 
 Sorted: positive relationships first (highest strength), then negative (most negative last).
+
+Discrete relationship **driver** events (a shared-danger bond, a betrayal, an act of kindness, a
+rivalry spark) are not shown here as drift — they surface as their own feed lines (`RELATIONSHIP`
+kind) and, when significant, in the Last Day Events section below.
 
 ### History section
 

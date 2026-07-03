@@ -54,6 +54,20 @@ describe('narrative-voice — grammar variety', () => {
     expect(variants.size).toBeGreaterThanOrEqual(6);
   });
 
+  it('every RELATIONSHIP subtype yields ≥3 distinct lines, each naming both participants', () => {
+    const subtypes = ['SHARED_DANGER', 'BETRAYAL', 'KINDNESS', 'RIVALRY_SPARK'] as const;
+    for (const subtype of subtypes) {
+      const variants = distinctRenderings(`voice-rel-${subtype}`, {
+        kind: 'RELATIONSHIP', subtype, participantIds: ['alice', 'bob'],
+      });
+      expect(variants.size, subtype).toBeGreaterThanOrEqual(3);
+      for (const line of variants) {
+        expect(line, subtype).toContain('alice');
+        expect(line, subtype).toContain('bob');
+      }
+    }
+  });
+
   it('every current QUEST subtype yields ≥3 distinct lines', () => {
     const subtypes = ['STARTED', 'COMPLETED', 'FAILED', 'EXPIRED', 'DROUGHT'] as const;
     for (const subtype of subtypes) {

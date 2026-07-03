@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { SimulationContext, Adventurer, DispatchCommand, HistoryEvent, RelationshipType, AdventurerState, ActivityId, PersonalGoal } from '@ugs/core';
-  import { topMoodFactors, moodThresholdLabel, strengthToType, renderThought } from '@ugs/core';
+  import { topMoodFactors, moodThresholdLabel, strengthToType, renderThought, computeEdgeDrift } from '@ugs/core';
   import { FEATURES, hiddenHistoryKinds } from '../featureFlags';
 
   type DivineEffect = 'COURAGE_BLESS' | 'LUCK_CURSE' | 'MOOD_LIFT' | 'SEND_DREAM' | 'REVEAL_SECRET' | 'MARK_FOR_DEATH';
@@ -247,6 +247,7 @@
       {#each sortedEdges as [otherId, edge] (otherId)}
         {@const other = ctx.adventurers.get(otherId)}
         {@const npc = ctx.notableNpcs.get(otherId)}
+        {@const drift = computeEdgeDrift(edge, ctx.worldTime.tick)}
         <div class="rel-row" role="button" tabindex="0"
           onclick={() => (other || npc) && onSelectAdventurer(otherId)}
           onkeydown={(e) => e.key === 'Enter' && (other || npc) && onSelectAdventurer(otherId)}>
@@ -261,6 +262,13 @@
             <div class="str-bar-fill"
               style="width:{Math.round(Math.abs(edge.strength))}%;background:{edge.strength >= 0 ? '#42a5f5' : '#ef5350'};margin-left:{edge.strength < 0 ? (100 - Math.round(Math.abs(edge.strength))) + '%' : '0'}"></div>
           </div>
+          {#if drift.direction !== 'steady'}
+            <span class="rel-drift" class:warming={drift.direction === 'warming'} class:cooling={drift.direction === 'cooling'}
+              data-testid="rel-drift" data-direction={drift.direction}>
+              <span class="drift-glyph">{drift.direction === 'warming' ? '▲' : '▼'}</span>
+              <span class="drift-cause">{drift.cause}</span>
+            </span>
+          {/if}
         </div>
       {/each}
     {/if}
@@ -387,6 +395,13 @@
   .rel-enemy     { background: #2e0a0a; color: #ef5350; }
   .str-bar-bg { width: 50px; height: 4px; background: #2e2a3a; border-radius: 2px; overflow: hidden; position: relative; }
   .str-bar-fill { height: 100%; transition: width 0.3s; border-radius: 2px; position: absolute; }
+
+  /* Ambient-drift indicator — quiet signal shown only when a bond is actually moving. */
+  .rel-drift { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; font-size: 10px; max-width: 130px; }
+  .rel-drift .drift-glyph { font-size: 9px; line-height: 1; }
+  .rel-drift .drift-cause { color: #6a6472; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rel-drift.warming .drift-glyph { color: #4caf50; }
+  .rel-drift.cooling .drift-glyph { color: #ef5350; }
 
   .history-row { font-size: 11px; color: #888; padding: 2px 0; border-bottom: 1px solid #1e1c24; }
 

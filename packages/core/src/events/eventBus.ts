@@ -65,6 +65,12 @@ export type LifecycleEventInput = {
   involvedIds: AdventurerId[];
 };
 
+export type RelationshipEventInput = {
+  kind: 'RELATIONSHIP';
+  subtype: import('../world/types.js').RelationshipDriverSubtype;
+  participantIds: import('../world/types.js').ActorId[]; // both actors; ActorId so notable NPCs participate
+};
+
 export type WorldEventInput = {
   kind: 'WORLD';
   subtype:
@@ -142,6 +148,7 @@ export type SimulationEventInput =
   | CombatEventInput
   | QuestEventInput
   | LifecycleEventInput
+  | RelationshipEventInput
   | WorldEventInput
   | DecisionMomentEventInput
   | DivineInterventionEventInput
@@ -204,6 +211,33 @@ const BEAT_POOLS: Record<string, readonly string[]> = {
     '{a} and {b} fall out bitterly, past any mending.',
     '{a} writes {b} off entirely, and the cold sets in.',
     'Whatever was left between {a} and {b} curdles into open estrangement.',
+  ],
+  // Relationship driver lines (relationship-events.md). Both actors named ({a}/{b}); the
+  // subtype label never appears in prose. Peril-response branches are adventurer-only; the
+  // town-life drivers (KINDNESS / RIVALRY_SPARK) may name a notable NPC.
+  'RELATIONSHIP:SHARED_DANGER': [
+    '{a} and {b} come through death\'s door together, and the bond holds fast.',
+    'Blood and terror shared, {a} and {b} trust each other as never before.',
+    '{a} would not leave {b} to die — and neither forgets it.',
+    'Having faced the end side by side, {a} and {b} are bound by it.',
+  ],
+  'RELATIONSHIP:BETRAYAL': [
+    '{a} stood frozen while {b} bled — and {b} will not forget it.',
+    'When it counted, {a} did nothing, and left {b} to face death alone.',
+    'Something breaks in {b} as {a} fails to lift a hand to save them.',
+    '{b} looked to {a} for help and found none — the bond is poisoned.',
+  ],
+  'RELATIONSHIP:KINDNESS': [
+    '{a} quietly does {b} a kindness, asking nothing in return.',
+    '{a} goes out of their way for {b}, and it is noticed.',
+    '{a} extends {b} a small, unprompted generosity.',
+    'A gesture of care from {a} warms {b}\'s regard.',
+  ],
+  'RELATIONSHIP:RIVALRY_SPARK': [
+    '{a} and {b} clash over the same ambition, and the rivalry sharpens.',
+    'Neither {a} nor {b} will yield the prize, and bad blood kindles.',
+    '{a} and {b} set themselves against each other over a shared goal.',
+    'A competitive edge hardens between {a} and {b}.',
   ],
   'QUEST:STARTED': [
     'A party sets out on {label}.',
@@ -661,6 +695,12 @@ function renderText(input: SimulationEventInput, ctx: SimulationContext): string
       const who = input.involvedIds[0] ? actorName(ctx, input.involvedIds[0]) : 'An adventurer';
       const other = input.involvedIds[1] ? actorName(ctx, input.involvedIds[1]) : 'another';
       return compose(`LIFECYCLE:${input.subtype}`, { who, other }, ctx, `${who} reaches a turning point.`);
+    }
+    case 'RELATIONSHIP': {
+      // A driver line names both actors ({a}/{b}); adventurers or Tier A notable NPCs.
+      const a = actorName(ctx, input.participantIds[0] ?? 'someone');
+      const b = actorName(ctx, input.participantIds[1] ?? 'another');
+      return compose(`RELATIONSHIP:${input.subtype}`, { a, b }, ctx, `${a} and ${b} reach a turning point.`);
     }
     case 'WORLD': {
       // Scenario/system announcements are deliberately fixed, dignified lines — not pooled flavour.

@@ -1,0 +1,213 @@
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel-2: #1e222c; --ink: #e8eaed; --ink-dim: #9aa3b2;
+    --line: #2a2f3a; --accent: #7aa2ff; --good: #5bd6a0; --bad: #ff7a8a; --warn: #ffcc66;
+    --rec: #1f3a2e; --rec-line: #2f6b4f; --code: #ffd9a0;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f6; --ink: #1a1d24; --ink-dim: #5b6473;
+      --line: #e2e6ee; --accent: #3159d6; --good: #148f5f; --bad: #cf3a4e; --warn: #a9760a;
+      --rec: #e7f6ee; --rec-line: #9ad9ba; --code: #8a4b00;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f6; --ink: #1a1d24; --ink-dim: #5b6473;
+    --line: #e2e6ee; --accent: #3159d6; --good: #148f5f; --bad: #cf3a4e; --warn: #a9760a;
+    --rec: #e7f6ee; --rec-line: #9ad9ba; --code: #8a4b00;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1115; --panel: #171a21; --panel-2: #1e222c; --ink: #e8eaed; --ink-dim: #9aa3b2;
+    --line: #2a2f3a; --accent: #7aa2ff; --good: #5bd6a0; --bad: #ff7a8a; --warn: #ffcc66;
+    --rec: #1f3a2e; --rec-line: #2f6b4f; --code: #ffd9a0;
+  }
+  * { box-sizing: border-box; min-width: 0; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 40px 22px 90px; }
+  header.top { margin-bottom: 8px; }
+  .eyebrow { color: var(--accent); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-size: 12px; }
+  h1 { font-size: 27px; line-height: 1.2; margin: 8px 0 6px; letter-spacing: -.01em; }
+  h1 code { font-size: .8em; background: var(--panel-2); padding: 2px 8px; border-radius: 6px; color: var(--code); }
+  .sub { color: var(--ink-dim); max-width: 70ch; }
+  h2.section { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-dim);
+    margin: 40px 0 4px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  .callout { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--warn);
+    border-radius: 10px; padding: 16px 18px; margin: 20px 0; }
+  .callout h3 { margin: 0 0 10px; font-size: 15px; }
+  .callout ul { margin: 0; padding-left: 18px; }
+  .callout li { margin: 7px 0; color: var(--ink-dim); }
+  .callout li b { color: var(--ink); }
+  code, .mono { font-family: "SF Mono", ui-monospace, "Cascadia Code", Menlo, monospace; font-size: .88em; }
+  li code, p code, .mono { color: var(--code); background: color-mix(in srgb, var(--panel-2) 70%, transparent); padding: 1px 5px; border-radius: 4px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; margin: 16px 0; }
+  .card .qhead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .qid { font-family: "SF Mono", ui-monospace, monospace; font-weight: 700; color: var(--accent); font-size: 14px; white-space: nowrap; }
+  .qtitle { font-size: 18px; font-weight: 650; letter-spacing: -.01em; margin: 0; }
+  .badge { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+  .badge.root { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+  .badge.dep { background: var(--panel-2); color: var(--ink-dim); border: 1px solid var(--line); }
+  .ctx { color: var(--ink-dim); margin: 12px 0 14px; }
+  .ctx b { color: var(--ink); }
+  .opts { display: grid; gap: 8px; margin: 12px 0; }
+  .opt { display: flex; gap: 10px; padding: 10px 13px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); }
+  .opt .k { font-weight: 700; color: var(--ink-dim); flex: 0 0 auto; }
+  .rec { background: var(--rec); border: 1px solid var(--rec-line); border-radius: 8px; padding: 12px 14px; margin-top: 12px; }
+  .rec .lbl { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--good); display: block; margin-bottom: 5px; }
+  .rec p { margin: 0; }
+  .diagram { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin: 16px 0; overflow-x: auto; }
+  .flow { display: flex; align-items: stretch; gap: 0; min-width: 520px; }
+  .node { flex: 1; text-align: center; padding: 12px 10px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); }
+  .node .t { font-weight: 650; font-size: 13px; }
+  .node .d { font-size: 12px; color: var(--ink-dim); margin-top: 3px; }
+  .branch { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .node.good { border-color: var(--rec-line); }
+  .node.bad { border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); }
+  .arrow { align-self: center; color: var(--ink-dim); padding: 0 10px; font-size: 20px; flex: 0 0 auto; }
+  .tag { display:inline-block; font-size:11px; padding:1px 7px; border-radius:5px; margin-left:6px; }
+  .tag.exists { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+  .tag.missing { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }
+  footer { margin-top: 44px; color: var(--ink-dim); font-size: 13px; border-top: 1px solid var(--line); padding-top: 16px; }
+  a { color: var(--accent); }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Grilling · spec review</div>
+    <h1>Interrogating <code>relationship-events.md</code></h1>
+    <p class="sub">The design tree for the first new-direction spec, walked branch by branch. Each card is one decision, dependency-ordered, with a code-grounded recommendation. We resolve them one at a time - annotate any card to push back.</p>
+  </header>
+
+  <div class="callout" style="border-left-color: var(--good); background: var(--rec);">
+    <h3 style="color: var(--good);">✓ All nine recommendations accepted — spec &amp; plan updated</h3>
+    <ul>
+      <li><b>Peril response unified</b> (Q1): one detector, two branches (defend → bond, hesitate → betrayal); both wire the dead-end <code>SAVED_BY</code>/<code>BETRAYED_BY</code> tokens.</li>
+      <li><b>Gift → Kindness</b> (Q2): abstract generosity gesture, no item economy. Driver set = { peril±, kindness, rivalry }.</li>
+      <li><b>Cut the unbuildable</b> (Q4/Q5/Q7): loot-split &amp; spoils-dispute removed; non-combat betrayal deferred; divine bias indirect-only.</li>
+      <li><b>Fenced</b> (Q8/Q9): drift glyph hidden on steady edges; NPC drivers = kindness + rivalry only; 30-day feed-volume test added.</li>
+    </ul>
+    <p style="margin:10px 0 0; color: var(--ink-dim);">Written to <code>relationship-events.md</code> + <code>relationship-graph.md</code> + <code>character-detail.md</code> and plan <code>p13a</code>. The cards below are the reasoning, preserved for the record.</p>
+  </div>
+
+  <div class="callout">
+    <h3>⚙️ Code-grounded findings that reshaped the draft</h3>
+    <ul>
+      <li><b>Betrayal and Shared-Danger are the same moment.</b> When an ally hits <code>NEAR_DEATH</code> in combat, one party member's <code>DEFEND_ALLY</code> already writes a <code>SAVED_BY</code> history token (→ <code>OWES</code> belief); a <code>HESITATE</code> writes <code>BETRAYED_BY</code> (→ <code>DISTRUSTS</code>). <b>Both tokens already exist and move zero relationship strength.</b> The two "opposite" drivers are one trigger surface.</li>
+      <li><b>There is no loot split.</b> Quest <code>loot</code> is a single number added to the guild <code>treasury</code> - never divided among party members. So betrayal-over-spoils and rivalry-over-credit, as the draft describes them, <b>have no mechanical surface.</b></li>
+      <li><b>There is no inventory.</b> Adventurers own no items. A "gift" cannot be an object transfer - it must be an abstract gesture, or the driver needs rethinking.</li>
+      <li><b>Divine bias has no hook.</b> <code>pendingShifts</code> only feeds decision-moment outcomes; nothing biases a social-driver probability. The draft's per-driver "divine bias" bullets are aspirational.</li>
+    </ul>
+  </div>
+
+  <h2 class="section">Branch 1 · Framing (gates everything below)</h2>
+
+  <div class="card">
+    <div class="qhead">
+      <span class="qid">Q1</span>
+      <h3 class="qtitle">Unify Betrayal + Shared-Danger into one "peril response" trigger?</h3>
+      <span class="badge root">ROOT DECISION</span>
+    </div>
+    <p class="ctx">The draft treats them as two independent drivers. But the code shows they're two responses to the <b>same event</b>: an ally at death's door. The machinery already fires <code>SAVED_BY</code><span class="tag exists">exists</span> and <code>BETRAYED_BY</code><span class="tag exists">exists</span> - both dead-end tokens that colour thoughts but never touch the bond.</p>
+    <div class="diagram">
+      <div class="flow">
+        <div class="node"><div class="t">Ally hits NEAR_DEATH</div><div class="d">combat beat, already emitted</div></div>
+        <div class="arrow">→</div>
+        <div style="flex:1.4;">
+          <div class="branch">
+            <div class="node good"><div class="t">DEFEND_ALLY</div><div class="d">writes SAVED_BY · <b>SHARED_DANGER bond (+)</b></div></div>
+            <div class="node bad"><div class="t">HESITATE / walk away</div><div class="d">writes BETRAYED_BY · <b>BETRAYAL (−)</b></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="opts">
+      <div class="opt"><span class="k">A</span><span>Unify: one peril-response detector with a positive (defended) and negative (abandoned) branch. Wires <i>both</i> dead-end tokens in one place.</span></div>
+      <div class="opt"><span class="k">B</span><span>Keep them as two independent drivers per the draft, each with its own detection.</span></div>
+    </div>
+    <div class="rec"><span class="lbl">Recommend · A</span><p>The trigger surface is literally one event. Unifying makes the code honest, wires <code>SAVED_BY</code> and <code>BETRAYED_BY</code> together, and yields a tighter narrative ("who stood by you when it counted"). Betrayal outside combat (a cold RIVAL turning) can still exist as a rarer second path if we want it - but the primary anchor is peril response.</p></div>
+  </div>
+
+  <div class="card">
+    <div class="qhead">
+      <span class="qid">Q2</span>
+      <h3 class="qtitle">What is a "gift" with no inventory or personal economy?</h3>
+      <span class="badge dep">depends: framing</span>
+    </div>
+    <p class="ctx">No items, no personal coin - loot goes to the guild. A literal gift is unmodellable. Meanwhile the social system <i>already</i> produces <code>SOLIDARITY</code> and <code>BREAKTHROUGH</code> positive encounters. So: is a distinct positive driver even needed, and if so what is it?</p>
+    <div class="opts">
+      <div class="opt"><span class="k">A</span><span>Reframe as an abstract <b>act of kindness / favour</b> (covers a shift, a vouch, tending an injury) - generosity-driven, distinct from an ambient chat because it's a deliberate one-sided gesture.</span></div>
+      <div class="opt"><span class="k">B</span><span>Cut the positive town-life driver for v1 - lean on <code>SHARED_DANGER</code> + existing <code>SOLIDARITY</code>/<code>BREAKTHROUGH</code> encounters for warmth.</span></div>
+      <div class="opt"><span class="k">C</span><span>Keep "gift" literally and build a minimal token/coin economy first (large scope add).</span></div>
+    </div>
+    <div class="rec"><span class="lbl">Recommend · A (leaning B if we want a smaller v1)</span><p>Reframe to a generic <b>kindness/favour</b> gesture so it has diegetic meaning without an economy. But flag the real question: does it earn its place next to <code>SOLIDARITY</code>? If the distinction feels thin, defer it (B) and ship 3 drivers. C is out - it violates the "refinement, not new pillars" appetite.</p></div>
+  </div>
+
+  <div class="card">
+    <div class="qhead">
+      <span class="qid">Q3</span>
+      <h3 class="qtitle">Is the driver taxonomy complete - and is a new event <i>kind</i> right?</h3>
+      <span class="badge dep">depends: Q1, Q2</span>
+    </div>
+    <p class="ctx">The graph already fires <code>RECONCILIATION</code> as a threshold event, so "forgiveness" needn't be a driver. And the surfacing choice: a new <code>RELATIONSHIP</code> event kind vs. extending the existing <code>SOCIAL</code> outcome set.</p>
+    <div class="opts">
+      <div class="opt"><span class="k">A</span><span>Final set = { peril-response(±), kindness, rivalry-spark }. New <code>RELATIONSHIP</code> kind for clean feed-filtering.</span></div>
+      <div class="opt"><span class="k">B</span><span>Fold drivers into <code>SOCIAL</code> as new outcomes - no new kind, less surface.</span></div>
+    </div>
+    <div class="rec"><span class="lbl">Recommend · A</span><p>Drivers are <i>causes</i> tied to quests/combat/deliberate acts, not pressure-discharge scenes - conflating them with <code>SOCIAL</code> muddies both. A distinct kind keeps the feed filter meaningful. <code>RECONCILIATION</code> stays a threshold event, not a driver.</p></div>
+  </div>
+
+  <h2 class="section">Branch 2 · Trigger mechanics</h2>
+
+  <div class="card">
+    <div class="qhead"><span class="qid">Q4</span><h3 class="qtitle">Betrayal's non-combat path - keep it, and on what surface?</h3><span class="badge dep">depends: Q1</span></div>
+    <p class="ctx">With loot-theft off the table, does betrayal fire anywhere <i>outside</i> peril? Candidate: a <code>RIVAL</code>/strained edge under mood pressure "turning" - but that risks overlapping <code>ESTRANGEMENT</code>.</p>
+    <div class="opts">
+      <div class="opt"><span class="k">A</span><span>Peril-abandonment only for v1. Simplest, fully grounded.</span></div>
+      <div class="opt"><span class="k">B</span><span>Peril + a rare "cold turn" on a strained RIVAL edge (needs a de-dupe rule vs ESTRANGEMENT).</span></div>
+    </div>
+    <div class="rec"><span class="lbl">Recommend · A</span><p>Ship the grounded path first; the "cold turn" risks double-firing with <code>ESTRANGEMENT</code>. Add B later if betrayal feels too combat-locked.</p></div>
+  </div>
+
+  <div class="card">
+    <div class="qhead"><span class="qid">Q5</span><h3 class="qtitle">Rivalry-spark's "contested context" - what data backs it?</h3><span class="badge dep">depends: Q2</span></div>
+    <p class="ctx"><code>questVolunteerWeight</code> already computes goal-alignment (<code>personalGoal</code> × quest type)<span class="tag exists">exists</span>. So "both want the same quest / same goal" is derivable. Spoils-dispute is not (no split).</p>
+    <div class="rec"><span class="lbl">Recommend</span><p>Trigger on <b>same-goal / same-quest competition</b> between two high-<code>ambition</code> low-<code>empathy</code> actors, plus mood-strain. Drop "credit/spoils dispute" language - unbuildable.</p></div>
+  </div>
+
+  <div class="card">
+    <div class="qhead"><span class="qid">Q6</span><h3 class="qtitle">Delta magnitudes &amp; frequency - do they balance against what exists?</h3><span class="badge dep">depends: Q1,Q3</span></div>
+    <p class="ctx">Anchors already in the graph: co-quest <code>+8</code>, <code>SOLIDARITY +10</code>, <code>BREAKTHROUGH +18</code>, <code>ESTRANGEMENT −22</code>. Draft drivers: <code>SHARED_DANGER +12/+18</code>, <code>BETRAYAL −18/−6</code>, kindness <code>+4/+7</code>, rivalry <code>−10/−14</code>.</p>
+    <div class="rec"><span class="lbl">Recommend</span><p>Magnitudes look coherent (peril &gt; ambient; betrayal near estrangement). The real risk is <b>frequency</b>: 3-4 drivers + existing encounters could flood the feed. Lock a per-pair cooldown (draft: once/day + jitter) and validate aggregate feed volume over a 30-day seeded run as an explicit test.</p></div>
+  </div>
+
+  <h2 class="section">Branch 3 · Influence, surfacing, NPCs</h2>
+
+  <div class="card">
+    <div class="qhead"><span class="qid">Q7</span><h3 class="qtitle">Divine influence over drivers - v1 scope?</h3><span class="badge dep">independent</span></div>
+    <p class="ctx">No hook biases social-driver odds today. But existing effects (<code>MOOD_LIFT</code>, <code>COURAGE_BLESS</code>) already move the mood/axes that <i>feed</i> the trigger formulas - so indirect influence is free; direct bias is new wiring.</p>
+    <div class="opts">
+      <div class="opt"><span class="k">A</span><span>v1 = purely autonomous; influence only <i>indirect</i> via existing effects. Delete per-driver "divine bias" promises from the spec.</span></div>
+      <div class="opt"><span class="k">B</span><span>Build a dedicated driver-probability shift now.</span></div>
+    </div>
+    <div class="rec"><span class="lbl">Recommend · A</span><p>Indirect influence already satisfies "the player can nudge, never trigger" and needs no new mechanism. Trim the spec's overpromise; revisit direct bias only if playtest wants it.</p></div>
+  </div>
+
+  <div class="card">
+    <div class="qhead"><span class="qid">Q8</span><h3 class="qtitle">Drift indicator - right surface, or clutter?</h3><span class="badge dep">depends: Q3</span></div>
+    <p class="ctx">Per-row ▲/▼/– glyph + recent-cause, derived from 7-day edge history. Adds a moving element to every relationship row.</p>
+    <div class="rec"><span class="lbl">Recommend</span><p>Keep it, but show the glyph <b>only when non-steady</b> (a warming/cooling bond), and hide on settled edges - so it reads as signal, not decoration. Confirm <code>TREND_EPS</code> and window (7d) are tunable constants.</p></div>
+  </div>
+
+  <div class="card">
+    <div class="qhead"><span class="qid">Q9</span><h3 class="qtitle">NPC participation boundary under the unified model</h3><span class="badge dep">depends: Q1</span></div>
+    <p class="ctx">NPCs aren't in combat and don't quest - so peril-response (the primary betrayal/shared-danger path) <b>can't</b> involve them. That leaves NPCs only kindness + rivalry (town-life drivers).</p>
+    <div class="rec"><span class="lbl">Recommend</span><p>Make explicit: NPC-eligible drivers = kindness + rivalry-spark only; peril-response is adventurer-only (consistent with the no-quest exclusion). Update <code>relationship-events.md</code> §NPC participation accordingly.</p></div>
+  </div>
+
+  <footer>
+    Resolve top-down: <b>Q1</b> reshapes Q4/Q6/Q9; <b>Q2</b> gates Q5. Annotate a card to push back on its recommendation, or reply in chat and we take them one at a time.
+  </footer>
+</div>

@@ -23,6 +23,7 @@
     COMBAT:         { label: 'Combat',    cls: 'tag-combat' },
     QUEST:          { label: 'Quest',     cls: 'tag-quest' },
     LIFECYCLE:      { label: 'Lifecycle', cls: 'tag-lifecycle' },
+    RELATIONSHIP:   { label: 'Bonds',     cls: 'tag-relationship' },
     WORLD:          { label: 'World',     cls: 'tag-world' },
     DIVINE:         { label: 'Divine',    cls: 'tag-divine' },
     DECISION_MOMENT:{ label: 'Decision',  cls: 'tag-decision' },
@@ -34,7 +35,7 @@
   // both the filter chips and the rendered rows below.
   const HIDDEN_KINDS = hiddenEventKinds();
 
-  const ALL_KINDS: EventKind[] = (['SOCIAL', 'NPC', 'COMBAT', 'QUEST', 'LIFECYCLE', 'WORLD', 'DIVINE', 'ACTIVITY', 'THOUGHT'] as EventKind[])
+  const ALL_KINDS: EventKind[] = (['SOCIAL', 'NPC', 'COMBAT', 'QUEST', 'LIFECYCLE', 'RELATIONSHIP', 'WORLD', 'DIVINE', 'ACTIVITY', 'THOUGHT'] as EventKind[])
     .filter(k => !HIDDEN_KINDS.has(k));
 
   function toggleFilter(key: FilterKey) {
@@ -243,6 +244,7 @@
   .tag-combat.active   { background: #2e0a0a; color: #ef5350; border-color: #ef5350; }
   .tag-quest.active    { background: #2e1a00; color: #ff9800; border-color: #ff9800; }
   .tag-lifecycle.active{ background: #1e0a2e; color: #ab47bc; border-color: #ab47bc; }
+  .tag-relationship.active{ background: #2e0a1e; color: #ec407a; border-color: #ec407a; }
   .tag-world.active    { background: #0a1a2e; color: #42a5f5; border-color: #42a5f5; }
   .tag-divine.active   { background: #2e2200; color: #ffd54f; border-color: #ffd54f; }
   .tag-decision.active { background: #1a0a2e; color: #7e57c2; border-color: #7e57c2; }
@@ -292,6 +294,7 @@
   .tag-combat   { background: #2e0a0a; color: #ef5350; }
   .tag-quest    { background: #2e1a00; color: #ff9800; }
   .tag-lifecycle{ background: #1e0a2e; color: #ab47bc; }
+  .tag-relationship{ background: #2e0a1e; color: #ec407a; }
   .tag-world    { background: #0a1a2e; color: #42a5f5; }
   .tag-divine   { background: #2e2200; color: #ffd54f; }
   .tag-decision { background: #1a0a2e; color: #7e57c2; }

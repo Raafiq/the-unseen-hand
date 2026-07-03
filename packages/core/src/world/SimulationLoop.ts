@@ -27,6 +27,7 @@ import {
 import { personalGoalSubscriber } from '../adventurers/PersonalGoals.js';
 import { worldEventSeedingSubscriber } from './WorldExpansion.js';
 import { thoughtWhisperSubscriber } from '../thoughts/thoughtWhispers.js';
+import { townDriverSubscriber } from '../relationships/drivers.js';
 
 export type TickSubscriber = (ctx: SimulationContext, delta: number) => SimulationContext;
 
@@ -76,6 +77,10 @@ export class SimulationLoop {
       // rng consumer must sit after every already-baselined intra-tick draw — including
       // npcFlavour's own (thought-system.md#thought-whispers).
       thoughtWhisperSubscriber,
+      // Town-life relationship drivers (KINDNESS / RIVALRY_SPARK) run after even the thought
+      // whispers — a brand-new per-tick rng consumer must slot after every already-baselined draw
+      // so it never churns the decision/quest/social/thought streams (relationship-events.md).
+      townDriverSubscriber,
     );
   }
 

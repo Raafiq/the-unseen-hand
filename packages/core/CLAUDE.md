@@ -148,3 +148,12 @@ Composition bugs (a span tint on the wrong event family) and ordering bugs (an e
 emitted after the one that should close it) don't show at any single call site — only in
 the assembled, ordered log. A one-line feed complaint can hide more than one defect;
 account for every part before declaring it fixed.
+
+### Pair keys are build-only — never parse a `PairKey` back into ids
+
+`pairKey(a, b)` sorts the two ids and joins with `-`. But actor ids **contain the delimiter**:
+adventurer ids look like `s1-reiko`, NPC ids like `npc:marsa-inn`. So a `PairKey` cannot be split
+back into its two ids — `"npc:marsa-inn-s1-reiko".split('-')` is garbage. To act on a flagged pair
+(e.g. consuming `pendingCrises`), iterate the actors you already have and test
+`set.has(pairKey(a, b))`, exactly as `socialPressureSubscriber` / `drivers.ts` do — don't reconstruct
+ids from the key.

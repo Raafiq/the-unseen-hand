@@ -162,10 +162,13 @@ state added. Follow TDD: one failing test per driver behaviour and per surfacing
 
 ## Follow-ups
 
-- **Consume the crisis flag in `socialResolver`.** `pendingCrises` is written but not yet read;
-  wire `socialPressureSubscriber` to pass `crisis: true` to `resolveEncounter` for a flagged pair
-  (bypassing the `THRESHOLD_PROB` gate → `ESTRANGEMENT` reachable) and clear the flag. The
-  `resolveEncounter`/`resolveOutcome` `crisis` param already exists; only the plumbing is missing.
+- **~~Consume the crisis flag in `socialResolver`.~~ DONE (post-closeout).** `socialPressureSubscriber`
+  now reads `pendingCrises`: a flagged, co-present, awake pair fires exactly one forced escalation
+  encounter (`crisis: true` → bypasses the enemy gate, pressure threshold, and post-fire cooldown →
+  `ESTRANGEMENT` reachable), then the flag clears; an unavailable pair keeps its flag for a later
+  tick. Spec fidelity tightened in `social-system.md` §4. Tests in `relationship-drivers.test.ts`
+  (`crisis-flag consumption`). Gated on a non-empty `pendingCrises`, so scenario1/existing suites
+  saw zero rng churn.
 - **p13b (`plans/p13b-townsfolk-familiarity.md`)** — now unblocked. Seeds NPC familiarity edges +
   approach bias, and is where **NPC rivalry** becomes reachable (needs goal/feud data an NPC lacks
   in p13a). p13a leaves NPC rivalry adventurer-only by design.

@@ -484,6 +484,10 @@ export function socialPressureSubscriber(ctx: SimulationContext): SimulationCont
   const festivalMult = festivalPressureMultiplier(ctx);
   const pressure = new Map(ctx.socialPressure);
   const firing: Array<[ActorId, ActorId]> = [];
+  // Pairs carrying a peril/rivalry crisis flag: resolved as forced escalation encounters
+  // (crisis bypass, social-system.md §5), then their flag clears. Kept separate from `firing`
+  // so each resolves as its own 2-person crisis scene rather than merging into a group.
+  const crisisFiring: Array<[ActorId, ActorId]> = [];
 
   for (let i = 0; i < actors.length; i++) {
     for (let j = i + 1; j < actors.length; j++) {
@@ -494,6 +498,15 @@ export function socialPressureSubscriber(ctx: SimulationContext): SimulationCont
       if (isNpc(a.id) && isNpc(b.id)) continue;
 
       const key = pairKey(a.id, b.id);
+
+      // Crisis flag (peril BETRAYAL / ENEMY-crossing RIVALRY): forced proximity overrides the
+      // enemy gate, pressure threshold, and post-fire cooldown (social-system.md §5) so a
+      // follow-up ESTRANGEMENT is reachable. Resolved by the forced path below; still frozen by
+      // sleep (a nightly pause), in which case the flag persists to a later awake tick.
+      if (ctx.pendingCrises.has(key)) {
+        if (isAwake(a) && isAwake(b)) crisisFiring.push([a.id, b.id]);
+        continue;
+      }
 
       // Post-fire / ESTRANGEMENT cooldown — no accumulation while active.
       if ((ctx.socialCooldowns.get(key) ?? 0) > tick) continue;
@@ -518,6 +531,20 @@ export function socialPressureSubscriber(ctx: SimulationContext): SimulationCont
   }
 
   let next: SimulationContext = { ...ctx, socialPressure: pressure };
+
+  // Consume crisis flags: each flagged, co-present, awake pair fires a forced escalation
+  // encounter (crisis:true bypasses the rare-outcome threshold → ESTRANGEMENT reachable at any
+  // relationship level), then its flag clears. Unresolvable flags (a participant away/asleep)
+  // persist to a later tick.
+  if (crisisFiring.length > 0) {
+    const crises = new Set(next.pendingCrises);
+    for (const [idA, idB] of crisisFiring) {
+      next = resolveEncounter(next, [idA, idB], { crisis: true });
+      crises.delete(pairKey(idA, idB));
+    }
+    next = { ...next, pendingCrises: crises };
+  }
+
   if (firing.length === 0) return next;
 
   // Resolve each connected group of firing pairs as one encounter (≤ 4 participants).

@@ -210,7 +210,12 @@ parallel to `lastSharedActivity`). Each tick, for each pair:
 1. **Relationship gate** — enemies (`strength ≤ −51`) never accumulate pressure voluntarily.
    Forced proximity (crisis event, shared mandatory activity) can override the enemy gate; no
    other condition can. A pair on an ESTRANGEMENT cooldown (§5) or a post-fire cooldown (below)
-   accumulates no pressure.
+   accumulates no pressure. The crisis vehicle is `pendingCrises: Set<PairKey>`, written by the
+   peril BETRAYAL / ENEMY-crossing RIVALRY drivers (`behaviors/relationship-events.md`): a flagged,
+   co-present, awake pair fires **exactly one** forced escalation encounter this tick (crisis
+   bypass per §5, overriding the enemy gate, pressure threshold, and post-fire cooldown), after
+   which the flag clears. A flag whose pair is unavailable (away on a quest, asleep) persists to a
+   later tick rather than being lost.
 
 2. **Net-flow accumulation (no binary eligibility gate).** Pressure changes by
    `Δpressure = gain − DECAY` on every tick where **both adventurers are awake and present**

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { detectPerilPairs, applyPerilResponse, townDriverSubscriber } from '../src/relationships/drivers.js';
+import { socialPressureSubscriber } from '../src/events/socialResolver.js';
 import { deriveBeliefs } from '../src/thoughts/beliefs.js';
 import { strengthToType, createEdge } from '../src/relationships/graph.js';
 import { questResolutionSubscriber } from '../src/quests/questSystem.js';
@@ -446,5 +447,64 @@ describe('peril-response wiring (through questResolutionSubscriber)', () => {
     expect(a.map(e => e.renderedText)).toEqual(b.map(e => e.renderedText));
     expect(a.length).toBeGreaterThan(0);
     for (const e of a) expect(['SHARED_DANGER', 'BETRAYAL']).toContain((e as { subtype: string }).subtype);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Crisis-flag consumption (socialPressureSubscriber reads pendingCrises)
+// ---------------------------------------------------------------------------
+
+describe('crisis-flag consumption (socialPressureSubscriber)', () => {
+  // Two adventurers locked past ENEMY_FLOOR (−51) with a very-high mood gap: NEGATIVE valence
+  // (strength < −10) + veryHighGap (moodGap > 50). Under a crisis flag, resolveOutcome's escalate()
+  // short-circuits on `crisis` → a deterministic ESTRANGEMENT; without one, the enemy gate blocks
+  // all accumulation so the pair can never fire.
+  function enemyPairCtx(): SimulationContext {
+    const e1 = { ...makeAdventurer('e1'), mood: 80 };
+    const e2 = { ...makeAdventurer('e2'), mood: 10 };
+    return withEdge(makeCtx([e1, e2], 500), 'e1', 'e2', -60);
+  }
+
+  it('forces an escalation encounter for a flagged enemy pair (bypassing the enemy gate) and clears the flag', () => {
+    const ctx = { ...enemyPairCtx(), pendingCrises: new Set([pk('e1', 'e2')]) };
+
+    const next = socialPressureSubscriber(ctx);
+
+    // The flag is consumed exactly once.
+    expect(next.pendingCrises.has(pk('e1', 'e2'))).toBe(false);
+    // A forced escalation fired despite the pair being enemies — crisis bypasses the threshold,
+    // so the deterministic outcome is ESTRANGEMENT.
+    const social = next.eventLog.filter(e => e.kind === 'SOCIAL');
+    expect(social).toHaveLength(1);
+    expect(social[0]).toMatchObject({ kind: 'SOCIAL', subtype: 'ESTRANGEMENT' });
+    // The bond dropped further (ESTRANGEMENT −22) and an approach-lock cooldown was set.
+    expect(edgeStrength(next, 'e1', 'e2')).toBeLessThan(-60);
+    expect(next.socialCooldowns.get(pk('e1', 'e2')) ?? 0).toBeGreaterThan(ctx.worldTime.tick);
+  });
+
+  it('without a crisis flag, the same enemy pair never fires (enemy gate holds)', () => {
+    const ctx = enemyPairCtx(); // pendingCrises empty
+
+    const next = socialPressureSubscriber(ctx);
+
+    expect(next.eventLog.filter(e => e.kind === 'SOCIAL')).toHaveLength(0);
+    expect(edgeStrength(next, 'e1', 'e2')).toBe(-60);
+    expect(next.socialPressure.get(pk('e1', 'e2')) ?? 0).toBe(0); // no accumulation
+  });
+
+  it('keeps the flag when a participant is asleep (nightly pause), consuming it on a later awake tick', () => {
+    const asleep = {
+      ...makeAdventurer('e2'),
+      mood: 10,
+      activityState: { current: 'SLEEPING' as const, enteredAt: 490, scheduledExitAt: 520, nextMicroEventAt: 505 },
+    };
+    const base = withEdge(makeCtx([{ ...makeAdventurer('e1'), mood: 80 }, asleep], 500), 'e1', 'e2', -60);
+    const ctx = { ...base, pendingCrises: new Set([pk('e1', 'e2')]) };
+
+    const next = socialPressureSubscriber(ctx);
+
+    // Frozen: no encounter, flag retained for a later tick.
+    expect(next.eventLog.filter(e => e.kind === 'SOCIAL')).toHaveLength(0);
+    expect(next.pendingCrises.has(pk('e1', 'e2'))).toBe(true);
   });
 });

@@ -182,14 +182,19 @@ export type TownRole =
   | 'GUARD_CAPTAIN' | 'INNKEEPER';
 
 /** Tier A — a named, persistent town NPC that lives in the relationship graph as an
- *  honorary actor. NPCs are not full adventurers (no quests, goal, or divine touch). */
+ *  honorary actor. NPCs are not full adventurers (no quests, goal, or divine touch),
+ *  but carry earned interiority: real mood, event-driven history, and a static want
+ *  (npc-system.md#interiority-earned-event-driven). */
 export type NotableNpc = {
   id: NpcId;
   name: string;
   role: TownRole;
   traits: Partial<PersonalityAxes>; // enough to drive encounter valence/intensity
   bio: string;                      // 1–2 sentences, shown in UI; stable
-  mood?: number;                    // optional, coarse; NPCs are not full mood-system citizens
+  mood: number;                     // 0–100; seeded 50; day-tick decay like adventurers (no despairStreak)
+  moodFactors: MoodFactor[];        // written by social encounters; decayed on day ticks
+  history: HistoryEvent[];          // 50-cap FIFO via appendHistoryEvent; event-driven writes only
+  want: { id: string; text: string }; // static longing; feeds thought-system.md; never mutated
 };
 
 /** Keyed by sorted pair id "A-B"; value is the tick of last shared activity. */
@@ -377,6 +382,14 @@ export type ActivityEvent = EventBase & {
   prevActivity?: ActivityId;
 };
 
+/** A THOUGHT whisper — an actor's inner monologue surfacing into the feed
+ *  (thought-system.md). Strictly solo; carries no relationship/mood/state effect. */
+export type ThoughtEvent = EventBase & {
+  kind: 'THOUGHT';
+  actorId: ActorId;   // the thinker — adventurer or Tier A notable NPC
+  subjectKey: string; // fragment-family id for anti-repetition; never rendered
+};
+
 export type SimulationEvent =
   | SocialEvent
   | NPCEvent
@@ -386,7 +399,8 @@ export type SimulationEvent =
   | WorldEvent
   | DecisionMomentEvent
   | DivineInterventionEvent
-  | ActivityEvent;
+  | ActivityEvent
+  | ThoughtEvent;
 
 // ---------------------------------------------------------------------------
 // Decision moments
@@ -527,6 +541,7 @@ export type Scenario = {
 export type SimulationContext = {
   worldTime: WorldTime;
   rng: SeededRNG;
+  worldSeed: string; // world-gen seed, read-only after creation; lets thought-system.md build derived read-only rng streams without touching ctx.rng
   adventurers: Map<AdventurerId, Adventurer>;
   notableNpcs: Map<NpcId, NotableNpc>; // Tier A town NPCs; honorary actors in `relationships`
   relationships: RelationshipGraph;

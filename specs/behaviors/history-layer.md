@@ -53,6 +53,14 @@ A `HistoryEvent` is appended to the adventurer's history list when:
 - Maximum history list length: 50 events. If exceeded, the oldest events are pruned (FIFO). Pruned events no longer contribute modifiers.
 - All history events are rendered in the character detail panel's history section.
 
+### Reuse beyond adventurers
+
+- `HistoryEvent` (same shape, same 50-cap `appendHistoryEvent`) is reused by notable Tier A
+  NPCs — see `behaviors/npc-system.md` for their event-driven write sites. `contextualModifier`
+  remains adventurer-only and is unchanged.
+- The thought system (`behaviors/thought-system.md`) reads history entries (weight × recency
+  salience) to select the subject of an actor's current thought.
+
 ### WITNESSED_DEATH — enemy archetype
 
 `enemyArchetype` is a tag on the quest that produced the death: `UNDEAD | BEAST | HUMAN | ELEMENTAL | UNKNOWN`. Quest types map to archetypes probabilistically — `DUNGEON` quests can produce any archetype; `BOUNTY` quests are typically `HUMAN` or `BEAST`. Archetype is seeded at quest generation.

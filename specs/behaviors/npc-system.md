@@ -49,7 +49,10 @@ type NotableNpc = {
   role: TownRole;            // also a valid Tier-B role label
   traits: Partial<PersonalityAxes>;   // enough to drive encounter valence/intensity
   bio: string;               // 1–2 sentences, shown in UI; stable
-  mood?: number;             // optional, coarse; NPCs are not full mood-system citizens
+  mood: number;              // 0–100; seeded 50; real mood-system citizen (day-tick decay)
+  moodFactors: MoodFactor[]; // same decaying factors as adventurers; written by encounters
+  history: HistoryEvent[];   // 50-cap FIFO, same shape as adventurers (see history-layer.md)
+  want: { id: string; text: string };  // static longing; read by thought-system.md, never mutated
 };
 ```
 
@@ -58,12 +61,22 @@ type NotableNpc = {
   `RelationshipEdge`s with the same strength range, type thresholds, threshold events, and
   long-separation decay as adventurer↔adventurer edges (see `relationship-graph.md`).
 - They **participate in social encounters** as honorary actors: the §4 pressure model and the §5
-  valence × intensity outcome grid (`social-system.md`) apply, using the NPC's `traits` and
-  optional `mood` where an adventurer's personality/mood would be read. A notable NPC can reach
+  valence × intensity outcome grid (`social-system.md`) apply, using the NPC's `traits` and live
+  `mood` where an adventurer's personality/mood would be read. A notable NPC can reach
   FRIEND, RIVAL, even TRUSTED_COMPANION with an adventurer.
+- **Interiority (earned, event-driven).** Notable NPCs carry real inner state, written only at
+  event-driven sites — never by ambient accumulation:
+  - `resolveEncounter` applies the outcome mood factor to NPC participants exactly as it does to
+    adventurers; the day-tick mood pass (`mood-system.md`) decays NPC factors and recalculates
+    `npc.mood`. NPCs have no `despairStreak` and no departure consequence at any mood.
+  - When an adventurer with an edge of `|strength| ≥ 20` to the NPC dies or departs, a
+    `WITNESSED_DEATH`-kind `HistoryEvent` is appended to the NPC's `history` (50-cap FIFO via the
+    same `appendHistoryEvent`).
+  - `want` is a static, hand-authored longing seeded at world generation. No subscriber mutates
+    it; it exists to feed the thought grammar's subject slot (`thought-system.md`).
 - **Exclusions.** Co-quest strength deltas never apply (NPCs do not quest). NPCs do not draw from
-  the activity pool, do not have departures, and do not die unless a scenario scripts it. Their
-  edges are otherwise live (social deltas, decay).
+  the activity pool, do not have departures, do not have a `despairStreak` or personal goal, and
+  do not die unless a scenario scripts it. Their edges are otherwise live (social deltas, decay).
 
 ### Tier B — nameless roles
 
@@ -133,8 +146,10 @@ detail drawer (`app-shell.md#detail-drawer`).
   the other actor's name, relationship type, and strength, and clickable to re-target the drawer
   to that actor.
 - **Exclusions (mirror the model's Tier-A exclusions).** A townsfolk has no personal goal, no
-  full personality axes, no history timeline, no divine-touch actions, and no dispatch controls —
-  NPCs are not commandable and do not quest. None of those sections render for a townsfolk.
+  full personality axes, no divine-touch actions, and no dispatch controls — NPCs are not
+  commandable and do not quest. None of those sections render for a townsfolk. (NPC `history`
+  exists as model state feeding thoughts, but no history timeline section renders.) The view
+  additionally shows the NPC's `want` and current thought (see `thought-system.md`).
 - A relationship row whose other endpoint is itself a notable NPC is displayed like any other but,
   since NPC↔NPC edges are not modelled, will not normally occur; if present it re-targets like an
   adventurer row.
@@ -170,6 +185,12 @@ character-filtering.
 - All NPC line selection flows through `ctx.rng`; no `Math.random()`.
 - A live FESTIVAL span raises Social-cluster activity weight and social pressure gain while
   active, and reverts on END.
+- `resolveEncounter` applies the outcome mood factor to an NPC participant; the day-tick mood
+  pass decays NPC factors and recalculates `npc.mood`; a despairing NPC has no streak or
+  departure consequence.
+- An adventurer death/departure appends a `WITNESSED_DEATH` history entry to a bonded
+  (`|strength| ≥ 20`) NPC and not to a stranger NPC; NPC `history` respects the 50-cap FIFO.
+- `npc.want` is never mutated by any subscriber across a long seeded run.
 - Clicking a townsfolk relationship row on an adventurer's detail opens the townsfolk detail
   view, which shows the NPC's name, role label, bio, and defined trait bars, and no goal /
   history / divine-touch / dispatch sections.

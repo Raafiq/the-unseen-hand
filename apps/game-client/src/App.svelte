@@ -14,6 +14,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { slide } from 'svelte/transition';
   import { FEATURES } from './lib/featureFlags';
+  import { renderThought, type DecisionMoment } from '@ugs/core';
 
   onMount(() => {
     loop.start();
@@ -57,6 +58,23 @@
 
   function handleSpeedClick(s: 1 | 5 | 20 | 'paused') {
     setSpeed(s);
+  }
+
+  // Resolve a decision moment's subjectId (comma-joined actor ids) to named current
+  // thoughts (thought-system.md — decision-card surface). Pure on-demand renders;
+  // the auto-pause freezes the tick, so the text is stable while the card is up.
+  function getSubjectThoughts(moment: DecisionMoment): Array<{ id: string; name: string; thought: string }> {
+    if (!moment.subjectId) return [];
+    return moment.subjectId
+      .split(',')
+      .map(id => id.trim())
+      .filter(id => id.length > 0)
+      .map(id => {
+        const name = ctx.adventurers.get(id)?.identity.name ?? ctx.notableNpcs.get(id)?.name;
+        const thought = renderThought(ctx, id);
+        return name && thought ? { id, name, thought: thought.text } : undefined;
+      })
+      .filter((st): st is { id: string; name: string; thought: string } => st !== undefined);
   }
 </script>
 
@@ -126,6 +144,7 @@
           moments={ctx.pendingDecisions}
           di={ctx.divineInfluence}
           tick={ctx.worldTime.tick}
+          {getSubjectThoughts}
           onChoose={(decisionId, optionIndex) =>
             doDispatch({ type: 'CHOOSE_OPTION', decisionId, optionIndex })}
         />

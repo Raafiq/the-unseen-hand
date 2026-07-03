@@ -28,6 +28,11 @@ Displayed prominently at the top of the right panel:
 
 Option 0 ("Let fate decide") is always the first option listed, always shows as `Free`, and is always interactive regardless of DI.
 
+- **Involved thoughts**: below the situation text, each resolvable actor in `moment.subjectId`
+  is listed with their name and **current thought** (`thought-system.md`), rendered at card
+  display time via the pure on-demand path. The loop auto-pauses while a card is up, so the
+  tick — and therefore the text — is stable. Omitted for actors that render no thought.
+
 Clicking an affordable option dispatches `CHOOSE_OPTION` immediately (no confirmation dialog — the situation text, description, and cost are already displayed). The card collapses after dispatch.
 
 ### Secondary moment cards (lower-priority moments)

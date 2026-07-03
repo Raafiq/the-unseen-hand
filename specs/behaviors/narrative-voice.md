@@ -62,9 +62,13 @@ renderedText = subject + beat + colour
     report happens out in a dungeon, not the tinted town region — a live `FESTIVAL` must not append
     "laughter spills through the streets" to a `BEAT_LOG` line about a bloodied party trudging home).
 
-Each pool is a `readonly string[]` (or a small keyed `Record`). Selection is **always** via
-`ctx.rng` — never `Math.random()`. Name/region slots are filled by interpolation (`{a}`,
-`{b}`, `{subject}`, `{region}`); a rendered line never leaves an unfilled slot.
+Each pool is a `readonly string[]` (or a small keyed `Record`). Selection for **emitted
+events** is via `ctx.rng` — never `Math.random()`. One carve-out exists: **on-demand thought
+renders** (`thought-system.md`) select via a derived read-only stream hashed from
+`(worldSeed, actorId, tick)`, precisely so UI reads can never perturb the replayable record;
+`THOUGHT` whispers roll *whether* on `ctx.rng` but render their text through that same derived
+stream. Name/region slots are filled by interpolation (`{a}`, `{b}`, `{subject}`, `{region}`);
+a rendered line never leaves an unfilled slot.
 
 > Flat (today): `"${a} and ${b} clash in a heated argument."`
 > Grammar: subject `"{a} and {b}"` + beat (one of `["clash over {topic}", "trade sharp
@@ -83,6 +87,9 @@ Every `(kind, subtype)` that reaches the feed has a beat pool of **≥ 3 variant
 - **Lifecycle** — deaths, departures, the relationship threshold events, goal milestones.
 - **World** — flavour and span START/END lines (see `behaviors/world-expansion.md`).
 - **NPC** — interactions with notable and nameless town NPCs (see `behaviors/npc-system.md`).
+- **Thought** — inner-monologue whispers; pools live in `packages/core/src/thoughts/`, not
+  `eventBus.ts`, and compose `stance + subject + inflection? + hook?` rather than
+  `subject + beat + colour` (see `behaviors/thought-system.md`).
 
 The outcome label itself (`ARGUMENT`, `ESTRANGEMENT`, …) is **never** surfaced in the text —
 only the rendered prose (see `principles.md#every-outcome-has-a-narrative-cause`).

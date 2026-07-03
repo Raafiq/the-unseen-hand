@@ -71,9 +71,9 @@ function npcPersonality(traits: Partial<PersonalityAxes>): PersonalityAxes {
 }
 
 /** Project a notable NPC into an encounter actor. NPCs are always present and awake
- *  (no activity pool); mood defaults to the 50 midpoint when unset. */
+ *  (no activity pool); mood is live (day-tick decayed, encounter-written). */
 function npcToActor(npc: NotableNpc): EncounterActor {
-  return { id: npc.id, mood: npc.mood ?? 50, personality: npcPersonality(npc.traits), state: 'IDLE' };
+  return { id: npc.id, mood: npc.mood, personality: npcPersonality(npc.traits), state: 'IDLE' };
 }
 
 /** Resolve an actor id to its encounter view — a real adventurer or a projected NPC. */
@@ -400,21 +400,30 @@ export function resolveEncounter(
     }
   }
 
-  // --- Mood factor per participant ---
+  // --- Mood factor per participant (adventurers and notable NPCs alike) ---
   if (effect.moodId && effect.moodValue !== undefined) {
+    const factor: MoodFactor = {
+      id: effect.moodId,
+      label: effect.moodLabel ?? effect.moodId,
+      value: effect.moodValue,
+      decayRate: effect.moodDecay ?? 0.2,
+    };
     const updated = new Map(next.adventurers);
+    const updatedNpcs = new Map(next.notableNpcs);
+    let npcTouched = false;
     for (const id of ids) {
       const adv = updated.get(id);
-      if (!adv) continue;
-      const factor: MoodFactor = {
-        id: effect.moodId,
-        label: effect.moodLabel ?? effect.moodId,
-        value: effect.moodValue,
-        decayRate: effect.moodDecay ?? 0.2,
-      };
-      updated.set(id, { ...adv, moodFactors: upsertMoodFactor(adv.moodFactors, factor) });
+      if (adv) {
+        updated.set(id, { ...adv, moodFactors: upsertMoodFactor(adv.moodFactors, factor) });
+        continue;
+      }
+      const npc = updatedNpcs.get(id);
+      if (npc) {
+        updatedNpcs.set(id, { ...npc, moodFactors: upsertMoodFactor(npc.moodFactors, factor) });
+        npcTouched = true;
+      }
     }
-    next = { ...next, adventurers: updated };
+    next = { ...next, adventurers: updated, ...(npcTouched ? { notableNpcs: updatedNpcs } : {}) };
   }
 
   // --- The single SocialEvent (rendered by the P10a grammar via emitEvent) ---

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { SimulationContext, TownRole, RelationshipType } from '@ugs/core';
-  import { strengthToType } from '@ugs/core';
+  import { strengthToType, renderThought } from '@ugs/core';
 
   interface Props {
     ctx: SimulationContext;
@@ -24,6 +24,8 @@
   );
 
   const traitEntries = $derived(npc ? Object.entries(npc.traits) : []);
+  // Pure on-demand render (thought-system.md: "the panel is a window, not a hand").
+  const thought = $derived(renderThought(ctx, npcId));
 
   const ROLE_LABELS: Record<TownRole, string> = {
     GATE_GUARD:    'Gate Guard',
@@ -111,10 +113,18 @@
       </div>
     {/if}
 
-    <!-- Mood (coarse, optional — NPCs are not full mood-system citizens) -->
-    {#if npc.mood !== undefined}
-      <div class="section-label">Mood</div>
-      <div class="mood-score">{Math.round(npc.mood)}/100</div>
+    <!-- Mood (live — day-tick decayed, encounter-written; npc-system.md interiority) -->
+    <div class="section-label">Mood</div>
+    <div class="mood-score">{Math.round(npc.mood)}/100</div>
+
+    <!-- Want (static longing; npc-system.md) -->
+    <div class="section-label">Wants</div>
+    <div class="want">{npc.want.text}</div>
+
+    <!-- Inner voice (thought-system.md) -->
+    {#if thought}
+      <div class="section-label">Inner voice</div>
+      <div class="inner-voice">{thought.text}</div>
     {/if}
 
     <!-- Relationships -->
@@ -190,6 +200,8 @@
   .axis-val { font-size: 11px; color: #888; width: 28px; text-align: right; }
 
   .mood-score { font-size: 13px; font-weight: 600; color: #ccc; }
+  .want { font-size: 12px; color: #b0a89a; line-height: 1.4; }
+  .inner-voice { font-size: 12px; color: #a49cb4; font-style: italic; line-height: 1.5; }
 
   .rel-row {
     display: flex; align-items: center; gap: 8px; padding: 4px 0;

@@ -24,6 +24,9 @@ The root object. Every tick subscriber receives and returns a new `SimulationCon
 type SimulationContext = {
   worldTime: WorldTime;
   rng: SeededRNG;
+  worldSeed: string;                // the world-gen seed; read-only after creation. Exists so
+                                    // derived read-only rng streams (thought-system.md) can be
+                                    // constructed without touching ctx.rng.
   adventurers: Map<AdventurerId, Adventurer>;
   relationships: RelationshipGraph;
   lastSharedActivity: LastSharedActivity; // updated by quest + social event systems (Phase 2)
@@ -251,7 +254,8 @@ type SimulationEvent =
   | LifecycleEvent
   | WorldEvent
   | DecisionMomentEvent
-  | DivineInterventionEvent;
+  | DivineInterventionEvent
+  | ThoughtEvent;          // shape in event-bus.md; defined by thought-system.md
 
 // All share a common base
 type EventBase = {

@@ -27,13 +27,14 @@
     DIVINE:         { label: 'Divine',    cls: 'tag-divine' },
     DECISION_MOMENT:{ label: 'Decision',  cls: 'tag-decision' },
     ACTIVITY:       { label: 'Activity',  cls: 'tag-world' },
+    THOUGHT:        { label: 'Thought',   cls: 'tag-thought' },
   };
 
   // Kinds whose owning feature is currently hidden (featureFlags) — dropped from
   // both the filter chips and the rendered rows below.
   const HIDDEN_KINDS = hiddenEventKinds();
 
-  const ALL_KINDS: EventKind[] = (['SOCIAL', 'NPC', 'COMBAT', 'QUEST', 'LIFECYCLE', 'WORLD', 'DIVINE', 'ACTIVITY'] as EventKind[])
+  const ALL_KINDS: EventKind[] = (['SOCIAL', 'NPC', 'COMBAT', 'QUEST', 'LIFECYCLE', 'WORLD', 'DIVINE', 'ACTIVITY', 'THOUGHT'] as EventKind[])
     .filter(k => !HIDDEN_KINDS.has(k));
 
   function toggleFilter(key: FilterKey) {
@@ -84,6 +85,7 @@
   });
 
   function getInvolvedIds(event: SimulationEvent): string[] {
+    if ('actorId' in event) return [(event as any).actorId]; // THOUGHT — the thinker
     if ('involvedIds' in event) return (event as any).involvedIds ?? [];
     if ('participantIds' in event) return (event as any).participantIds ?? [];
     if ('partyIds' in event) return (event as any).partyIds ?? [];
@@ -185,7 +187,7 @@
             <span class="type-tag {KIND_LABELS[event.kind]?.cls ?? ''}">
               {KIND_LABELS[event.kind]?.label ?? event.kind}
             </span>
-            <span class="event-text">{event.renderedText}</span>
+            <span class="event-text" class:thought-text={event.kind === 'THOUGHT'}>{event.renderedText}</span>
             {#if event.kind === 'COMBAT' && event.subtype === 'BEAT_LOG' && event.beats?.length}
               <button class="replay-btn" onclick={() => openReplay(event)}>Replay</button>
             {/if}
@@ -244,6 +246,7 @@
   .tag-world.active    { background: #0a1a2e; color: #42a5f5; border-color: #42a5f5; }
   .tag-divine.active   { background: #2e2200; color: #ffd54f; border-color: #ffd54f; }
   .tag-decision.active { background: #1a0a2e; color: #7e57c2; border-color: #7e57c2; }
+  .tag-thought.active  { background: #22222a; color: #9a93a8; border-color: #9a93a8; }
 
   .char-filter-bar {
     display: flex; flex-wrap: wrap; gap: 4px; padding-bottom: 10px;
@@ -292,8 +295,10 @@
   .tag-world    { background: #0a1a2e; color: #42a5f5; }
   .tag-divine   { background: #2e2200; color: #ffd54f; }
   .tag-decision { background: #1a0a2e; color: #7e57c2; }
+  .tag-thought  { background: #22222a; color: #9a93a8; }
 
   .event-text { flex: 1; font-size: 13px; color: #c8c0b4; line-height: 1.4; min-width: 160px; }
+  .thought-text { font-style: italic; color: #a49cb4; }
 
   .involved { display: flex; gap: 4px; margin-top: 4px; flex-basis: 100%; padding-left: 96px; }
   .portrait-init {

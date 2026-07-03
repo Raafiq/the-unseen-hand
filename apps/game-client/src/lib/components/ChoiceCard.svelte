@@ -6,14 +6,19 @@
     di: number;
     tick: number;
     onChoose: (decisionId: string, optionIndex: number) => void;
+    // Resolves a moment's subjectId list to named current thoughts (thought-system.md).
+    // Supplied by the parent so ChoiceCard stays ctx-free; computed at display time —
+    // the loop auto-pauses while a card is up, so the tick (and text) is stable.
+    getSubjectThoughts?: (moment: DecisionMoment) => Array<{ id: string; name: string; thought: string }>;
   }
 
-  const { moments, di, tick, onChoose }: Props = $props();
+  const { moments, di, tick, onChoose, getSubjectThoughts }: Props = $props();
 
   let primaryIdx = $state(0);
 
   const primary = $derived(moments[primaryIdx] ?? moments[0]);
   const secondary = $derived(moments.filter((_, i) => i !== primaryIdx));
+  const subjectThoughts = $derived(primary && getSubjectThoughts ? getSubjectThoughts(primary) : []);
 
   function expiryTicksLeft(moment: DecisionMoment): number {
     return Math.max(0, moment.expiresAt - tick);
@@ -38,6 +43,16 @@
     <!-- Primary card -->
     <div class="primary-card">
       <div class="situation-text">{primary.situationText}</div>
+      {#if subjectThoughts.length > 0}
+        <div class="subject-thoughts">
+          {#each subjectThoughts as st (st.id)}
+            <div class="subject-thought">
+              <span class="subject-name">{st.name}</span>
+              <span class="subject-text">{st.thought}</span>
+            </div>
+          {/each}
+        </div>
+      {/if}
       <div class="expiry {expiryClass(expiryTicksLeft(primary))}">
         Expires in {expiryTicksLeft(primary)} ticks
       </div>
@@ -90,6 +105,11 @@
   }
 
   .situation-text { font-size: 14px; font-weight: 700; color: #e0d8cc; line-height: 1.4; margin-bottom: 8px; }
+  .subject-thoughts { margin-bottom: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .subject-thought { font-size: 11px; line-height: 1.45; }
+  .subject-name { color: #9a93a8; font-weight: 600; margin-right: 4px; }
+  .subject-name::after { content: ' —'; }
+  .subject-text { color: #a49cb4; font-style: italic; }
 
   .expiry { font-size: 11px; margin-bottom: 12px; }
   .expiry-normal { color: #666; }

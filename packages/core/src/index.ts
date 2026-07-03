@@ -24,6 +24,17 @@ export {
 } from './adventurers/mood.js';
 export type { MoodLabel } from './adventurers/mood.js';
 
+// Thoughts (spec: specs/behaviors/thought-system.md)
+export { renderThought, THOUGHT_POOLS } from './thoughts/thoughtGrammar.js';
+export type { RenderedThought, RenderThoughtOptions } from './thoughts/thoughtGrammar.js';
+export { deriveBeliefs } from './thoughts/beliefs.js';
+export type { Belief, BeliefKind } from './thoughts/beliefs.js';
+export {
+  thoughtWhisperSubscriber,
+  rollThoughtWhispers,
+  THOUGHT_WHISPER_CHANCE,
+} from './thoughts/thoughtWhispers.js';
+
 // Relationships
 export {
   strengthToType,
@@ -91,7 +102,7 @@ export { createThornvaleNpcs, THORNVALE_NPCS } from './scenarios/notableNpcs.js'
 export { checkGoalCompletion, applyGoalCompletion } from './adventurers/PersonalGoals.js';
 
 // History layer
-export { contextualModifier, appendHistoryEvent } from './adventurers/HistoryLayer.js';
+export { contextualModifier, appendHistoryEvent, witnessLossForBondedNpcs } from './adventurers/HistoryLayer.js';
 
 // World expansion
 export {
@@ -121,4 +132,5 @@ export { findQuestBracketViolations } from './quests/questBracketInvariant.js';
 export type { QuestBracketViolation } from './quests/questBracketInvariant.js';
 export type { SimulationEventInput, SocialEventInput, CombatEventInput, QuestEventInput,
   LifecycleEventInput, WorldEventInput, DecisionMomentEventInput, DivineInterventionEventInput,
+  ThoughtEventInput,
 } from './events/eventBus.js';

@@ -8,6 +8,7 @@
 import type { SimulationContext, Adventurer } from '../world/types.js';
 import { transitionState } from './stateMachine.js';
 import { topMoodFactors } from './mood.js';
+import { witnessLossForBondedNpcs } from './HistoryLayer.js';
 import { emitEvent } from '../events/eventBus.js';
 import { hasActiveSpan } from '../world/WorldExpansion.js';
 
@@ -104,6 +105,9 @@ export function departureSubscriber(ctx: SimulationContext): SimulationContext {
       ...updatedCtx,
       eventLog: updatedCtx.eventLog.map((e, i) => i === lastIdx ? { ...e, renderedText } : e),
     };
+
+    // Bonded townsfolk register the loss (npc-system.md interiority write site).
+    updatedCtx = witnessLossForBondedNpcs(updatedCtx, id);
   }
 
   return updatedCtx;

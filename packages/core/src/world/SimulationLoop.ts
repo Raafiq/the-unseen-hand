@@ -26,6 +26,7 @@ import {
 } from '../quests/questSystem.js';
 import { personalGoalSubscriber } from '../adventurers/PersonalGoals.js';
 import { worldEventSeedingSubscriber } from './WorldExpansion.js';
+import { thoughtWhisperSubscriber } from '../thoughts/thoughtWhispers.js';
 
 export type TickSubscriber = (ctx: SimulationContext, delta: number) => SimulationContext;
 
@@ -68,9 +69,13 @@ export class SimulationLoop {
       worldEventSeedingSubscriber, // autonomous world flavour events (~1/day, spread across clock) + span END-sweep
       festivalSeedingSubscriber, // autonomous town-festival cadence (npc-system.md); END swept above
       worldExpansionSubscriber,  // region unlocks (every tick, after scenario)
-      // Tier B town flavour runs LAST so its per-tick rng draws never shift the stream seen by
+      // Tier B town flavour runs late so its per-tick rng draws never shift the stream seen by
       // the decision/quest/social systems within a tick (npc-system.md; p10b span-tint precedent).
       npcFlavourSubscriber,
+      // THOUGHT whispers run dead-last for the same rng-stream-ordering reason: a new per-tick
+      // rng consumer must sit after every already-baselined intra-tick draw — including
+      // npcFlavour's own (thought-system.md#thought-whispers).
+      thoughtWhisperSubscriber,
     );
   }
 

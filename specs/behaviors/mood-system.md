@@ -10,6 +10,8 @@ Each adventurer has a mood score (0–100) composed of named, decaying factors. 
 - Departure system (see `behaviors/departure-system.md`)
 - Social interaction resolver (see `behaviors/social-events.md`)
 - Quest volunteer weight (see `behaviors/personality-system.md`)
+- Notable (Tier A) NPCs (see `behaviors/npc-system.md`) — the day-tick decay/recalculation pass
+  also covers `ctx.notableNpcs`; NPCs have no `despairStreak` and no departure consequence
 
 ## Details
 

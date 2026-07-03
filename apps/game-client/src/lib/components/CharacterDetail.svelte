@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { SimulationContext, Adventurer, DispatchCommand, HistoryEvent, RelationshipType, AdventurerState, ActivityId, PersonalGoal } from '@ugs/core';
-  import { topMoodFactors, moodThresholdLabel, strengthToType } from '@ugs/core';
+  import { topMoodFactors, moodThresholdLabel, strengthToType, renderThought } from '@ugs/core';
   import { FEATURES, hiddenHistoryKinds } from '../featureFlags';
 
   type DivineEffect = 'COURAGE_BLESS' | 'LUCK_CURSE' | 'MOOD_LIFT' | 'SEND_DREAM' | 'REVEAL_SECRET' | 'MARK_FOR_DEATH';
@@ -26,6 +26,10 @@
   );
 
   const moodFactors = $derived(adv ? topMoodFactors(adv.moodFactors, 3) : []);
+  // Pure on-demand render via the derived (worldSeed, actorId, tick) stream —
+  // reading it can never advance sim state (thought-system.md: "the panel is a
+  // window, not a hand"). Stable while paused; follows the moment at speed.
+  const thought = $derived(renderThought(ctx, adventurerId));
   // Drop history kinds whose owning feature is hidden (quest triumphs, divine
   // touches) before taking the last 10, so the list stays full of relationship
   // and combat beats rather than showing gaps.
@@ -231,6 +235,12 @@
       </div>
     {/each}
 
+    <!-- Inner voice (thought-system.md) -->
+    {#if thought}
+      <div class="section-label">Inner voice</div>
+      <div class="inner-voice">{thought.text}</div>
+    {/if}
+
     <!-- Relationships -->
     {#if sortedEdges.length > 0}
       <div class="section-label">Relationships</div>
@@ -359,6 +369,7 @@
 
   .mood-score { font-size: 13px; font-weight: 600; }
   .mood-factor { font-size: 11px; padding-left: 4px; }
+  .inner-voice { font-size: 12px; color: #a49cb4; font-style: italic; line-height: 1.5; padding-left: 4px; }
 
   .rel-row {
     display: flex; align-items: center; gap: 8px; padding: 4px 0;

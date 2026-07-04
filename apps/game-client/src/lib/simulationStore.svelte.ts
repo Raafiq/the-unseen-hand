@@ -13,8 +13,10 @@ import {
   type DecisionMoment,
   type SimulationContext,
   type SimulationEvent,
+  type CycleDigest,
 } from '@ugs/core';
 import { fetchDaySummary } from './narrator.js';
+import { composeCycleReads, type CycleReads } from './cycleNarrative.js';
 import { FEATURES, hiddenEventKinds } from './featureFlags.js';
 
 // Import to trigger registration
@@ -99,6 +101,10 @@ export const simulationStore = $state({
   activeTab: 'roster' as 'roster' | 'quests' | 'world' | 'events',
   eventsLastReadTick: -1, // tick when Events tab was last opened; drives unread badge
   daySummaries: new Map<number, string>(), // day → narrator prose; populated async
+  // The per-character reads (overview + chapters) for the most recently computed cycle.
+  // Populated by recordCycleReads() after a PROCEED; the reader UI (p15d) consumes it.
+  // null until the first cycle is composed. Template tier now; p15c enriches with LLM prose.
+  cycleChapters: null as CycleReads | null,
 });
 
 // Register a render observer at the end of the subscriber chain.
@@ -161,6 +167,16 @@ export function setSpeed(speed: 1 | 5 | 20 | 'paused'): void {
 
 export function selectAdventurer(id: string | null): void {
   simulationStore.selectedAdventurerId = id;
+}
+
+/**
+ * Compose the per-character reads for a just-computed cycle and expose them on the store
+ * for the reader UI (p15d). Pure view over the deterministic event log — see cycleNarrative.ts.
+ * p15e wires this to the PROCEED button; kept as an explicit action so composition happens at
+ * the cycle boundary, not on every render.
+ */
+export function recordCycleReads(digest: CycleDigest): void {
+  simulationStore.cycleChapters = composeCycleReads(simulationStore.ctx, digest);
 }
 
 export function setActiveTab(tab: typeof simulationStore.activeTab): void {

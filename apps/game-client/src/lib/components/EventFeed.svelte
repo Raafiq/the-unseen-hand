@@ -2,6 +2,7 @@
   import type { SimulationContext, SimulationEvent, CombatBeat } from '@ugs/core';
   import CombatReplay from './CombatReplay.svelte';
   import { hiddenEventKinds } from '../featureFlags';
+  import { getInvolvedIds } from '../eventInvolvement';
   import { portraitSrc, portraitColor } from '../portraits';
 
   interface Props {
@@ -85,15 +86,6 @@
       .sort(([a], [b]) => b - a)
       .map(([day, events]) => ({ day, summary: daySummaries.get(day) ?? null, events }));
   });
-
-  function getInvolvedIds(event: SimulationEvent): string[] {
-    if ('actorId' in event) return [(event as any).actorId]; // THOUGHT — the thinker
-    if ('involvedIds' in event) return (event as any).involvedIds ?? [];
-    if ('participantIds' in event) return (event as any).participantIds ?? [];
-    if ('partyIds' in event) return (event as any).partyIds ?? [];
-    if ('adventurerId' in event) return [(event as any).adventurerId];
-    return [];
-  }
 
   // Resolve any actor id — adventurer or Tier A notable NPC — to a display name.
   function advName(id: string): string {

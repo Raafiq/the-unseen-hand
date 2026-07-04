@@ -13,6 +13,12 @@ root `CLAUDE.md` for commands, architecture, and the specops workflow.
 pnpm --filter @ugs/core exec tsc --noEmit
 ```
 
+The guardrail compiles `src/**/*` only — `tests/**` is **never** type-checked (vitest
+transpiles via esbuild, and `tsconfig.json` excludes tests). A green `tsc` says nothing
+about test-file types: adding a *required* field to a shared type (e.g. `WorldTime.cycle`)
+won't be flagged in the many test `worldTime: { tick, day, hour }` literals that omit it,
+and a genuinely broken test type won't be caught either. Rely on `pnpm test` for those.
+
 ### Testing rule — probability shifts, not outcomes
 
 Tests must assert that a probability-shifting function **changes the probability value**,

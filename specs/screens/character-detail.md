@@ -17,7 +17,7 @@ From `simulationStore` (for the selected `adventurerId`):
 ### Identity section
 
 At top of panel:
-- **Portrait**: same colored-initial circle as roster card, but larger.
+- **Portrait**: the adventurer's resolved portrait image when art exists, otherwise the same colored-initial circle as the roster card — but larger. Resolution and fallback are defined in `behaviors/character-portraits.md`.
 - **Name and age**: `{name}, age {age}`
 - **State badge**: same as roster card
 - **Backstory**: full `identity.backstory` text, rendered in italic. Truncated at 120 characters with "..." and an expand link if longer.

@@ -2,6 +2,7 @@
   import type { SimulationContext, Adventurer, DispatchCommand, HistoryEvent, RelationshipType, AdventurerState, ActivityId, PersonalGoal } from '@ugs/core';
   import { topMoodFactors, moodThresholdLabel, strengthToType, renderThought, computeEdgeDrift } from '@ugs/core';
   import { FEATURES, hiddenHistoryKinds } from '../featureFlags';
+  import { portraitSrc, portraitColor } from '../portraits';
 
   type DivineEffect = 'COURAGE_BLESS' | 'LUCK_CURSE' | 'MOOD_LIFT' | 'SEND_DREAM' | 'REVEAL_SECRET' | 'MARK_FOR_DEATH';
 
@@ -80,12 +81,6 @@
   const GOAL_TOTALS: Record<string, number> = {
     HEROISM: 4, WEALTH: 5, BELONGING: 2, REVENGE: 1, WANDERLUST: 3, PEACE: 1,
   };
-
-  function portraitColor(id: string): string {
-    let hash = 0;
-    for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-    return `hsl(${hash % 360}, 50%, 40%)`;
-  }
 
   function moodColor(mood: number) {
     return mood >= 50 ? '#4caf50' : mood >= 25 ? '#ff9800' : '#f44336';
@@ -176,12 +171,17 @@
 </script>
 
 {#if adv}
+  {@const src = portraitSrc(adv.id)}
   <div class="detail" class:drawer={variant === 'drawer'}>
     <!-- Identity -->
     <div class="identity">
-      <div class="portrait-lg" style="background:{portraitColor(adv.id)}">
-        {adv.identity.name[0]}
-      </div>
+      {#if src}
+        <img class="portrait-lg" {src} alt={adv.identity.name} />
+      {:else}
+        <div class="portrait-lg" style="background:{portraitColor(adv.id)}">
+          {adv.identity.name[0]}
+        </div>
+      {/if}
       <div class="ident-body">
         <div class="ident-name">{adv.identity.name}, age {adv.identity.age}</div>
         <div class="state-badge state-{adv.state.toLowerCase().replace('_','-')}">{ADV_STATE_LABELS[adv.state] ?? adv.state}</div>
@@ -338,6 +338,7 @@
     width: 48px; height: 48px; border-radius: 50%; display: flex;
     align-items: center; justify-content: center; font-size: 20px;
     font-weight: bold; color: #fff; flex-shrink: 0;
+    object-fit: cover;
   }
   .ident-body { flex: 1; }
   .ident-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }

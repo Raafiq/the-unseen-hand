@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { SimulationContext, Adventurer } from '@ugs/core';
+  import { portraitSrc, portraitColor } from '../portraits';
 
   interface Props {
     ctx: SimulationContext;
@@ -8,13 +9,6 @@
   }
 
   const { ctx, selectedId, onSelect }: Props = $props();
-
-  function portraitColor(id: string): string {
-    let hash = 0;
-    for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-    const hue = hash % 360;
-    return `hsl(${hue}, 50%, 40%)`;
-  }
 
   const STATE_LABELS: Record<string, { label: string; cls: string }> = {
     IDLE:       { label: 'Idle',        cls: 'state-idle' },
@@ -54,15 +48,20 @@
     <p class="empty">No adventurers yet.</p>
   {:else}
     {#each dockAdventurers as adv (adv.id)}
+      {@const src = portraitSrc(adv.id)}
       <button
         class="card"
         class:gone={isGone(adv)}
         class:selected={adv.id === selectedId}
         onclick={() => handleCardClick(adv)}
       >
-        <div class="portrait" class:desaturated={isGone(adv)} style="background:{portraitColor(adv.id)}">
-          {adv.identity.name[0]}
-        </div>
+        {#if src}
+          <img class="portrait" class:desaturated={isGone(adv)} {src} alt={adv.identity.name} />
+        {:else}
+          <div class="portrait" class:desaturated={isGone(adv)} style="background:{portraitColor(adv.id)}">
+            {adv.identity.name[0]}
+          </div>
+        {/if}
         <div class="card-body">
           <span class="name" class:strikethrough={adv.state === 'DEAD'} class:italic={adv.state === 'RETIRED'}>
             {adv.identity.name}
@@ -102,6 +101,7 @@
     width: 32px; height: 32px; border-radius: 50%; display: flex;
     align-items: center; justify-content: center; font-weight: bold;
     font-size: 14px; color: #fff; flex-shrink: 0;
+    object-fit: cover;
   }
   .portrait.desaturated { filter: grayscale(0.8); }
 

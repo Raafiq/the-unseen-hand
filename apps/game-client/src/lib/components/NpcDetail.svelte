@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { SimulationContext, TownRole, RelationshipType } from '@ugs/core';
   import { strengthToType, renderThought } from '@ugs/core';
+  import { portraitSrc, portraitColor } from '../portraits';
 
   interface Props {
     ctx: SimulationContext;
@@ -73,20 +74,20 @@
     return ctx.adventurers.get(id)?.identity.name ?? ctx.notableNpcs.get(id)?.name ?? id;
   }
 
-  function portraitColor(id: string): string {
-    let hash = 0;
-    for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-    return `hsl(${hash % 360}, 50%, 40%)`;
-  }
 </script>
 
 {#if npc}
+  {@const src = portraitSrc(npc.id, { role: npc.role })}
   <div class="detail" class:drawer={variant === 'drawer'}>
     <!-- Identity -->
     <div class="identity">
-      <div class="portrait-lg" style="background:{portraitColor(npc.id)}">
-        {npc.name[0]}
-      </div>
+      {#if src}
+        <img class="portrait-lg" {src} alt={npc.name} />
+      {:else}
+        <div class="portrait-lg" style="background:{portraitColor(npc.id)}">
+          {npc.name[0]}
+        </div>
+      {/if}
       <div class="ident-body">
         <div class="ident-name">{npc.name}</div>
         <div class="role-badge">{ROLE_LABELS[npc.role] ?? npc.role}</div>
@@ -176,6 +177,7 @@
     width: 48px; height: 48px; border-radius: 50%; display: flex;
     align-items: center; justify-content: center; font-size: 20px;
     font-weight: bold; color: #fff; flex-shrink: 0;
+    object-fit: cover;
   }
   .ident-body { flex: 1; }
   .ident-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }

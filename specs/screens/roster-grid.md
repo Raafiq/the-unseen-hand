@@ -24,7 +24,7 @@ Section headers: "Active", "Fallen", "Departed" — shown only if their section 
 ### Adventurer card
 
 Each card shows:
-- **Portrait placeholder**: a colored circle with the adventurer's initial. Color is deterministically derived from the adventurer's `id` (consistent across renders). Dead adventurers: desaturated portrait.
+- **Portrait**: the adventurer's resolved portrait image when art exists, otherwise the colored-initial circle fallback — resolution and the fallback chain are defined in `behaviors/character-portraits.md`. The circle's color is deterministically derived from the adventurer's `id` (consistent across renders). Dead adventurers: desaturated portrait.
 - **Name**: `adventurer.identity.name`. If dead: strikethrough. If retired: italic.
 - **State badge**: a small colored pill.
 

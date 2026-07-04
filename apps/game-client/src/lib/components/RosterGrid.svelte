@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { SimulationContext, Adventurer } from '@ugs/core';
   import { topMoodFactors, moodThresholdLabel } from '@ugs/core';
+  import { portraitSrc, portraitColor } from '../portraits';
 
   const GOAL_ICONS: Record<string, string> = {
     HEROISM: '⚔', WEALTH: '💰', BELONGING: '🤝', REVENGE: '🗡',
@@ -14,13 +15,6 @@
   }
 
   const { ctx, selectedId, onSelect }: Props = $props();
-
-  function portraitColor(id: string): string {
-    let hash = 0;
-    for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-    const hue = hash % 360;
-    return `hsl(${hue}, 50%, 40%)`;
-  }
 
   const living = $derived(
     [...ctx.adventurers.values()]
@@ -69,15 +63,20 @@
     <div class="section-header">Active</div>
     <div class="grid" class:compact>
       {#each living as adv (adv.id)}
+        {@const src = portraitSrc(adv.id)}
         <button
           class="card"
           class:compact
           class:selected={adv.id === selectedId}
           onclick={() => handleCardClick(adv)}
         >
-          <div class="portrait" style="background:{portraitColor(adv.id)}">
-            {adv.identity.name[0]}
-          </div>
+          {#if src}
+            <img class="portrait" {src} alt={adv.identity.name} />
+          {:else}
+            <div class="portrait" style="background:{portraitColor(adv.id)}">
+              {adv.identity.name[0]}
+            </div>
+          {/if}
           {#if !compact}
             <div class="card-body">
               <div class="card-top">
@@ -117,15 +116,20 @@
     <div class="section-header fallen">Fallen</div>
     <div class="grid" class:compact>
       {#each dead as adv (adv.id)}
+        {@const src = portraitSrc(adv.id)}
         <button
           class="card dead"
           class:compact
           class:selected={adv.id === selectedId}
           onclick={() => handleCardClick(adv)}
         >
-          <div class="portrait desaturated" style="background:{portraitColor(adv.id)}">
-            {adv.identity.name[0]}
-          </div>
+          {#if src}
+            <img class="portrait desaturated" {src} alt={adv.identity.name} />
+          {:else}
+            <div class="portrait desaturated" style="background:{portraitColor(adv.id)}">
+              {adv.identity.name[0]}
+            </div>
+          {/if}
           {#if !compact}
             <div class="card-body">
               <div class="card-top">
@@ -146,15 +150,20 @@
     <div class="section-header">Departed</div>
     <div class="grid" class:compact>
       {#each retired as adv (adv.id)}
+        {@const src = portraitSrc(adv.id)}
         <button
           class="card retired"
           class:compact
           class:selected={adv.id === selectedId}
           onclick={() => handleCardClick(adv)}
         >
-          <div class="portrait desaturated" style="background:{portraitColor(adv.id)}">
-            {adv.identity.name[0]}
-          </div>
+          {#if src}
+            <img class="portrait desaturated" {src} alt={adv.identity.name} />
+          {:else}
+            <div class="portrait desaturated" style="background:{portraitColor(adv.id)}">
+              {adv.identity.name[0]}
+            </div>
+          {/if}
           {#if !compact}
             <div class="card-body">
               <div class="card-top">
@@ -202,6 +211,7 @@
     width: 36px; height: 36px; border-radius: 50%; display: flex;
     align-items: center; justify-content: center; font-weight: bold;
     font-size: 15px; color: #fff; flex-shrink: 0;
+    object-fit: cover;
   }
   .portrait.desaturated { filter: grayscale(0.8); }
 

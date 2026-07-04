@@ -2,6 +2,7 @@
   import type { SimulationContext, SimulationEvent, CombatBeat } from '@ugs/core';
   import CombatReplay from './CombatReplay.svelte';
   import { hiddenEventKinds } from '../featureFlags';
+  import { portraitSrc, portraitColor } from '../portraits';
 
   interface Props {
     ctx: SimulationContext;
@@ -92,12 +93,6 @@
     if ('partyIds' in event) return (event as any).partyIds ?? [];
     if ('adventurerId' in event) return [(event as any).adventurerId];
     return [];
-  }
-
-  function portraitColor(id: string): string {
-    let hash = 0;
-    for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-    return `hsl(${hash % 360}, 50%, 40%)`;
   }
 
   // Resolve any actor id — adventurer or Tier A notable NPC — to a display name.
@@ -195,13 +190,18 @@
             {#if getInvolvedIds(event).length > 0}
               <div class="involved">
                 {#each getInvolvedIds(event) as id (id)}
+                  {@const psrc = portraitSrc(id)}
                   <button
                     class="portrait-init"
                     title={advName(id)}
-                    style="background:{portraitColor(id)}"
+                    style={psrc ? '' : `background:${portraitColor(id)}`}
                     onclick={() => (ctx.adventurers.has(id) || ctx.notableNpcs.has(id)) && onSelectAdventurer(id)}
                   >
-                    {advName(id)[0] ?? '?'}
+                    {#if psrc}
+                      <img src={psrc} alt={advName(id)} />
+                    {:else}
+                      {advName(id)[0] ?? '?'}
+                    {/if}
                   </button>
                 {/each}
               </div>
@@ -308,8 +308,9 @@
     width: 20px; height: 20px; border-radius: 50%; font-size: 10px;
     font-weight: bold; color: #fff; cursor: pointer; border: none;
     display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
+    flex-shrink: 0; overflow: hidden; padding: 0;
   }
+  .portrait-init img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .portrait-init:hover { opacity: 0.8; transform: scale(1.1); }
 
   .empty { color: #666; font-size: 13px; padding: 20px 0; }

@@ -16,6 +16,19 @@ Both must pass. A green `tsc` alone is insufficient.
 pnpm --filter @ugs/game-client check   # svelte-check (guardrail)
 ```
 
+### Unit tests — vitest resolves `@ugs/core` through its built `dist`
+
+`pnpm --filter @ugs/game-client test` runs the vitest unit suite (`src/**/*.test.ts`),
+separate from `test:e2e` (Playwright). It resolves `@ugs/core` through the package's
+built `dist` — the same way the Vite app build does — **not** through `src`. So after
+editing core, rebuild it (`pnpm --filter @ugs/core build`) before running client unit
+tests, or you test against stale exports (symptom: a freshly-added core type fails to
+import even though it's exported from `src`).
+
+A green `vitest run` does **not** prove a core type is exported: `import type { … }` is
+erased by esbuild, so a missing export only surfaces under `svelte-check` (`check`).
+Treat `check` — not `test` — as the authority for cross-package type wiring.
+
 ### Svelte 5 store rule
 
 ```typescript

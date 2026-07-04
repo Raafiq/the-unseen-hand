@@ -56,7 +56,7 @@ pnpm --filter @ugs/game-client dev          # vite dev server
 
 - **`packages/core`** (`@ugs/core`) — deterministic sim engine, no UI. Public API in
   `src/index.ts`. Domains: `adventurers/`, `combat/`, `quests/`, `divine/`,
-  `relationships/`, `events/`, `world/`, `scenarios/`.
+  `relationships/`, `events/`, `thoughts/`, `world/`, `scenarios/`.
 - **`apps/game-client`** (`@ugs/game-client`) — Svelte 5 + Pixi.js UI. E2E in `tests/`.
 - **Determinism backbone:** `world/SimulationContext.ts` + `SeededRNG`. The loop drives
   **tick subscribers** (`SimulationLoop`), which are the authoritative write sites for

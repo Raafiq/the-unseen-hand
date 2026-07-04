@@ -2,7 +2,7 @@
 
 Deterministic simulation engine, no UI. Public API in `src/index.ts`. Domains:
 `adventurers/`, `combat/`, `quests/`, `divine/`, `relationships/`, `events/`,
-`world/`, `scenarios/`. These rules apply to work under `packages/core`; see the
+`thoughts/`, `world/`, `scenarios/`. These rules apply to work under `packages/core`; see the
 root `CLAUDE.md` for commands, architecture, and the specops workflow.
 
 ### Verification

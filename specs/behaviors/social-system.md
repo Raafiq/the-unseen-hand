@@ -155,6 +155,19 @@ Each activity has a **base duration range** in simulated hours:
 1. Simulated clock reaches the drawn duration endpoint.
 2. Mood crosses a threshold during the activity (e.g. mood falls below 25 mid-TRAINING → exits; mood rises above 60 mid-BROODING → exits).
 
+**A re-draw that lands on the current activity is a continuation, not a change.** The
+draw at exit is over the full weighted pool and may return the activity just left (a
+hunt that runs long, a night slept through). When it does, the adventurer simply keeps
+going: a fresh duration is drawn and scheduled, `enteredAt` is preserved so the session
+reads as one continuous span, and **no `ACTIVITY_CHANGED` event is emitted**. The feed
+must never narrate a spurious break — "finishes hunting and begins hunting", or the
+nonsensical "wakes from sleep and begins sleep" — for what is one unbroken activity.
+Because the activity did not end, the on-exit transient factors (HANGOVER on *completing*
+DRINKING, WELL_RESTED on *completing* RESTING) and the deep-night `SLEEP_DEPRIVED`
+transition penalty do **not** fire on a continuation; they apply only when the adventurer
+actually moves to a *different* activity. This is the one exception to the "each exit
+emits an `ACTIVITY_CHANGED`" rule — a continuation is, by definition, not a change.
+
 When a social encounter fires the JOIN result (§3), the target's current activity duration is extended by `rng.next() * 2 + 0.5` hours (0.5–2.5 hrs). The joining character inherits the remaining duration of the extended window.
 
 **Departing on a quest clears the activity.** The activity pool models guild home life; an
@@ -426,6 +439,7 @@ narrator sits above it as one of the three LLM set-pieces (`behaviors/narrative-
 - An adventurer's current activity changes no more frequently than its minimum duration allows.
 - HANGOVER MoodFactor suppresses DRINKING weight to ≤ 15% of its baseline for the following day.
 - An adventurer with `stubborn ≥ 70` and a QUEST_INJURY MoodFactor has `stubbornOverride: true` on the factor and does NOT have suppressed TRAINING/SPARRING weights.
+- When an activity exits and the re-draw returns the same `ActivityId`, no `ACTIVITY_CHANGED` event is emitted, `enteredAt` is unchanged, `scheduledExitAt` advances, and no on-exit transient factor (HANGOVER/WELL_RESTED) or `SLEEP_DEPRIVED` penalty is applied — the session continues as one span (the feed never shows "finishes X and begins X" for the same X).
 - A sleeper who wakes from a completed `SLEEPING` activity inside the deep-night window (`hour ≤ 4`) is NOT given the `SLEEP_DEPRIVED` factor (waking from sleep is not deprivation).
 - An adventurer who exits a non-`SLEEPING` activity during `hour ≤ 4` and draws a non-`SLEEPING` next activity IS given the `SLEEP_DEPRIVED` factor.
 - A `NORMAL` sleeper (default personality) has a sleep duration in 6–9 hrs; a `SHORT` sleeper (`ambition ≥ 65`) in 4–6 hrs; a `HEAVY` sleeper (`empathy ≥ 65`, `courage ≤ 40`) in 8–11 hrs.

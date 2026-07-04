@@ -116,9 +116,12 @@ describe('findQuestBracketViolations — catches ordering violations', () => {
 // ---------------------------------------------------------------------------
 
 describe('quest-bracket invariant holds over a live simulation', () => {
-  const TICKS = 720; // 30 in-game days — enough for many quests to start and resolve
+  // 90 in-game days. Quests are sparse in the single-adventurer scenario (~1 start / 2–3 weeks),
+  // so the window must be long enough that the "not vacuous" guards below clear with margin
+  // (≈5 starts) rather than sitting on the boundary and breaking under any RNG-stream shift.
+  const TICKS = 2160;
 
-  it('a 30-day scenario run produces zero bracket violations', () => {
+  it('a 90-day scenario run produces zero bracket violations', () => {
     const loop = new SimulationLoop(createScenario1Context());
     for (let i = 0; i < TICKS; i++) loop.step();
 

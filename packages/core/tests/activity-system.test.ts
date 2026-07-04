@@ -6,6 +6,8 @@ import {
   sleepTypeFor,
 } from '../src/events/activitySystem.js';
 import { createSimulationContext } from '../src/world/SimulationContext.js';
+import { SimulationLoop } from '../src/world/SimulationLoop.js';
+import { createScenario1Context } from '../src/scenarios/scenario1.js';
 import { transitionState } from '../src/adventurers/stateMachine.js';
 import { upsertMoodFactor } from '../src/adventurers/mood.js';
 import type { Adventurer, ActivityId, MoodFactor, SimulationContext } from '../src/world/types.js';
@@ -571,6 +573,98 @@ describe('SLEEPING activity', () => {
     expect(sleepTypeFor(heavyAdv)).toBe('HEAVY');
     // SHORT range max (6) < HEAVY range min (8)
     // → short sleeper's maximum sleep < heavy sleeper's minimum sleep
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Same-activity re-draw is a continuation, not a change (social-system.md §2)
+// ---------------------------------------------------------------------------
+
+/** A MoodFactor that zeroes every activity weight except `keep`, so the weighted draw is
+ *  forced to return `keep` deterministically — lets us exercise the same-activity re-draw
+ *  (continuation) path without depending on a lucky RNG roll. */
+function forceActivityFactor(keep: ActivityId): MoodFactor {
+  const activityWeights: Partial<Record<ActivityId, number>> = {};
+  for (const id of ALL_ACTIVITY_IDS) if (id !== keep) activityWeights[id] = 0;
+  return { id: 'FORCE', label: 'Force', value: 0, decayRate: 0, activityWeights };
+}
+
+describe('activitySubscriber — same-activity re-draw is a continuation', () => {
+  it('emits no ACTIVITY_CHANGED, preserves enteredAt, and advances the exit', () => {
+    const exitAt = 12; // hour 12 — not the deep-night window
+    const adv: Adventurer = {
+      ...makeAdventurer('a', { moodFactors: [forceActivityFactor('HUNTING')] }),
+      activityState: { current: 'HUNTING', enteredAt: 3, scheduledExitAt: exitAt, nextMicroEventAt: 99 },
+    };
+    const ctx = makeCtx([adv], exitAt);
+    const next = activitySubscriber(ctx);
+
+    const changes = next.eventLog.filter(e => e.kind === 'ACTIVITY' && e.subtype === 'ACTIVITY_CHANGED');
+    expect(changes).toHaveLength(0); // one continuous span, not a "finishes hunting and begins hunting"
+
+    const st = next.adventurers.get('a')!.activityState!;
+    expect(st.current).toBe('HUNTING');
+    expect(st.enteredAt).toBe(3);                    // preserved — the session did not restart
+    expect(st.scheduledExitAt).toBeGreaterThan(exitAt); // rescheduled — duration extended
+  });
+
+  it('does not apply HANGOVER when a DRINKING session continues', () => {
+    const exitAt = 12;
+    const adv: Adventurer = {
+      ...makeAdventurer('a', { moodFactors: [forceActivityFactor('DRINKING')] }),
+      activityState: { current: 'DRINKING', enteredAt: 3, scheduledExitAt: exitAt, nextMicroEventAt: 99 },
+    };
+    const next = activitySubscriber(makeCtx([adv], exitAt));
+    const updated = next.adventurers.get('a')!;
+    expect(updated.activityState!.current).toBe('DRINKING');
+    expect(updated.moodFactors.find(f => f.id === 'HANGOVER')).toBeUndefined();
+  });
+
+  it('does not apply WELL_RESTED when a RESTING session continues (CONTENT mood)', () => {
+    const exitAt = 12;
+    const adv: Adventurer = {
+      ...makeAdventurer('a', { mood: 70, moodFactors: [forceActivityFactor('RESTING')] }),
+      activityState: { current: 'RESTING', enteredAt: 3, scheduledExitAt: exitAt, nextMicroEventAt: 99 },
+    };
+    const next = activitySubscriber(makeCtx([adv], exitAt));
+    expect(next.adventurers.get('a')!.moodFactors.find(f => f.id === 'WELL_RESTED')).toBeUndefined();
+  });
+
+  it('does not apply SLEEP_DEPRIVED when a non-sleep session continues through deep night', () => {
+    const exitAt = 24 + 3; // day 1, hour 3 — inside the 00:00–04:00 deprivation window
+    const adv: Adventurer = {
+      ...makeAdventurer('a', { mood: 55, moodFactors: [forceActivityFactor('BROODING')] }),
+      activityState: { current: 'BROODING', enteredAt: 20, scheduledExitAt: exitAt, nextMicroEventAt: 99 },
+    };
+    const next = activitySubscriber(makeCtx([adv], exitAt));
+    const updated = next.adventurers.get('a')!;
+    expect(updated.activityState!.current).toBe('BROODING'); // continued
+    expect(updated.moodFactors.find(f => f.id === 'SLEEP_DEPRIVED')).toBeUndefined();
+  });
+
+  it('a genuine switch (re-draw ≠ current) still emits ACTIVITY_CHANGED', () => {
+    // Force the draw to a DIFFERENT activity than the current one → real change, event emitted.
+    const exitAt = 12;
+    const adv: Adventurer = {
+      ...makeAdventurer('a', { moodFactors: [forceActivityFactor('READING')] }),
+      activityState: { current: 'HUNTING', enteredAt: 3, scheduledExitAt: exitAt, nextMicroEventAt: 99 },
+    };
+    const next = activitySubscriber(makeCtx([adv], exitAt));
+    const changes = next.eventLog.filter(e => e.kind === 'ACTIVITY' && e.subtype === 'ACTIVITY_CHANGED');
+    expect(changes).toHaveLength(1);
+    expect(next.adventurers.get('a')!.activityState!.current).toBe('READING');
+  });
+});
+
+describe('activity continuation — full loop (repro guard)', () => {
+  it('never narrates a same-activity change over many cycles', () => {
+    const loop = new SimulationLoop(createScenario1Context());
+    for (let i = 0; i < 120; i++) loop.proceed();
+
+    const bad = loop.context.eventLog.filter(
+      e => e.kind === 'ACTIVITY' && e.subtype === 'ACTIVITY_CHANGED' && e.prevActivity === e.activity,
+    );
+    expect(bad).toHaveLength(0);
   });
 });
 

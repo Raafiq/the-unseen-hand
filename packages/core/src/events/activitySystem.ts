@@ -394,15 +394,35 @@ export function activitySubscriber(ctx: SimulationContext): SimulationContext {
     const exitOnDuration = now >= scheduledExitAt;
 
     if (exitEarly || exitOnDuration) {
-      // Apply transient factors on exit
-      if (currActivity === 'DRINKING') {
-        current = applyHangover(current, updatedCtx);
-      } else if (currActivity === 'RESTING' && current.mood >= 50) {
-        current = applyWellRested(current, updatedCtx);
-      }
-
       const prevActivity = currActivity;
       const nextActivity = drawActivity(current, updatedCtx);
+
+      // Continuation: the weighted re-draw landed on the current activity (a hunt that runs
+      // long, a night slept through). Treat the session as one unbroken span rather than
+      // narrating a spurious "finishes X and begins X" — social-system.md §2 "A re-draw that
+      // lands on the current activity is a continuation, not a change". Extend the duration,
+      // keep `enteredAt`, emit no ACTIVITY_CHANGED, and skip the on-exit side effects
+      // (HANGOVER/WELL_RESTED/SLEEP_DEPRIVED) — the activity did not end.
+      if (nextActivity === prevActivity) {
+        current = {
+          ...current,
+          activityState: {
+            ...current.activityState!,
+            scheduledExitAt: scheduleDuration(nextActivity, current, now, updatedCtx),
+            nextMicroEventAt: scheduleNextMicroEvent(now, updatedCtx),
+          },
+        };
+        updatedAdventurers.set(id, current);
+        updatedCtx = { ...updatedCtx, adventurers: updatedAdventurers };
+        continue;
+      }
+
+      // Genuine switch — apply the on-exit transient factors for the activity being left.
+      if (prevActivity === 'DRINKING') {
+        current = applyHangover(current, updatedCtx);
+      } else if (prevActivity === 'RESTING' && current.mood >= 50) {
+        current = applyWellRested(current, updatedCtx);
+      }
 
       // Sleep deprivation: staying up during the deep-night hours (00:00–04:00) incurs a penalty.
       // Waking naturally *from* sleep in this window is not deprivation — only staying awake is,

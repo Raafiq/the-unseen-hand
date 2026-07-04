@@ -40,6 +40,17 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 export default { preprocess: vitePreprocess() };
 ```
 
+### Static assets — resolve through the Vite module graph, never absolute paths
+
+The Pages build sets `BASE_PATH=/the-unseen-hand/` (`vite.config.ts` `base`), so a
+root-absolute asset URL like `/portraits/x.webp` resolves locally but **404s in
+production** — a bug that passes every local check and only breaks on the deployed
+site. Never hardcode an absolute asset path. Instead let Vite rewrite the URL for the
+base path: `import img from './x.webp'`, or a build-time manifest via
+`import.meta.glob('./assets/**/*.webp', { eager: true, query: '?url', import: 'default' })`
+(see `src/lib/portraits.ts`). Assets live under `src/lib/assets/`, not `public/`, so
+the module graph owns their URLs and hashes them for cache-busting.
+
 ### UI display rule — enum labels use typed Records, not string replace
 
 When an enum value needs a human-readable label in the UI, define a

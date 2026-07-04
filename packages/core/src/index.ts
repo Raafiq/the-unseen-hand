@@ -7,6 +7,7 @@ export type { SimulationContext } from './world/SimulationContext.js';
 export { isNpc, makeNpcId, NPC_ID_PREFIX } from './world/actors.js';
 export { WorldClock } from './world/WorldClock.js';
 export type { SpeedMultiplier } from './world/WorldClock.js';
+export { cycleOf } from './world/WorldTime.js';
 export { SimulationLoop } from './world/SimulationLoop.js';
 export type { TickSubscriber } from './world/SimulationLoop.js';
 export type * from './world/types.js';

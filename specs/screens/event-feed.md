@@ -1,75 +1,91 @@
-# Screen: Event Feed
+# Screen: Cycle Reader (Event Feed)
+
+> Formerly the live "Event Feed". The events cycle-redesign (2026-07-04) made the primary
+> surface a **per-character reading experience** for the just-completed cycle; the terse
+> chronological feed survives beneath it as the **raw log** drill-down. File kept as
+> `event-feed.md` so existing spec references resolve.
 
 ## Route
 
-Active when Events tab is selected in app shell.
+The persistent centre of the app shell (`screens/app-shell.md`). Always in view; there is no tab navigation.
 
 ## Data Requirements
 
 From `simulationStore`:
-- `eventLog: SimulationEvent[]` — full event log, ordered by tick + emission order
-- `adventurers: Map<AdventurerId, Adventurer>` — for name resolution on click
+- `worldTime: WorldTime` — current `{ day, cycle }`, used to label the spread and know which cycle just resolved
+- `lastCycleDigest: { fromTick, toTick, day, cycle }` — the range of the most recently completed cycle (`behaviors/world-clock.md`)
+- `eventLog: SimulationEvent[]` — full event log; sliced by tick range for a cycle's raw log
+- `cycleChapters` — per-character chapters and the cycle overview for the current spread (`behaviors/cycle-narrative.md`)
+- `adventurers: Map<AdventurerId, Adventurer>` — for chapter authorship, name resolution, and the roster selector
 
 ## Display Rules
 
-### Layout
+### The two layers
 
-Chronological list of simulation events, newest at top (reverse chronological). Each event is one row.
+The reader has a **primary read layer** and a **secondary raw-log layer**. The read layer is shown by default; the raw log is one toggle away and never the resting state.
 
-### Event row
+### Cycle spread (primary)
 
-Each row shows:
-- **Time label**: "Day {day}, hour {hour}" derived from the event's `tick`.
-- **Type tag**: small colored pill indicating event `kind`: Social (teal), Combat (red), Quest (amber), Lifecycle (purple), World (blue), Divine (gold), Thought (muted grey — row text renders italic; see `thought-system.md`).
-- **Rendered text**: `event.renderedText` — the pre-rendered narrative string. Never empty.
-- **Involved adventurers**: if `involvedIds` or `participantIds` are present, show a small row of portrait initials below the text. Clicking a portrait navigates to that adventurer's character detail in the right panel. A `THOUGHT` event's single participant is its `actorId` (the thinker) — it must resolve in `getInvolvedIds` so whispers appear under that actor's character filter.
+The main panel presents the **just-completed cycle** as a "spread":
 
-### Day summary blocks (Phase 6)
+- **Header**: the cycle and date — "Day {day} · {Morning|Afternoon|Night}".
+- **Cycle overview**: the 1–2 sentence establishing paragraph for the whole guild that cycle (`behaviors/cycle-narrative.md` — the descendant of the day summary). Visually set apart (left rule or tinted background). Omitted when neither tier produced one.
+- **Character chapters**: one card per adventurer who had a meaningful event this cycle, each showing the character's portrait + name and their **chapter** prose (`behaviors/cycle-narrative.md`). Chapters are laid out as a readable stack/columns, living adventurers first. A character with no meaningful cycle events has no card (no placeholder).
+- **Reading is optional and non-blocking.** The player may read all chapters, one, or none. Nothing gates `PROCEED` on having read (`principles.md#autonomy-of-outcomes-player-controlled-tempo`).
 
-When the LLM narrator is active (API key present), a "Day summary" block is inserted at the top of each in-game day's events. It displays the LLM-generated 2–3 sentence narrative paragraph summarising that day. If the API key is absent, no summary block is shown and template-rendered events remain the only content. This degradation is graceful — the feed is fully usable without LLM output.
+### Character chapter card
 
-### Filtering
+Each card shows:
+- The character's portrait + name (portrait resolution per `behaviors/character-portraits.md`).
+- The chapter prose: the LLM passage when it has arrived, otherwise the deterministic template passage (`behaviors/cycle-narrative.md`). Never empty for a character that has a card.
+- A small row of co-participant portrait initials for the cycle's shared encounters; clicking one focuses that character's chapter (its card) in the same spread. A shared encounter appears, POV-shaded, in each participant's chapter.
+- No raw outcome labels or debug strings ever appear — prose only.
 
-A filter bar above the list. Filter toggles per type:
-- All (default: selected)
-- Social
-- Combat
-- Quest
-- Lifecycle
-- World
-- Divine
-- Thought
+### Selecting a character to read
 
-Selecting a specific type deselects "All" and filters the list to matching `kind` values. Selecting "All" clears all type filters. Multiple specific types can be selected simultaneously.
+The **roster dock** (`screens/app-shell.md`) is the character selector for reading. Clicking a dock card **focuses that character's chapter** in the spread (scrolls to and highlights their card). This is distinct from the character-**detail drawer** (stats/relationships), which the dock also governs; focusing a chapter to read and opening the stat drawer are different affordances on the same dock — the detail drawer remains the stat view, the spread is the narrative read.
 
-Filtering does not mark events as read — it only affects display.
+### History of prior cycles
 
-### Unread tracking
+Above the current spread, earlier cycles remain scrollable in reverse order (newest cycle at the resting position, older spreads above as the player scrolls back), each rendered as its own overview + chapters. The player can re-read any past cycle. This replaces the old "infinite reverse-chronological one-liner list" as the default view.
 
-- Opening the Events tab marks all currently-visible events as read (regardless of filter state).
-- New events arriving while Events tab is open do not increment the unread count.
-- Unread count (displayed as badge on the Events tab) resets to 0 when the tab is opened.
+### Raw log (secondary / drill-down)
+
+A toggle (e.g. "Raw log") on the current spread reveals the terse, chronological, one-line-per-event view for that cycle — the former event feed, unchanged in spirit:
+
+- Each row: time label ("Day {day}, hour {hour}"), a **type tag** pill by `kind` (Social teal, Combat red, Quest amber, Lifecycle purple, World blue, Divine gold, Thought muted-grey italic), and `event.renderedText` (the deterministic grammar line, never empty), plus involved-adventurer portrait initials.
+- The raw log is the **audit trail** — it shows exactly what the chapters were composed from, one deterministic line per event. It is the ground truth beneath the prose.
+- Rows are ordered chronologically within the cycle (oldest → newest reads naturally as the cycle's timeline).
+- The raw log drops any event kind whose owning feature is flag-gated (`hiddenEventKinds`), same as before.
+
+### Filtering (raw log only)
+
+The type-filter bar applies to the **raw log**, not the chapters. Toggles: All (default), Social, Combat, Quest, Lifecycle, World, Divine, Thought. Selecting a type deselects "All" and filters to matching `kind`; "All" clears type filters; multiple types may be active. Filtering only affects the raw-log display.
 
 ### Performance
 
-The event log is append-only and may grow large. The feed must virtualize rendering — only the visible rows (plus a buffer) are rendered in the DOM. Scrolling up reveals older events; scrolling stops at the oldest event.
+Prior-cycle history and the raw log are append-only and grow large. Both must virtualize — only visible spreads/rows (plus a buffer) are in the DOM. Chapter LLM passages, when present, replace their template passages in place without reflowing the whole spread.
 
 ## Actions
 
-- **Toggle filter type**: shows/hides events by kind.
-- **Click "All"**: resets filter to show all types.
-- **Click portrait initial on an event row**: opens character detail for that adventurer in the right panel.
-- **Click event row** (not a portrait): highlights all involved adventurers in the roster grid (highlights their card borders). Click again to clear highlight.
+- **Proceed** (in the app shell): dispatches `PROCEED`, computes the next cycle, and moves the spread to that new cycle (see `screens/app-shell.md`).
+- **Click a roster dock card**: focuses that character's chapter in the spread.
+- **Click a co-participant initial on a chapter**: focuses that character's chapter.
+- **Toggle Raw log**: reveals/hides the terse chronological view for the current cycle.
+- **Toggle filter type** (raw log open): shows/hides raw-log rows by kind; **All** resets.
+- **Scroll back**: re-read prior cycles' spreads.
 
 ## Navigation
 
-Within the app shell. Clicking portraits in event rows opens character detail in the right panel without leaving the Events tab.
+Within the app shell. No URL changes. Focusing a chapter, opening the raw log, and scrolling prior cycles all stay on this surface. The character-detail drawer (stats) is reached via the roster dock as specified in `screens/app-shell.md`.
 
 ## Principles
 
 **Inherited:**
-- [The event feed is the game](../principles.md#the-event-feed-is-the-game) — the event feed is the player's primary interface with the world story. It must be fast, readable, and always have content once adventurers are active.
-- [Every outcome has a narrative cause](../principles.md#every-outcome-has-a-narrative-cause) — `renderedText` on every row must be a human-readable sentence. No debug strings, no empty rows, no "[event]" placeholders.
+- [The event feed is the game](../principles.md#the-event-feed-is-the-game) — the reading surface is now the game's primary interface. It must be vivid on templates alone; the raw log guarantees every event is still readable as a deterministic line beneath the prose.
+- [Every outcome has a narrative cause](../principles.md#every-outcome-has-a-narrative-cause) — both layers honour this: chapters are the causal story, the raw log the traceable ledger. No debug strings, no empty rows, no placeholder chapters.
+- [Autonomy of outcomes; player-controlled tempo](../principles.md#autonomy-of-outcomes-player-controlled-tempo) — the spread is what the player reads during the between-cycles pause; reading never gates advancement.
 
 **Local:**
-- **Newest first.** The player's most immediate need is to catch up on what just happened, not to read from the beginning. Reverse chronological is the primary read direction; the player may scroll down to see history.
+- **Prose on top, ledger beneath.** The chapters are the read; the raw log is the audit trail that proves the prose. Neither replaces the other — the raw log is always one toggle away, never the resting view, and never discarded.
+- **Newest cycle is home.** The resting position is the just-completed cycle. The player scrolls *back* to re-read history; they do not scroll forward past unread cycles, because the world has not computed them yet.

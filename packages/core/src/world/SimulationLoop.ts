@@ -6,7 +6,8 @@
  * Each subscriber receives the output of the previous one (immutable chain).
  * step() is synchronous — no real-time interval.
  */
-import type { SimulationContext } from './types.js';
+import type { SimulationContext, CycleDigest } from './types.js';
+import { cycleOf } from './WorldTime.js';
 import { WorldClock, type SpeedMultiplier } from './WorldClock.js';
 import { moodSubscriber } from '../adventurers/mood.js';
 import { relationshipDecaySubscriber } from '../relationships/graph.js';
@@ -33,15 +34,20 @@ export type TickSubscriber = (ctx: SimulationContext, delta: number) => Simulati
 
 function advanceTime(ctx: SimulationContext): SimulationContext {
   const tick = ctx.worldTime.tick + 1;
+  const hour = tick % 24;
   return {
     ...ctx,
     worldTime: {
       tick,
       day: Math.floor(tick / 24),
-      hour: tick % 24,
+      hour,
+      cycle: cycleOf(hour),
     },
   };
 }
+
+/** Number of ticks in one cycle (world-clock.md#cycles). */
+const TICKS_PER_CYCLE = 8;
 
 export class SimulationLoop {
   private _ctx: SimulationContext;
@@ -101,22 +107,50 @@ export class SimulationLoop {
     this._tick();
   }
 
+  /**
+   * PROCEED — compute exactly one cycle (8 ticks) synchronously, then halt.
+   *
+   * Spec: specs/behaviors/world-clock.md#advancement--the-proceed-command.
+   * Drives the existing `_tick()` path 8 times (advanceTime first, then subscribers
+   * in registration order) so subscribers cannot tell a PROCEED from a real-time tick.
+   * When this returns, the full cycle has resolved and all subscriber side effects are
+   * written; the clock is left halted at the new cycle boundary.
+   *
+   * Returns a {@link CycleDigest} for the window just computed — `day`/`cycle` label the
+   * cycle that was read (the pre-advance boundary), and `fromTick`/`toTick` bound its ticks.
+   */
+  proceed(): CycleDigest {
+    const start = this._ctx.worldTime; // at a cycle boundary: cycle === the one about to compute
+    const fromTick = start.tick;
+    for (let i = 0; i < TICKS_PER_CYCLE; i++) this._tick();
+    return { fromTick, toTick: this._ctx.worldTime.tick, day: start.day, cycle: start.cycle };
+  }
+
+  // --- Deprecated real-time speed API: removed in p15e (top-bar Proceed rewrite). ---
+  // Kept as functioning shims so the current client keeps building and running until
+  // the UI switches to PROCEED. The engine's authoritative advance path is proceed().
+
+  /** @deprecated removed in p15e — the clock is command-driven; use proceed(). */
   start(): void {
     this._clock.start();
   }
 
+  /** @deprecated removed in p15e — the clock is command-driven; use proceed(). */
   stop(): void {
     this._clock.stop();
   }
 
+  /** @deprecated removed in p15e — the clock halts between cycles by default. */
   pause(): void {
     this._clock.pause();
   }
 
+  /** @deprecated removed in p15e — the clock is command-driven; use proceed(). */
   resume(): void {
     this._clock.resume();
   }
 
+  /** @deprecated removed in p15e — there are no speed multipliers in the turn-paced model. */
   setSpeed(multiplier: SpeedMultiplier): void {
     this._clock.setSpeed(multiplier);
   }

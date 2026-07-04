@@ -8,10 +8,25 @@ import type { SeededRNG } from './SeededRNG.js';
 // Time
 // ---------------------------------------------------------------------------
 
+/** A day is partitioned into three cycles of 8 ticks each; derived from `hour`
+ *  via `cycleOf` (world/WorldTime.ts). See specs/behaviors/world-clock.md. */
+export type Cycle = 'MORNING' | 'AFTERNOON' | 'NIGHT';
+
 export type WorldTime = {
   tick: number; // monotonically increasing; canonical unit
   day: number;  // Math.floor(tick / 24)
   hour: number; // tick % 24
+  cycle: Cycle; // pure function of hour (cycleOf); the player-facing unit of advancement
+};
+
+/** The tick window a single `PROCEED` computed, returned by `SimulationLoop.proceed()`.
+ *  `day`/`cycle` label the cycle that was just computed (the pre-advance boundary the
+ *  window opened on). See specs/behaviors/world-clock.md#advancement--the-proceed-command. */
+export type CycleDigest = {
+  fromTick: number; // worldTime.tick before the cycle was computed (a cycle boundary)
+  toTick: number;   // worldTime.tick after 8 ticks (the next cycle boundary)
+  day: number;      // day of the computed cycle
+  cycle: Cycle;     // the cycle that was just computed
 };
 
 // ---------------------------------------------------------------------------

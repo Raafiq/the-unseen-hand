@@ -444,7 +444,7 @@ narrator sits above it as one of the three LLM set-pieces (`behaviors/narrative-
 ## Principles
 
 **Inherited:**
-- [Autonomy is the default; intervention is the exception](../principles.md#autonomy-is-the-default-intervention-is-the-exception) — social encounters emerge from the simulation without any player trigger or input. The player is a witness, not a director.
+- [Autonomy of outcomes; player-controlled tempo](../principles.md#autonomy-of-outcomes-player-controlled-tempo) — social encounters emerge from the simulation without any player trigger or input. The player is a witness, not a director.
 - [Every outcome has a narrative cause](../principles.md#every-outcome-has-a-narrative-cause) — every encounter produces grammar-rendered text (`behaviors/narrative-voice.md`). No social event fires without a rendered sentence in the event feed. The outcome type (BANTER, ESTRANGEMENT, etc.) is never exposed as a label — only the rendered prose.
 - [Emergence over control](../principles.md#emergence-over-control) — the player cannot trigger, block, or redirect social encounters. Character personality and relationships shape how fast pressure accumulates; the RNG still picks the moment of discharge.
 - [Seeded determinism](../principles.md#seeded-determinism) — all randomness in activity selection, pressure discharge, join/interrupt, and outcome resolution flows through `ctx.rng`. `Math.random()` is forbidden in `packages/core/`.

@@ -1,71 +1,123 @@
-# Handoff — The Unseen Hand: p13a + p13b shipped & committed (2026-07-04)
+# Handoff — implement p15a (world-clock turn-gate)
 
-Phase 13 (relationship drivers + townsfolk familiarity) is **built, verified, and committed to
-`main`**. `specops next` shows **0 ready / 27 done** — no queued plan work remains. The DAG is clean;
-next real work is new planning (a phase-14 batch) or the one open design sign-off below.
+Focus of next session: **implement plan `p15a-world-clock-turn-gate` test-first.** All specs +
+plans for the events cycle-redesign (Phase 15) are written and accepted; **nothing is
+implemented yet.** p15a is the ready root of the DAG.
 
-## What shipped this session (3 commits on `main`)
+## Goal
 
-1. **`60e6ffb` p13a — relationship driver events** (was built-but-uncommitted at session start).
-   Peril drivers (SHARED_DANGER +12, BETRAYAL −18 writing `BETRAYED_BY`→`DISTRUSTS` + crisis flag),
-   town drivers (KINDNESS +7, RIVALRY_SPARK −10), `RELATIONSHIP` feed kind, drift indicator.
-   Symmetric edge deltas; asymmetry lives in per-actor surfaces. (See its plan Notes for the
-   symmetric-vs-directional decision.)
-2. **`1909e0c` consume the crisis flag** (p13a follow-up, TDD). `pendingCrises` was written but never
-   read. `socialPressureSubscriber` now forces **exactly one** escalation encounter for each flagged,
-   co-present, awake pair (`crisis:true` bypasses enemy gate + pressure threshold + post-fire
-   cooldown → `ESTRANGEMENT` reachable), then clears the flag; an unavailable pair keeps its flag.
-   Gated on a non-empty `pendingCrises`, so scenario1/existing suites saw **zero rng churn**.
-   Tightened `social-system.md` §4. 3 new tests.
-3. **`486f182` p13b — townsfolk familiarity.** Static per-NPC `familiarity` scalar (0–100, seeded at
-   world gen, never churned): seeds a warmer adventurer↔NPC opening edge (service/craft → ACQUAINTANCE,
-   guard → warm STRANGER, marginal/rival → low/negative) + a small static approach bias in the
-   pressure gain. New module `relationships/familiarity.ts`. scenario1 now seeds the opening graph
-   (was empty). 17 new core tests + 1 e2e (plain `/`, no seam).
+Bring `@ugs/core` into conformance with the rewritten `specs/behaviors/world-clock.md`: add the
+3-cycle day + a `PROCEED` operation that computes exactly one cycle (8 ticks) synchronously,
+halts, and returns a cycle digest `{fromTick,toTick,day,cycle}`. Retire the real-time speed model
+(but see "deprecate, don't delete" gotcha). **Done =** all p15a Validation checkboxes pass, core
+`tsc --noEmit` + `pnpm --filter @ugs/core test` green, and the game-client still builds.
 
-## Guardrails (all green at last commit)
+Full spec of the work: **`plans/p15a-world-clock-turn-gate.md`** — read it first, it is the
+contract. Don't re-derive scope from this file.
 
-- core `tsc` clean · **621 core tests** · `svelte-check` clean · **16/16 e2e**.
-- Nothing uncommitted except this HANDOFF.
+## Current state
 
-## Symmetric-edge decision — SIGNED OFF (user confirmed 2026-07-04)
+- **Spec-first phase COMPLETE & user-accepted** (reviewed via Lavish, verdict "accept all five").
+  8 specs changed, 0 code changed. Everything below is **uncommitted on `main`** (trunk-based;
+  commit only when the user asks).
+- Specs written: `specs/principles.md` (autonomy principle rewritten → heading is now
+  `## Autonomy of outcomes; player-controlled tempo`), `specs/behaviors/world-clock.md` (rewrite),
+  `specs/behaviors/cycle-narrative.md` (**new**), `specs/screens/event-feed.md` (rewrite),
+  `specs/screens/app-shell.md`, plus ripples `specs/behaviors/narrative-voice.md`,
+  `specs/behaviors/llm-narrator.md`, `specs/behaviors/decision-moments.md`, and 10 anchor-link
+  fixes across other specs.
+- Plans authored (all `status: planned`): `plans/p15a..p15e`. DAG verified:
+  `specops next` → p15a ready (unblocks 4); p15b⇐p15a; p15c⇐p15b; p15d⇐p15a,p15b; p15e⇐p15a,p15d.
+- Guardrail baseline (from prior session, pre-redesign): core `tsc` clean, ~621 core tests,
+  `svelte-check` clean, 16/16 e2e. Re-run to confirm before editing.
 
-- Edge `strength` stays **symmetric** (one shared number per pair). Each driver applies **one
-  symmetric delta**; the "who feels it more" asymmetry lives in per-actor surfaces
-  (`SAVED_BY`→`OWES`, `BETRAYED_BY`→`DISTRUSTS`, larger recipient mood for KINDNESS). This is now
-  **final** — the directional-edge alternative (two numbers per edge, rippling through
-  beliefs/decay/thresholds/drift/UI) is **rejected**, not deferred. Don't reopen without a new
-  explicit request.
+## Next steps (in order)
 
-## Next steps
+1. `C:\Users\mdraa\.claude\skills\specops\scripts\specops next` — confirm p15a is ready.
+2. Read `plans/p15a-world-clock-turn-gate.md` + `specs/behaviors/world-clock.md` fully.
+3. Set p15a `status: in-progress` in its frontmatter.
+4. Invoke **tdd** skill. Implement per plan, red→green per behavior:
+   a. Add `cycle` + `cycleOf` to the `WorldTime` type — `packages/core/src/world/types.ts`
+      (WorldTime type lives here). `Cycle = 'MORNING'|'AFTERNOON'|'NIGHT'`;
+      `cycleOf(hour)= hour<8?MORNING:hour<16?AFTERNOON:NIGHT`.
+   b. Populate `cycle` at **every** WorldTime write site (see two-clock gotcha): `advanceTime(...)`
+      (the loop's real per-tick advance) AND `WorldClock.step()`
+      (`packages/core/src/world/WorldClock.ts:37`).
+   c. Add a `proceed(): CycleDigest` op that runs the loop's tick 8× and returns
+      `{fromTick,toTick,day,cycle}`. The real advance API is **SimulationLoop methods**
+      (`SimulationLoop.step()` → `_tick()` → `advanceTime`, `SimulationLoop.ts:100,124`), NOT a
+      command `dispatch`. Add `proceed()` to `SimulationLoop` composing 8× `_tick()`; capture
+      fromTick before, toTick after.
+   d. **Deprecate (do not delete)** `setSpeed/start/stop/pause/resume/currentSpeed` on both
+      `WorldClock` and `SimulationLoop` — leave as shims w/ a `// deprecated: removed in p15e`
+      comment so the client keeps compiling. Deletion + UI is p15e's job.
+5. Run core `tsc --noEmit` + tests; confirm game-client still builds
+   (`pnpm --filter @ugs/game-client check`). Check off Validation items in the plan.
+6. **verify** skill: drive a short PROCEED sequence, assert digest + WorldTime progression.
+7. Do NOT auto-commit. Report back; the user chose whether to commit the spec+plan+code together.
 
-1. **New planning.** No ready plans remain. When starting phase 14, use the **specops** skill: map the
-   spec batch first, then propose the set of plans (don't ad-hoc it).
-2. Nothing else pending — trunk is clean, symmetric-edge decision is final.
+## Key files & locations
 
-## Key files (phase 13)
+- Plan (the contract): `plans/p15a-world-clock-turn-gate.md`
+- Spec: `specs/behaviors/world-clock.md` (Validation section lists exact expected values)
+- `packages/core/src/world/WorldClock.ts` — `step()`:37 (adds cycle here), `setSpeed`:47,
+  `start/stop`:56/61, `pause/resume`:68/72, `currentSpeed`:29, `SpeedMultiplier`:11. `_worldTime`
+  init `{tick:0,day:0,hour:0}`:20 (add `cycle:'MORNING'`).
+- `packages/core/src/world/SimulationLoop.ts` — `_tick()`:124 (calls `advanceTime(this._ctx)`:126
+  then subscribers), `step()`:100, method shims `start/stop/pause/resume/setSpeed`:104-122,
+  `setContext`:96, clock wired at `onTick(()=>this._tick())`:54. Add `proceed()` here.
+- `packages/core/src/world/types.ts` — `WorldTime` type def (add `cycle`); grep `advanceTime`
+  to find the loop's per-tick time-advance function (it, not WorldClock.step, sets the context's
+  worldTime).
+- Core public API barrel: `packages/core/src/index.ts` (export `Cycle`, `cycleOf`, digest type).
+- Client speed usage (p15e scope, leave alone now): `apps/game-client/src/lib/simulationStore.svelte.ts`,
+  `apps/game-client/src/App.svelte`, `CharacterDetail.svelte`, `CombatReplay.svelte`.
 
-- Engine: `relationships/drivers.ts` (peril + town drivers), `relationships/drift.ts`,
-  `relationships/familiarity.ts` (p13b — role→familiarity, opening-strength map, edge seeding,
-  approach bias), `events/socialResolver.ts` (crisis consumption in `socialPressureSubscriber`;
-  familiarity bias in `computePressureGain`; `EncounterActor.familiarity`), `scenarios/scenario1.ts`
-  (`seedFamiliarityEdges` at world gen), `scenarios/notableNpcs.ts` (per-NPC familiarity),
-  `world/types.ts` (`NotableNpc.familiarity`, `pendingCrises`), `index.ts` (exports).
-- UI: `EventFeed.svelte`, `CharacterDetail.svelte` (drift row + seeded rel rows render),
-  `simulationStore.svelte.ts` (`?e2e=drivers|npc` seams).
-- Tests: `packages/core/tests/relationship-drivers.test.ts` (+crisis consumption),
-  `packages/core/tests/townsfolk-familiarity.test.ts`, e2e `relationship-drivers.spec.ts` +
-  `townsfolk-familiarity.spec.ts`.
-- Plans (both `done`): `plans/p13a-relationship-driver-events.md`, `plans/p13b-townsfolk-familiarity.md`.
+## Decisions & rationale (do not relitigate — user signed off 2026-07-04)
 
-## Gotchas (still current)
+- **Fully turn-based** cadence, **Morning/Afternoon/Night** cycles (8 ticks each), **hybrid
+  LLM+template** narrative, **feed kept as raw-log drill-down** beneath per-character reads. These
+  4 forks are locked (Lavish design session). Rationale + genre grounding (Wildermyth / Persona /
+  Football Manager) in memory `project-events-cycle-redesign` and `.lavish/*.html`.
+- **Principle rewrite APPROVED:** "Autonomy is the default" → "Autonomy of outcomes;
+  player-controlled tempo." Outcome-autonomy preserved (defaults resolve everything, moments
+  auto-expire); only *tempo* moved to the player. `principles.md` carries a `> History:` note.
+- **Deprecate-don't-delete** the speed API in p15a → keeps the monorepo green between p15a and
+  p15e. Final removal + top-bar Proceed UI is p15e. This is deliberate sequencing, not laziness.
+- `PROCEED` = deterministic loop over the existing `step()` primitive → inherits replay
+  determinism and unchanged subscriber ordering for free.
 
-- **`townDriverSubscriber` MUST stay dead-last** in `SimulationLoop` (rng-stream discipline).
-- **Familiarity is static:** the invariant holds because every subscriber that writes `notableNpcs`
-  spreads `{...npc, ...}`, preserving the field. Don't add a familiarity write site.
-- **Opening-strength map** = `clamp(round(0.4·familiarity − 14), −30, 39)` — never seeds FRIEND/ENEMY.
-  Calibration is a tuning knob; watch that service-NPC encounters don't dominate the feed.
-- **NPC id prefix is `npc:`** (colon), and `pairKey` joins ids with `-` (don't parse it back — match
-  membership instead, as the crisis path does).
-- **Beat model has no target** → peril attribution is party-wide; solo-party near-death produces no
-  peril pairs (why scenario1 shows 0 peril events — not a bug).
+## Gotchas & dead ends
+
+- **TWO time representations.** `WorldClock._worldTime` (the interval-driver counter) and the
+  **context** worldTime advanced by `advanceTime()` inside `SimulationLoop._tick()` are separate.
+  The context time is the authoritative one the sim/digest uses. You must add `cycle` to the
+  `WorldTime` type and set it in **both** advance sites, and `proceed()` must read fromTick/toTick
+  from the **context** (`this._ctx`/`getContext`), not from `WorldClock._worldTime`. Verify which
+  one the UI/store reads before trusting either.
+- **No `dispatch({type:'PROCEED'})` exists.** Despite the spec's prose, the real API is loop
+  methods. Add `proceed()` as a method; don't invent a command bus.
+- **Determinism is law** (`packages/core/CLAUDE.md`): no `Math.random()`; all rng via
+  `SimulationContext.rng`; same seed+commands ⇒ identical WorldTime + events. `proceed()` must not
+  touch `Date.now()`/`Math.random()`.
+- **Tick-subscriber ordering is load-bearing** — `proceed()` must drive the existing `_tick()`
+  path unchanged (advanceTime first, then subscribers in registration order). Do not reorder.
+- **`createSimulationContext(seed)` needs a seed** or it crashes in `xmur3` (no compile guard).
+- Test rules (core `CLAUDE.md`): assert probability shifts not outcomes; test through subscribers;
+  build the condition directly rather than running a 30-day loop.
+
+## Suggested skills
+
+- **specops** — mark p15a in-progress at start; run the closeout ritual (flip to `done`, fill
+  Notes/Follow-ups) at end. `scripts/specops next|dag` to navigate the DAG.
+- **tdd** — red→green per behavior for the cycle/PROCEED logic (spec Validation = the test list).
+- **verify** — drive PROCEED end-to-end after green to confirm real digest/time behavior.
+- After p15a: p15b (cycle-narrative-engine) is next; p15c ∥ p15d then p15e.
+
+## Reference (don't duplicate)
+
+- Locked design + rationale: memory `project-events-cycle-redesign` (index in
+  `~/.claude/projects/.../memory/MEMORY.md`).
+- Design + spec-review artifacts: `.lavish/events-dashboard-cycle-redesign.html`,
+  `.lavish/spec-review-cycle-redesign.html`.
+- Every plan body has Scope/Implements/Approach/Validation/Risks — read the plan, not a restatement.

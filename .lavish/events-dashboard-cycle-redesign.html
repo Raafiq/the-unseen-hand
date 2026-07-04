@@ -1,0 +1,376 @@
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :where(.grid, .flex) > * { min-width: 0; }
+  :where(p, h1, h2, h3, h4, h5, h6, li, dd, blockquote, figcaption, td, th, .badge, .label) { overflow-wrap: anywhere; }
+  :where(img, svg, video, canvas, iframe) { max-width: 100%; height: auto; }
+  .kn-quote { font-family: Georgia, 'Times New Roman', serif; }
+  .rec-ring { box-shadow: 0 0 0 1px var(--color-success), 0 0 24px -8px var(--color-success); }
+  main h1 { line-height: 1.18; padding-bottom: 4px; }
+  .card-body span.font-black { line-height: 1.4; }
+</style>
+
+<main data-theme="luxury" class="min-h-screen bg-base-100 text-base-content">
+  <div class="mx-auto max-w-5xl px-5 py-8 lg:px-8 lg:py-12">
+
+    <!-- ===== HEADER ===== -->
+    <header class="mb-10">
+      <div class="flex flex-wrap items-center gap-2 mb-3">
+        <span class="badge badge-soft badge-warning">Design discussion</span>
+        <span class="badge badge-soft badge-info">Reopens 2 locked decisions</span>
+        <span class="badge badge-ghost">Spec-first · not yet built</span>
+      </div>
+      <h1 class="text-4xl lg:text-5xl font-bold tracking-tight mb-4">Events dashboard → day-cycle & kinetic-novel reads</h1>
+      <p class="text-lg opacity-80 max-w-3xl">
+        You want to trade the noisy live stream for <strong>breathing room</strong>: advance the world one
+        cycle at a time with a <strong>Proceed</strong> button, then read a <strong>per-character narrative</strong>
+        of what happened to each adventurer that cycle - a kinetic-novel recap instead of terse one-liners.
+      </p>
+      <p class="text-lg opacity-80 max-w-3xl mt-3">
+        This hangs together, but it reopens two decisions that Phase&nbsp;10 deliberately locked. Below is the
+        honest tension, then <strong>four forks</strong> I need you to settle before I write specs + plans.
+        Each has my recommendation and a one-click answer.
+      </p>
+    </header>
+
+    <!-- ===== TENSION CALLOUT ===== -->
+    <section class="mb-10">
+      <div role="alert" class="alert alert-warning alert-soft items-start">
+        <div>
+          <h2 class="font-bold text-lg mb-1">What this overturns - and why that's OK now</h2>
+          <ul class="list-disc pl-5 space-y-1 opacity-90">
+            <li>
+              <strong>"Autonomy is the default; intervention is the exception."</strong> A Proceed gate makes the
+              player pace tempo. Reframed narrowly, this is fine: the world still resolves each cycle
+              <em>autonomously</em> - the player controls <em>tempo</em>, not <em>outcomes</em>. That nuance
+              needs to land in the spec.
+            </li>
+            <li>
+              <strong>"Feed = deterministic templates; LLM for set-pieces only"</strong> (rejected per-event LLM for
+              cost / latency / replay-determinism). A cycle boundary generates a <em>bounded batch</em>
+              (one narrative per character per cycle), not a per-event stream - so richer LLM prose becomes
+              feasible again, as long as narrative stays a <strong>presentation layer over the deterministic
+              event log</strong> (the log remains the replayable source of truth).
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== NOW vs PROPOSED ===== -->
+    <section class="mb-12">
+      <h2 class="text-sm font-semibold uppercase tracking-widest opacity-60 mb-4">At a glance</h2>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="card card-border bg-base-200/60">
+          <div class="card-body">
+            <h3 class="card-title text-base opacity-70">Today (Phase 10)</h3>
+            <ul class="space-y-2 text-sm opacity-90">
+              <li>▸ Real-time autonomous sim, speed 1× / 5× / 20× / pause</li>
+              <li>▸ Live newest-first feed of <strong>terse one-liners</strong></li>
+              <li>▸ Optional LLM <strong>day-summary</strong> block at top of each day</li>
+              <li>▸ Player scans a firehose; can't absorb every interaction</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card card-border bg-base-200 rec-ring">
+          <div class="card-body">
+            <h3 class="card-title text-base">Proposed</h3>
+            <ul class="space-y-2 text-sm opacity-90">
+              <li>▸ World advances <strong>one cycle</strong> per <strong>Proceed</strong> click</li>
+              <li>▸ At each boundary, pick a character → read their <strong>cycle chapter</strong></li>
+              <li>▸ Kinetic-novel prose + their encounters, not one-liners</li>
+              <li>▸ Player absorbs a <strong>completed</strong> cycle at their own pace</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== KINETIC NOVEL FLAVOR ===== -->
+    <section class="mb-12">
+      <h2 class="text-sm font-semibold uppercase tracking-widest opacity-60 mb-4">The read, roughly</h2>
+      <div class="grid md:grid-cols-2 gap-4 items-stretch">
+        <div class="card card-border bg-base-300/40">
+          <div class="card-body">
+            <div class="text-xs uppercase tracking-widest opacity-50 mb-2">Today · one-liners</div>
+            <div class="space-y-1.5 font-mono text-xs opacity-80">
+              <div>Day 12, 09:00 · <span class="badge badge-xs badge-info">World</span> A storm rolls in.</div>
+              <div>Day 12, 11:00 · <span class="badge badge-xs" style="background:teal">Social</span> Mira and Kara argued.</div>
+              <div>Day 12, 14:00 · <span class="badge badge-xs badge-error">Combat</span> Kara was wounded.</div>
+            </div>
+          </div>
+        </div>
+        <div class="card card-border bg-base-300/40">
+          <div class="card-body">
+            <div class="text-xs uppercase tracking-widest opacity-50 mb-2">Proposed · Kara, this afternoon</div>
+            <p class="kn-quote text-sm leading-relaxed opacity-90">
+              The storm broke over the ridge as Kara pressed on, blade already loose in its scabbard.
+              She was still nursing the morning's quarrel with Mira - words that hadn't landed clean -
+              when the goblins came out of the rain. She took a gash across the forearm before the last
+              of them fell. That night she'd have a scar and a grudge to sleep on.
+            </p>
+          </div>
+        </div>
+      </div>
+      <p class="text-xs opacity-50 mt-2">Illustrative only - actual prose is generated from the same deterministic event log shown on the left.</p>
+    </section>
+
+    <!-- ===== GENRE COMPARISON ===== -->
+    <section class="mb-12">
+      <h2 class="text-2xl font-bold mb-1">How comparable games handle this</h2>
+      <p class="opacity-70 mb-5">Grounding each fork in genre precedent. Short version: your instinct tracks the <strong>reading-first management-sim lineage</strong> (Football Manager, Persona, Wildermyth) more than the <strong>real-time colony-sim lineage</strong> (RimWorld, Crusader Kings) - which is exactly right for "breathing room."</p>
+
+      <div class="overflow-x-auto rounded-box border border-base-content/10 bg-base-100">
+        <table class="table">
+          <thead>
+            <tr>
+              <th class="w-10">#</th>
+              <th>What similar games do</th>
+              <th>Where our lean sits</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="font-black opacity-40 text-lg">1</td>
+              <td class="text-sm align-top">
+                <strong>Two camps.</strong> Colony/character sims lean <em>real-time-with-pause</em> - RimWorld's AI "Storyteller" (Cassandra/Phoebe/Randy) paces events while you pause to act; Crusader Kings and Norland do the same. But sims built to be <em>read</em> - Football Manager (click <em>Continue</em> to advance; the Inbox is where players spend the most time) and Persona (structured time slots) - use click-to-advance.
+              </td>
+              <td class="text-sm align-top">
+                <span class="badge badge-sm badge-warning badge-soft mb-1">Deliberate divergence</span>
+                <div>Fully turn-based moves you from the RimWorld norm toward the <strong>FM / Persona reading-first tradition</strong> - the camp whose whole point is absorbing a digest at your own pace. That's a considered choice, not the default for this subgenre.</div>
+              </td>
+            </tr>
+            <tr>
+              <td class="font-black opacity-40 text-lg">2</td>
+              <td class="text-sm align-top">
+                <strong>Persona is the canonical model.</strong> Morning / afternoon / evening slots are widely praised for creating opportunity-cost tension and a rhythm that "mirrors real-life cycles," enhancing immersion. Stardew, Rune Factory, Sunless Sea use similar time-of-day beats.
+              </td>
+              <td class="text-sm align-top">
+                <span class="badge badge-sm badge-success badge-soft mb-1">Squarely conventional</span>
+                <div>Morning/afternoon/night is a proven, well-loved structure - and it gives the kinetic novel natural chapter breaks. Low-risk.</div>
+              </td>
+            </tr>
+            <tr>
+              <td class="font-black opacity-40 text-lg">3</td>
+              <td class="text-sm align-top">
+                <strong>Wildermyth is the benchmark</strong> for per-character procedural stories: storybook/comic panels generated from each character's traits + hooks, written with "just enough words." Crucially it's <em>hand-authored modular fragments + character data</em> - <strong>no AI/LLM</strong>.
+              </td>
+              <td class="text-sm align-top">
+                <span class="badge badge-sm badge-info badge-soft mb-1">De-risks the fallback</span>
+                <div>The most acclaimed example of exactly what you want uses <em>rich templates</em>, proving the fallback path can carry the feel. Hybrid keeps that proven floor and adds LLM reach on top - so a missing key degrades to "Wildermyth-style," not "broken."</div>
+              </td>
+            </tr>
+            <tr>
+              <td class="font-black opacity-40 text-lg">4</td>
+              <td class="text-sm align-top">
+                <strong>Football Manager's Inbox</strong> - a digest hub - is the screen players live in, with granular data screens still reachable beneath it. RimWorld keeps a live event log plus alerts as the always-on record.
+              </td>
+              <td class="text-sm align-top">
+                <span class="badge badge-sm badge-success badge-soft mb-1">Standard pattern</span>
+                <div>Digest-primary with the raw log preserved as drill-down is the established FM shape - readers up top, auditors underneath.</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-xs opacity-50 mt-3">
+        Sources: Wildermyth (gamermatters, cjleo.com design blog), RimWorld / CK3 / Norland pacing (PC Gamer, TV Tropes Real-Time-with-Pause), Persona 5 time slots (Megami Tensei Wiki, Persona Fans), Football Manager Inbox &amp; Continue (Sports Interactive manual, Dot Esports).
+      </p>
+    </section>
+
+    <!-- ===== THE FOUR FORKS ===== -->
+    <section class="mb-8">
+      <h2 class="text-2xl font-bold mb-1">Four forks to settle</h2>
+      <p class="opacity-70 mb-6">Pick each, or annotate any option to push back. Recommendations are marked <span class="badge badge-sm badge-success badge-soft">Recommended</span>.</p>
+
+      <!-- FORK 1 -->
+      <form class="card card-border bg-base-200/50 mb-6" data-lavish-question="cadence"
+            onsubmit="event.preventDefault(); const c=new FormData(event.currentTarget).get('cadence'); if(c) window.lavish.queuePrompt('Fork 1 (Cadence): use \''+c+'\'.', {tag:'choice', text:'Cadence: '+c, element:event.currentTarget, data:{question:'cadence', answer:c}});">
+        <div class="card-body">
+          <div class="flex items-baseline gap-3 mb-1">
+            <span class="text-3xl font-black opacity-30">1</span>
+            <h3 class="card-title">Cadence — how does Proceed relate to the real-time sim?</h3>
+          </div>
+          <div class="grid gap-3 mt-2">
+            <label class="flex gap-3 p-3 rounded-lg bg-base-100 cursor-pointer hover:bg-base-300/40 border border-transparent has-[:checked]:border-success">
+              <input type="radio" name="cadence" value="Fully turn-based" class="radio radio-sm mt-1">
+              <span>
+                <span class="font-semibold">Fully turn-based</span>
+                <span class="badge badge-xs badge-success badge-soft ml-1">Recommended</span>
+                <span class="block text-sm opacity-75 mt-1">Retire real-time speeds. The engine computes a whole cycle at once (it already supports <code>step()</code>), then stops. No live stream - the player always reads a finished cycle. Purest fit for "breathing room" and kills the noise outright. Autonomy-of-<em>outcomes</em> is preserved; only tempo becomes player-driven.</span>
+              </span>
+            </label>
+            <label class="flex gap-3 p-3 rounded-lg bg-base-100 cursor-pointer hover:bg-base-300/40 border border-transparent has-[:checked]:border-success">
+              <input type="radio" name="cadence" value="Auto-pause at cycle end" class="radio radio-sm mt-1">
+              <span>
+                <span class="font-semibold">Auto-pause at cycle end</span>
+                <span class="block text-sm opacity-75 mt-1">Keep the sim running (optionally at speed) but hard-stop at every boundary; Proceed resumes. Hybrid - preserves the existing real-time engine and the autonomy principle literally, but live streaming during a cycle reintroduces some of the noise you're trying to escape.</span>
+              </span>
+            </label>
+            <label class="flex gap-3 p-3 rounded-lg bg-base-100 cursor-pointer hover:bg-base-300/40 border border-transparent has-[:checked]:border-success">
+              <input type="radio" name="cadence" value="Proceed = skip-ahead" class="radio radio-sm mt-1">
+              <span>
+                <span class="font-semibold">Proceed = skip-ahead</span>
+                <span class="block text-sm opacity-75 mt-1">Real-time keeps running as today; Proceed just fast-forwards to the next boundary. Least disruptive to code, but doesn't deliver breathing room - events still stream live.</span>
+              </span>
+            </label>
+          </div>
+          <div class="card-actions justify-end mt-3">
+            <button type="submit" class="btn btn-sm btn-success btn-soft">Queue this answer</button>
+          </div>
+        </div>
+      </form>
+
+      <!-- FORK 2 -->
+      <form class="card card-border bg-base-200/50 mb-6" data-lavish-question="cycle-length"
+            onsubmit="event.preventDefault(); const c=new FormData(event.currentTarget).get('cycle'); if(c) window.lavish.queuePrompt('Fork 2 (Cycle length): use \''+c+'\'.', {tag:'choice', text:'Cycle length: '+c, element:event.currentTarget, data:{question:'cycle-length', answer:c}});">
+        <div class="card-body">
+          <div class="flex items-baseline gap-3 mb-1">
+            <span class="text-3xl font-black opacity-30">2</span>
+            <h3 class="card-title">Cycle length — what does one Proceed advance?</h3>
+          </div>
+          <div class="grid gap-3 mt-2">
+            <label class="flex gap-3 p-3 rounded-lg bg-base-100 cursor-pointer hover:bg-base-300/40 border border-transparent has-[:checked]:border-success">
+              <input type="radio" name="cycle" value="Morning/Afternoon/Night" class="radio radio-sm mt-1">
+              <span>
+                <span class="font-semibold">Morning / Afternoon / Night</span>
+                <span class="badge badge-xs badge-success badge-soft ml-1">Recommended</span>
+                <span class="block text-sm opacity-75 mt-1">3 cycles/day (8 ticks each). Natural chapter beats for a kinetic novel, matches your example. Cost: more Proceed clicks and up to 3× the per-character reads/generation per day.</span>
+              </span>
+            </label>
+            <label class="flex gap-3 p-3 rounded-lg bg-base-100 cursor-pointer hover:bg-base-300/40 border border-transparent has-[:checked]:border-success">
+              <input type="radio" name="cycle" value="Whole day" class="radio radio-sm mt-1">
+              <span>
+                <span class="font-semibold">Whole day</span>
+                <span class="block text-sm opacity-75 mt-1">1 cycle = 24 ticks. Fewer clicks, longer single chapter per character, aligns with the existing day-summary concept. Less granular pacing.</span>
+              </span>
+            </label>
+            <label class="flex gap-3 p-3 rounded-lg bg-base-100 cursor-pointer hover:bg-base-300/40 border border-transparent has-[:checked]:border-success">
+              <input type="radio" name="cycle" value="Player-configurable" class="radio radio-sm mt-1">
+              <span>
+                <span class="font-semibold">Player-configurable</span>
+                <span class="block text-sm opacity-75 mt-1">Let the player pick day vs. thirds in settings. Most flexible; adds spec surface + a settings control.</span>
+              </span>
+            </label>
+          </div>
+          <div class="card-actions justify-end mt-3">
+            <button type="submit" class="btn btn-sm btn-success btn-soft">Queue this answer</button>
+          </div>
+        </div>
+      </form>
+
+      <!-- FORK 3 -->
+      <form class="card card-border bg-base-200/50 mb-6" data-lavish-question="narrative"
+            onsubmit="event.preventDefault(); const c=new FormData(event.currentTarget).get('narr'); if(c) window.lavish.queuePrompt('Fork 3 (Narrative generation): use \''+c+'\'.', {tag:'choice', text:'Narrative: '+c, element:event.currentTarget, data:{question:'narrative', answer:c}});">
+        <div class="card-body">
+          <div class="flex items-baseline gap-3 mb-1">
+            <span class="text-3xl font-black opacity-30">3</span>
+            <h3 class="card-title">Narrative — how are the per-character chapters generated?</h3>
+          </div>
+          <div class="grid gap-3 mt-2">
+            <label class="flex gap-3 p-3 rounded-lg bg-base-100 cursor-pointer hover:bg-base-300/40 border border-transparent has-[:checked]:border-success">
+              <input type="radio" name="narr" value="Hybrid: LLM with template fallback" class="radio radio-sm mt-1">
+              <span>
+                <span class="font-semibold">Hybrid — LLM prose, template fallback</span>
+                <span class="badge badge-xs badge-success badge-soft ml-1">Recommended</span>
+                <span class="block text-sm opacity-75 mt-1">Rich LLM chapter when an API key is present; deterministic multi-sentence template passage when not. Mirrors how the day-summary already degrades gracefully. Narrative is a presentation layer - the event log stays the deterministic source of truth, so replay is unaffected.</span>
+              </span>
+            </label>
+            <label class="flex gap-3 p-3 rounded-lg bg-base-100 cursor-pointer hover:bg-base-300/40 border border-transparent has-[:checked]:border-success">
+              <input type="radio" name="narr" value="LLM prose per character per cycle" class="radio radio-sm mt-1">
+              <span>
+                <span class="font-semibold">LLM only</span>
+                <span class="block text-sm opacity-75 mt-1">Fullest kinetic-novel quality, but the feed is empty/degraded without a key - worse for the no-key path the project currently guarantees.</span>
+              </span>
+            </label>
+            <label class="flex gap-3 p-3 rounded-lg bg-base-100 cursor-pointer hover:bg-base-300/40 border border-transparent has-[:checked]:border-success">
+              <input type="radio" name="narr" value="Richer templates only" class="radio radio-sm mt-1">
+              <span>
+                <span class="font-semibold">Richer templates only</span>
+                <span class="block text-sm opacity-75 mt-1">Extend the deterministic grammar into multi-sentence passages. Zero cost, fully replayable, but "kinetic novel" richness is capped by the grammar.</span>
+              </span>
+            </label>
+          </div>
+          <div class="card-actions justify-end mt-3">
+            <button type="submit" class="btn btn-sm btn-success btn-soft">Queue this answer</button>
+          </div>
+        </div>
+      </form>
+
+      <!-- FORK 4 -->
+      <form class="card card-border bg-base-200/50 mb-6" data-lavish-question="feed-fate"
+            onsubmit="event.preventDefault(); const c=new FormData(event.currentTarget).get('feed'); if(c) window.lavish.queuePrompt('Fork 4 (Feed fate): use \''+c+'\'.', {tag:'choice', text:'Feed fate: '+c, element:event.currentTarget, data:{question:'feed-fate', answer:c}});">
+        <div class="card-body">
+          <div class="flex items-baseline gap-3 mb-1">
+            <span class="text-3xl font-black opacity-30">4</span>
+            <h3 class="card-title">Feed fate — what happens to the live one-liner feed?</h3>
+          </div>
+          <div class="grid gap-3 mt-2">
+            <label class="flex gap-3 p-3 rounded-lg bg-base-100 cursor-pointer hover:bg-base-300/40 border border-transparent has-[:checked]:border-success">
+              <input type="radio" name="feed" value="Keep as raw log beneath reads" class="radio radio-sm mt-1">
+              <span>
+                <span class="font-semibold">Keep as raw log beneath the reads</span>
+                <span class="badge badge-xs badge-success badge-soft ml-1">Recommended</span>
+                <span class="block text-sm opacity-75 mt-1">Per-character chapters become the primary surface; the terse chronological feed stays as an optional drill-down / audit trail. Preserves the built feed and "the event feed is the game" content while layering the new experience on top. Least lossy.</span>
+              </span>
+            </label>
+            <label class="flex gap-3 p-3 rounded-lg bg-base-100 cursor-pointer hover:bg-base-300/40 border border-transparent has-[:checked]:border-success">
+              <input type="radio" name="feed" value="Feed shows cycle recaps only" class="radio radio-sm mt-1">
+              <span>
+                <span class="font-semibold">Collapse feed into cycle recaps</span>
+                <span class="block text-sm opacity-75 mt-1">Central feed stops streaming per-event; shows one narrative entry per character per cycle. One surface, but loses the fine-grained log.</span>
+              </span>
+            </label>
+            <label class="flex gap-3 p-3 rounded-lg bg-base-100 cursor-pointer hover:bg-base-300/40 border border-transparent has-[:checked]:border-success">
+              <input type="radio" name="feed" value="Replace with cycle reads" class="radio radio-sm mt-1">
+              <span>
+                <span class="font-semibold">Replace entirely</span>
+                <span class="block text-sm opacity-75 mt-1">The reading experience fully supplants the feed. Biggest change; retires "the event feed is the game" as written and discards the drill-down.</span>
+              </span>
+            </label>
+          </div>
+          <div class="card-actions justify-end mt-3">
+            <button type="submit" class="btn btn-sm btn-success btn-soft">Queue this answer</button>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <!-- ===== OPEN QUESTIONS ===== -->
+    <section class="mb-12">
+      <h2 class="text-sm font-semibold uppercase tracking-widest opacity-60 mb-4">Secondary questions (can defer)</h2>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div class="p-4 rounded-lg bg-base-200/40 text-sm">
+          <strong>Decision moments &amp; DI.</strong> Today they interrupt in real-time. In a cycle model, do they surface <em>at the boundary</em> alongside the reads, gating Proceed until resolved?
+        </div>
+        <div class="p-4 rounded-lg bg-base-200/40 text-sm">
+          <strong>Reading is optional.</strong> Confirm Proceed never requires reading every character - the player reads whom they like, then advances.
+        </div>
+        <div class="p-4 rounded-lg bg-base-200/40 text-sm">
+          <strong>NPC / party encounters.</strong> A shared encounter (Kara + Mira) appears in <em>both</em> chapters from each POV - or once, attributed? Leaning: appears in both, POV-shaded.
+        </div>
+        <div class="p-4 rounded-lg bg-base-200/40 text-sm">
+          <strong>Roster dock &amp; drawer.</strong> Likely the natural "pick a character to read" entry point - reuse the existing dock rather than a new selector.
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== WHAT HAPPENS NEXT ===== -->
+    <section class="mb-6">
+      <h2 class="text-2xl font-bold mb-4">Once the forks lock, here's the spec-first path</h2>
+      <ul class="steps steps-vertical">
+        <li class="step step-primary">Amend <code>behaviors/world-clock.md</code> — introduce the cycle unit + Proceed/turn gate; reconcile the autonomy principle</li>
+        <li class="step step-primary">Rewrite <code>screens/event-feed.md</code> — per-character cycle reads; feed's new role per Fork 4</li>
+        <li class="step step-primary">New <code>behaviors/cycle-narrative.md</code> — how a chapter is composed from the event log (per Fork 3), determinism boundary, no-key fallback</li>
+        <li class="step step-primary">Edit <code>screens/app-shell.md</code> — Proceed control replaces/joins speed controls; decision-moment timing</li>
+        <li class="step">Propose the <strong>plan set</strong> in <code>plans/</code> (dependency-ordered), then build test-first</li>
+      </ul>
+      <div role="alert" class="alert alert-info alert-soft mt-5">
+        <span>I won't touch specs until you've settled the four forks. Queue your answers (and annotate anything you want to push back on), then hit <strong>Send to Agent</strong>.</span>
+      </div>
+    </section>
+
+  </div>
+</main>

@@ -81,4 +81,4 @@ The UI displays the top 3 active mood factors by absolute `|value|`. These must 
 
 **Inherited:**
 - [Every outcome has a narrative cause](../principles.md#every-outcome-has-a-narrative-cause) — every mood shift has a named factor with a player-readable label. Unexplained mood drops are not permitted.
-- [Autonomy is the default](../principles.md#autonomy-is-the-default-intervention-is-the-exception) — mood evolves without player input. The player may intervene via `MOOD_LIFT` divine touch, but the system runs without it.
+- [Autonomy of outcomes](../principles.md#autonomy-of-outcomes-player-controlled-tempo) — mood evolves without player input. The player may intervene via `MOOD_LIFT` divine touch, but the system runs without it.

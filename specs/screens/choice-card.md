@@ -68,7 +68,7 @@ Within the right panel. After a moment is resolved, the panel either shows the n
 ## Principles
 
 **Inherited:**
-- [Autonomy is the default](../principles.md#autonomy-is-the-default-intervention-is-the-exception) — the expiry countdown is not a countdown to failure; it's a countdown to the world resolving the situation on its own. The default outcome (fate decides) is always shown as the first option.
+- [Autonomy of outcomes](../principles.md#autonomy-of-outcomes-player-controlled-tempo) — the expiry countdown is not a countdown to failure; it's a countdown to the world resolving the situation on its own. The default outcome (fate decides) is always shown as the first option.
 - [DI bankruptcy is a valid player state](../principles.md#di-bankruptcy-is-a-valid-intended-player-state) — unaffordable options are greyed out but visible. The player sees what costs what. Running dry and watching a death moment expire unresolved is the intended experience.
 - [Emergence over control](../principles.md#emergence-over-control) — "Let fate decide" must always be available and zero-cost. It is never hidden, labelled negatively, or visually subordinate to paid options.
 

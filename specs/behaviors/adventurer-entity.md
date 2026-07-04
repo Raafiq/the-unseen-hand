@@ -81,4 +81,4 @@ All axes are integers in [0, 100]. They are set at adventurer creation and mutat
 
 **Inherited:**
 - [Every outcome has a narrative cause](../principles.md#every-outcome-has-a-narrative-cause) — personality axes must measurably influence behaviour probabilities; they are not cosmetic.
-- [Autonomy is the default](../principles.md#autonomy-is-the-default-intervention-is-the-exception) — the state machine transitions without player input in the normal flow. Player commands are interruptions.
+- [Autonomy of outcomes](../principles.md#autonomy-of-outcomes-player-controlled-tempo) — the state machine transitions without player input in the normal flow. Player commands are interruptions.

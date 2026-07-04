@@ -16,6 +16,8 @@ The simulation surfaces moments of player attention as `DecisionMoment` objects 
 
 `DecisionMomentDetector` runs as a tick subscriber (last in the ordered list). It scans the current `SimulationContext` for conditions that warrant player attention.
 
+Moments become active *during* a `PROCEED` (the detector runs on each of the cycle's 8 ticks) but are **surfaced to the player at the cycle boundary**, when `PROCEED` returns and the reader renders — never mid-cycle (`behaviors/world-clock.md`, `screens/app-shell.md`). They do not gate `PROCEED`: the player may resolve a moment or proceed and let it ride toward expiry.
+
 A moment is surfaced if **any** of the following are true:
 - An adventurer has a `NEAR_DEATH` combat beat this tick and the quest outcome is death.
 - A relationship edge is crossing from `FRIEND` to `RIVAL` or `ENEMY` this tick.
@@ -84,16 +86,22 @@ Each tick, the detector removes moments where `tick >= expiresAt`. Expired momen
 
 ### Expiry windows
 
-| Trigger type | Expiry window |
-|---|---|
-| Death imminent | 12 ticks (30 min at 1×) |
-| Relationship collapse | 24 ticks |
-| Departure roll | 12 ticks |
-| Scenario-critical | 48 ticks |
-| Party selection | 6 ticks (next day tick) |
-| Other | 24 ticks |
+Windows are in **ticks**; one cycle is 8 ticks (`behaviors/world-clock.md`). A window spans a
+number of cycles' worth of `PROCEED`s — the moment surfaces at the boundary where it arose and
+expires once that many ticks have advanced.
 
-At 5× speed, a 12-tick window is 2.4 minutes. At 20×, it's 36 seconds. UI must display the countdown.
+| Trigger type | Expiry window | ≈ cycles |
+|---|---|---|
+| Death imminent | 12 ticks | ~1.5 cycles |
+| Relationship collapse | 24 ticks | 3 cycles (1 day) |
+| Departure roll | 12 ticks | ~1.5 cycles |
+| Scenario-critical | 48 ticks | 6 cycles (2 days) |
+| Party selection | 6 ticks | within the current cycle |
+| Other | 24 ticks | 3 cycles (1 day) |
+
+There are no real-time equivalents — the world is turn-paced, so a window's clock advances only
+when the player issues a `PROCEED`. The UI displays the countdown in **ticks / cycles
+remaining**, not wall-clock time.
 
 ## Validation
 
@@ -107,6 +115,6 @@ At 5× speed, a 12-tick window is 2.4 minutes. At 20×, it's 36 seconds. UI must
 ## Principles
 
 **Inherited:**
-- [Autonomy is the default](../principles.md#autonomy-is-the-default-intervention-is-the-exception) — the simulation does not wait for a `CHOOSE_OPTION` command. Expiry is the default. The player is a god who may or may not notice.
+- [Autonomy of outcomes](../principles.md#autonomy-of-outcomes-player-controlled-tempo) — the simulation does not wait for a `CHOOSE_OPTION` command. Expiry is the default. The player is a god who may or may not notice.
 - [Emergence over control](../principles.md#emergence-over-control) — decision moments are invitations, not requirements. A player who ignores all moments still has a valid (and DI-rich) playthrough.
 - [DI bankruptcy is a valid player state](../principles.md#di-bankruptcy-is-a-valid-intended-player-state) — the DI check at choice resolution must be real. An empty DI bar means all non-free options are unavailable.

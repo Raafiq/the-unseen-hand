@@ -7,13 +7,14 @@
 ## Data Requirements
 
 From `simulationStore`:
-- `worldTime: WorldTime` — current in-game date/time
+- `worldTime: WorldTime` — current in-game `{ day, cycle, hour }` (see `behaviors/world-clock.md`)
+- `lastCycleDigest: { fromTick, toTick, day, cycle }` — the cycle the reader is currently showing
 - `divineInfluence: number` — current DI
 - `activeDecisionMoments: DecisionMoment[]` — for right-panel ChoiceCard priority
-- `eventLog: SimulationEvent[]` — rendered by the always-visible event feed
-- `adventurers: Map<string, Adventurer>` — for the roster dock
+- `eventLog: SimulationEvent[]` — source for the cycle reader (`screens/event-feed.md`)
+- `cycleChapters` — per-character chapters + cycle overview for the current spread (`behaviors/cycle-narrative.md`)
+- `adventurers: Map<string, Adventurer>` — for the roster dock (also the chapter selector)
 - `scenario: ScenarioState | null` — for world name and scenario status
-- `speed: 1 | 5 | 20 | 'paused'` — current simulation speed
 
 ## Display Rules
 
@@ -21,9 +22,9 @@ From `simulationStore`:
 
 Fixed at top. Contains:
 - **World name**: scenario title if `scenario !== null`, else "Sandbox" in italic.
-- **In-game date**: formatted as "Day {worldTime.day}, {worldTime.hour}:00" — e.g. "Day 12, 14:00".
+- **In-game date**: formatted as "Day {worldTime.day} · {Morning|Afternoon|Night}" — e.g. "Day 12 · Afternoon". The cycle just read, not a wall-clock hour.
 - **DI meter** (see `components/DIMetrComponent`): prominent bar showing current / 100. Includes recent deltas (see `screens/app-shell.md#di-meter`).
-- **Speed controls**: Pause / 1× / 5× / 20× buttons. Active speed is highlighted. Pause shows a "paused" indicator replacing the date animation.
+- **Proceed control**: a single prominent **Proceed** button that dispatches `PROCEED`, computing the next cycle and advancing the reader to it (`behaviors/world-clock.md`, `screens/event-feed.md`). Its label names where you are headed — "Proceed to Afternoon", "Proceed to Night", "Proceed to Day {n+1}". There are no speed multipliers and no pause control — the world is always halted between cycles by design, so "paused" is not a state to enter or indicate.
 
 ### Main panel
 
@@ -77,7 +78,7 @@ Shows one of:
   checklist, and treasury / reputation.
 - **Active decision moment**: the highest-priority active `DecisionMoment` (by priority order defined in `behaviors/decision-moments.md`). If multiple, shows the highest-priority one; others are accessible via a small list below it.
 
-When a decision moment is active, the right panel pulses with a subtle visual indicator (e.g. border animation) to draw attention without being disruptive.
+Decision moments that arise during a cycle are surfaced **at the cycle boundary**, alongside the reads, rather than mid-cycle (`behaviors/world-clock.md`, `behaviors/decision-moments.md`). They do **not** gate `PROCEED`: consistent with autonomy-of-outcomes, the player may resolve a moment before proceeding or proceed and let it ride toward its expiry. When a decision moment is active, the right panel pulses with a subtle visual indicator (e.g. border animation) to draw attention without being disruptive.
 
 ### DI meter
 
@@ -91,8 +92,8 @@ DI meter tooltip text:
 
 ## Actions
 
-- **Pause / speed buttons**: dispatch `PAUSE` or `SET_SPEED` command to simulation.
-- **Click adventurer in roster dock**: opens the character-detail drawer above the dock; clicking the selected card again (or the drawer's × control) deselects it and closes the drawer.
+- **Proceed**: dispatches `PROCEED`, computing the next cycle and advancing the reader to it (`behaviors/world-clock.md`). This is the sole tempo control; there is no pause or speed command.
+- **Click adventurer in roster dock**: focuses that character's chapter in the cycle reader (`screens/event-feed.md`) and opens the character-detail drawer above the dock; clicking the selected card again (or the drawer's × control) deselects it and closes the drawer.
 - **Click decision moment option**: dispatches `CHOOSE_OPTION` command (UI is on `ChoiceCard` — see `screens/choice-card.md`).
 
 ## Navigation
@@ -103,7 +104,8 @@ Single-page. No URL changes. State is panel-driven.
 
 **Inherited:**
 - [DI bankruptcy is a valid player state](../principles.md#di-bankruptcy-is-a-valid-intended-player-state) — the DI meter must not block or warn in a way that prevents DI from reaching 0. It surfaces the state clearly; it does not prevent it.
-- [The event feed is the game](../principles.md#the-event-feed-is-the-game) — the feed is the persistent centre of the shell, always in view, never hidden behind a tab.
+- [The event feed is the game](../principles.md#the-event-feed-is-the-game) — the cycle reader is the persistent centre of the shell, always in view, never hidden behind a tab.
+- [Autonomy of outcomes; player-controlled tempo](../principles.md#autonomy-of-outcomes-player-controlled-tempo) — the top bar's tempo control is a single **Proceed**, not speeds; the world halts between cycles for reading and advances only on the player's command, while every outcome still resolves autonomously within the cycle.
 
 **Local:**
 - **Action and its result share a region.** Inspecting an adventurer resolves in the detail drawer that rises from the dock — right where the roster card was clicked — never in the opposite corner of the screen. This keeps the trigger and its consequence spatially bound.

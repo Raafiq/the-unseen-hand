@@ -6,7 +6,7 @@ Every event's `renderedText` is composed at emission time by a **deterministic t
 grammar** — a subject + beat + colour assembly drawn from per-family fragment pools via
 `ctx.rng`. This grammar is the load-bearing narrative layer for the high-frequency event
 feed. The LLM is reserved for a small, enumerated set of **set-pieces** (decision moments,
-quest climaxes, the end-of-day summary) and never renders ordinary feed lines. No event
+quest climaxes, and the per-cycle overview + per-character chapters) and never renders ordinary feed lines. No event
 in `packages/core` calls an LLM to produce its `renderedText`; the grammar always produces
 a complete sentence offline, and the same seed + state always produces the same text.
 
@@ -98,8 +98,13 @@ only the rendered prose (see `principles.md#every-outcome-has-a-narrative-cause`
 
 The LLM renders **only** these, and only as enrichment:
 
-1. **End-of-day summary** — the editorial paragraph at the top of each day's feed section
-   (`behaviors/llm-narrator.md`).
+1. **Per-cycle overview and per-character chapters** — at each cycle boundary, a short
+   guild-level overview plus one prose chapter per character who had meaningful events that
+   cycle (`behaviors/cycle-narrative.md`). This **generalises and replaces** the former
+   end-of-day summary (`behaviors/llm-narrator.md`): per cycle rather than per day, and the
+   chapters are the primary read. It is **batched** — at most `rosterSize + 1` calls per
+   `PROCEED`, never one per event — and the deterministic template tier renders until/without
+   the LLM.
 2. **Decision-moment situation text** — optional richer framing of a decision card's
    `situationText` (see `behaviors/decision-moments.md`); the deterministic grammar provides
    the fallback so the card is always legible.
@@ -108,7 +113,8 @@ The LLM renders **only** these, and only as enrichment:
 
 This list is exhaustive. Anything not on it is grammar-rendered. There is **no per-event LLM
 call** and **no per-social-scene LLM call** — that path is explicitly rejected (cost, latency,
-and it would break feed replay determinism).
+and it would break feed replay determinism). The cycle set-piece is affordable precisely
+because it is bounded *per cycle* (a small batch at a player-paced boundary), not *per event*.
 
 ### Determinism contract
 

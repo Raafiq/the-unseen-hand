@@ -122,6 +122,6 @@ per-symptom patch.
 ## Principles
 
 **Inherited:**
-- [Autonomy is the default](../principles.md#autonomy-is-the-default-intervention-is-the-exception) — the board seeds and party assembles without player commands. DI intervention is an interruption.
+- [Autonomy of outcomes](../principles.md#autonomy-of-outcomes-player-controlled-tempo) — the board seeds and party assembles without player commands. DI intervention is an interruption.
 - [Probability shift, not outcome override](../principles.md#probability-shift-not-outcome-override) — `diModifier` adjusts the probability before the roll; the roll is always taken.
 - [Every outcome has a narrative cause](../principles.md#every-outcome-has-a-narrative-cause) — `QuestStarted` and `QuestOutcome` events must carry enough context to render a meaningful narrative string.

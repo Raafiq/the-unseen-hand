@@ -6,6 +6,14 @@
 > card persistence); that direction was **rejected**. The day summary stays; this spec is the
 > authoritative definition of it.
 
+> **Status note (cycle redesign, 2026-07-04):** the day-level summary is **generalised to a
+> per-cycle read**. It now fires at each *cycle* boundary (not once per day) and produces the
+> **cycle overview** plus the **per-character chapters** whose composition, POV rules, and
+> determinism boundary live in `behaviors/cycle-narrative.md`. This file remains the
+> authoritative definition of the LLM narrator's **voice, prompt shape, degraded mode, error
+> handling, and token budget** — now applied per cycle. Where this file says "day", read
+> "cycle" unless a passage is explicitly about the day-level rollup.
+
 ## Rule
 
 At the end of each in-game day, the simulation collects that day's events and passes structured context to the Claude API to generate a 2–3 sentence narrative paragraph. The paragraph is inserted as a "day summary" block at the top of that day's event feed entries. The LLM layer is entirely additive — if no API key is present, no summary is generated and the template-rendered event feed remains fully functional.
@@ -25,14 +33,14 @@ template grammar, not the LLM.
 
 ### Trigger
 
-At each day tick (tick where `worldTime.hour === 0`), after all tick subscribers have run, if `CLAUDE_API_KEY` is set in the environment:
-- Collect all `SimulationEvent` entries from the previous day (ticks `day * 24 - 24` through `day * 24 - 1`).
+At each **cycle boundary** — after a `PROCEED` resolves (see `behaviors/world-clock.md`), using the returned cycle digest — if `CLAUDE_API_KEY` is set in the environment:
+- Collect the `SimulationEvent` entries for the just-completed cycle (the digest's `[fromTick, toTick]` range).
 - Collect current adventurer states, personality axes, and active relationship edges.
-- Build the narrator prompt (see below).
-- Call the Claude API asynchronously. The simulation continues ticking while the API call is in flight.
-- When the response arrives, insert the day summary block into the event feed.
+- Build the narrator prompts (see below): one **cycle overview** prompt, plus one **per-character chapter** prompt per adventurer with meaningful cycle events (`behaviors/cycle-narrative.md`).
+- Call the Claude API asynchronously. Because the world is halted between cycles, nothing is "ticking" while calls are in flight; the player may read the template-tier passages immediately and the LLM passages replace them as they arrive.
+- When a response arrives, replace that character's (or the overview's) template passage in the reader.
 
-The day summary is generated asynchronously and does not block simulation advancement.
+The reads are generated asynchronously and never block `PROCEED`. Calls are **batched per cycle** (at most `rosterSize + 1`), never per event.
 
 ### Prompt structure
 

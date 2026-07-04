@@ -222,7 +222,7 @@ familiarity scalar and any scenario feud seed it (`p13b`); so in p13a a rivalry 
 ## Principles
 
 **Inherited:**
-- [Autonomy is the default; intervention is the exception](../principles.md#autonomy-is-the-default-intervention-is-the-exception) -
+- [Autonomy of outcomes; player-controlled tempo](../principles.md#autonomy-of-outcomes-player-controlled-tempo) -
   every driver emerges from character personality and world context. The player witnesses bonds,
   betrayals, kindnesses, and rivalries; they cannot script them. Divine influence bends the trigger
   inputs, never the act.

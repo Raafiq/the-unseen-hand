@@ -12,11 +12,13 @@ The player never dictates outcomes — only nudges probability. Every system tha
 
 ---
 
-## Autonomy is the default; intervention is the exception
+## Autonomy of outcomes; player-controlled tempo
 
-The world must run indefinitely without any player input. No system may stall, require player action, or produce degenerate state simply because the player has not interacted. Autonomous defaults cover every case.
+The player never has to *resolve* anything for the world to make sense. No system may stall, require a player action, or produce degenerate state because the player did not choose an outcome — autonomous defaults cover every in-cycle decision, and any unaddressed decision moment resolves itself (see `behaviors/decision-moments.md`). What the player *does* control is **tempo**: the world advances one cycle at a time and waits at each cycle boundary for a `PROCEED` command before beginning the next (see `behaviors/world-clock.md`). Within a cycle the world is fully autonomous; between cycles the player sets the pace.
 
-> **Why:** The feel of watching an autonomous world is the primary joy. Every place the simulation pauses to wait for the player breaks immersion and makes the world feel hollow.
+> **Why:** The joy is absorbing a *completed* cycle — reading what befell each adventurer — not watching a firehose scroll past faster than anyone can read. The game is turn-paced (the Football Manager / Persona reading-first lineage) rather than real-time-with-pause (RimWorld / Crusader Kings). The distinction that must never erode: the pause is for *reading*, never for *deciding*. A player who reads nothing and proceeds immediately still gets a coherent world where every situation resolved on its own. Autonomy did not go away — it moved from tempo to outcomes.
+
+> **History:** Through Phase 10 this principle read "Autonomy is the default; intervention is the exception — the world must run indefinitely without any player input; the feel of watching an autonomous world is the primary joy." The events cycle-redesign (2026-07-04) deliberately traded the real-time autonomous-world feel for a turn-paced reading experience. The engine's determinism, headless correctness, and self-resolving defaults are unchanged; only the *tempo model* — who decides when the next cycle begins — moved to the player.
 
 ---
 

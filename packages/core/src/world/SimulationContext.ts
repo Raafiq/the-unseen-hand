@@ -24,7 +24,7 @@ export type { SimulationContext } from './types.js';
  */
 export function createSimulationContext(seed: string): SimulationContext {
   return {
-    worldTime: { tick: 0, day: 0, hour: 0 },
+    worldTime: { tick: 0, day: 0, hour: 0, cycle: 'MORNING' },
     rng: new SeededRNG(seed),
     worldSeed: seed,
     adventurers: new Map(),

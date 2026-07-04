@@ -99,4 +99,4 @@ Each tick, the scenario evaluator runs after all other subscribers:
 
 **Inherited:**
 - [Permadeath is the weight; DI is the cost](../principles.md#permadeath-is-the-weight-di-is-the-cost) — the `SURVIVAL` goal's stakes are real because death is permanent. Saving everyone is mechanically costly.
-- [Autonomy is the default](../principles.md#autonomy-is-the-default-intervention-is-the-exception) — goal conditions are evaluated passively each tick; no player action is required to check progress.
+- [Autonomy of outcomes](../principles.md#autonomy-of-outcomes-player-controlled-tempo) — goal conditions are evaluated passively each tick; no player action is required to check progress.

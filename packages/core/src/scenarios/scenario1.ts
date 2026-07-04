@@ -8,6 +8,7 @@
  */
 import type { Scenario, SimulationContext, Adventurer } from '../world/types.js';
 import { createSimulationContext } from '../world/SimulationContext.js';
+import { cycleOf } from '../world/WorldTime.js';
 import { registerScenario } from './ScenarioEngine.js';
 import { createStartingRegions } from '../world/WorldExpansion.js';
 import { createThornvaleNpcs } from './notableNpcs.js';
@@ -138,7 +139,7 @@ export function createScenario1Context(seed = 'scenario-1'): SimulationContext {
 
   const ctx: SimulationContext = {
     ...base,
-    worldTime: { tick: START_TICK, day: 0, hour: START_TICK },
+    worldTime: { tick: START_TICK, day: 0, hour: START_TICK, cycle: cycleOf(START_TICK) },
     adventurers,
     notableNpcs,
     relationships,

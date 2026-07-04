@@ -78,4 +78,4 @@ Weights are normalised to select one outcome.
 
 **Inherited:**
 - [Every outcome has a narrative cause](../principles.md#every-outcome-has-a-narrative-cause) — `renderedText` on every social event must be a readable sentence, not a debug label.
-- [Autonomy is the default](../principles.md#autonomy-is-the-default-intervention-is-the-exception) — social events emerge without player involvement. The player may observe, but does not trigger or block them.
+- [Autonomy of outcomes](../principles.md#autonomy-of-outcomes-player-controlled-tempo) — social events emerge without player involvement. The player may observe, but does not trigger or block them.

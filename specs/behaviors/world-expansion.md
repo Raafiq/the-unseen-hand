@@ -158,5 +158,5 @@ The UI must remain legible across all complexity levels. See `screens/world-pane
 ## Principles
 
 **Inherited:**
-- [Autonomy is the default](../principles.md#autonomy-is-the-default-intervention-is-the-exception) — world expansion evaluates passively each tick against reputation and scenario state; no player action required to trigger it.
+- [Autonomy of outcomes](../principles.md#autonomy-of-outcomes-player-controlled-tempo) — world expansion evaluates passively each tick against reputation and scenario state; no player action required to trigger it.
 - [Emergence over control](../principles.md#emergence-over-control) — the player cannot directly unlock regions by spending DI. Expansion is a consequence of the world's story, not a purchase.

@@ -71,6 +71,8 @@ if (typeof location !== 'undefined' && new URLSearchParams(location.search).get(
   const haldenId = makeNpcId('halden-captain');
   const now = initialCtx.worldTime.tick;
   // ACQUAINTANCE edge whose recent history nets a warming trend (KINDNESS +7 within the 7-day window).
+  // Kept at the start tick so the drift detector (which reads the edge at load, before any PROCEED)
+  // still sees it inside its window.
   const warmingEdge = { strength: 30, type: createEdge(30).type, history: [{ tick: now, kind: 'KINDNESS', delta: 7 }] };
   const link = (a: string, b: string) => {
     const row = new Map(initialCtx.relationships.get(a) ?? new Map());
@@ -79,8 +81,11 @@ if (typeof location !== 'undefined' && new URLSearchParams(location.search).get(
   };
   link(advId, haldenId);
   link(haldenId, advId);
+  // The feed line, by contrast, is seeded one tick past the start so it lands inside the *first*
+  // PROCEED cycle window (`(fromTick, toTick]`, fromTick === startTick) and surfaces in that
+  // spread's raw log — an event on the start tick itself would sit on the pre-cycle boundary.
   initialCtx.eventLog = [...initialCtx.eventLog, {
-    id: 'e2e-rel-kindness', tick: now, kind: 'RELATIONSHIP', subtype: 'KINDNESS',
+    id: 'e2e-rel-kindness', tick: now + 1, kind: 'RELATIONSHIP', subtype: 'KINDNESS',
     participantIds: [advId, haldenId],
     renderedText: 'Reiko quietly does Captain Halden a kindness, asking nothing in return.',
   } as SimulationEvent];
@@ -105,6 +110,17 @@ export const simulationStore = $state({
   // Populated by recordCycleReads() after a PROCEED; the reader UI (p15d) consumes it.
   // null until the first cycle is composed. Template tier now; p15c enriches with LLM prose.
   cycleChapters: null as CycleReads | null,
+  // The tick window of the most recently completed cycle (event-feed.md Data Requirements) —
+  // labels the current spread and bounds its raw-log slice. null until the first PROCEED.
+  lastCycleDigest: null as CycleDigest | null,
+  // Every composed cycle, oldest → newest. The reader renders these as a scrollable stack of
+  // spreads (newest at the resting position); prior cycles remain re-readable (event-feed.md
+  // §"History of prior cycles").
+  cycleReadsHistory: [] as CycleReads[],
+  // A focus request from the roster dock (p15e) or a co-participant initial: scroll to and
+  // highlight this actor's chapter card. `seq` bumps on every request so re-focusing the same
+  // actor still retriggers the reader's effect.
+  chapterFocus: null as { actorId: string; seq: number } | null,
 });
 
 // Register a render observer at the end of the subscriber chain.
@@ -172,11 +188,37 @@ export function selectAdventurer(id: string | null): void {
 /**
  * Compose the per-character reads for a just-computed cycle and expose them on the store
  * for the reader UI (p15d). Pure view over the deterministic event log — see cycleNarrative.ts.
- * p15e wires this to the PROCEED button; kept as an explicit action so composition happens at
- * the cycle boundary, not on every render.
+ * Records the digest as `lastCycleDigest` and appends the reads to `cycleReadsHistory` so the
+ * reader can render prior cycles as scrollback. Composition happens once at the cycle boundary
+ * (via `proceed()`), not on every render.
  */
 export function recordCycleReads(digest: CycleDigest): void {
-  simulationStore.cycleChapters = composeCycleReads(simulationStore.ctx, digest);
+  const reads = composeCycleReads(simulationStore.ctx, digest);
+  simulationStore.cycleChapters = reads;
+  simulationStore.lastCycleDigest = digest;
+  simulationStore.cycleReadsHistory = [...simulationStore.cycleReadsHistory, reads];
+}
+
+/**
+ * PROCEED — advance exactly one cycle, then compose and record its reads. This is the sole
+ * tempo control in the turn-paced model (world-clock.md): the loop computes 8 ticks synchronously
+ * and halts, and the reader moves to the new cycle. Returns the digest for the cycle just read.
+ */
+export function proceed(): CycleDigest {
+  const digest = loop.proceed();
+  simulationStore.ctx = loop.context; // authoritative post-cycle context
+  recordCycleReads(digest);
+  return digest;
+}
+
+/**
+ * Request that the reader focus (scroll to + highlight) `actorId`'s chapter in the current spread.
+ * Called by the roster dock and by a chapter's co-participant initials so "select a character to
+ * read" has one implementation (event-feed.md §"Selecting a character to read").
+ */
+export function focusChapter(actorId: string): void {
+  const seq = (simulationStore.chapterFocus?.seq ?? 0) + 1;
+  simulationStore.chapterFocus = { actorId, seq };
 }
 
 export function setActiveTab(tab: typeof simulationStore.activeTab): void {

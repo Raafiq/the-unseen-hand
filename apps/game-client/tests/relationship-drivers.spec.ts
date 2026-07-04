@@ -5,12 +5,17 @@ import { test, expect } from '@playwright/test';
  * (specs/behaviors/relationship-events.md, specs/screens/character-detail.md).
  *
  * Both surfaces are seeded deterministically via the `?e2e=drivers` store seam:
- *  1. A RELATIONSHIP:KINDNESS feed line renders in the always-visible event feed, tagged "Bonds".
+ *  1. A RELATIONSHIP:KINDNESS feed line renders in the cycle's raw log, tagged "Bonds".
  *  2. The character-detail relationship row shows a warming drift glyph (▲) + most-recent-cause label.
  */
 
-test('a RELATIONSHIP driver line renders in the feed', async ({ page }) => {
+test('a RELATIONSHIP driver line renders in the raw log', async ({ page }) => {
   await page.goto('/?e2e=drivers');
+
+  // The seeded KINDNESS lands in the first cycle window; Proceed computes it, then open that
+  // spread's raw-log drill-down to see the terse chronological line.
+  await page.locator('.proceed-btn').click();
+  await page.locator('.cycle-spread').last().locator('.raw-log-toggle').click();
 
   const row = page.locator('.event-row', { hasText: 'a kindness' });
   await expect(row.first()).toBeVisible({ timeout: 12_000 });

@@ -80,6 +80,21 @@ function cycleEventsFor(ctx: SimulationContext, digest: CycleDigest, actorId: st
     .sort((a, b) => a.tick - b.tick);
 }
 
+/**
+ * The distinct co-participants of `actorId`'s significant cycle events (shared encounters),
+ * excluding the actor. The reader renders these as the chapter's co-participant initials, each a
+ * shortcut that focuses that character's own chapter (event-feed.md §"Character chapter card").
+ * Single-sources the cycle window + significance bar with the chapter composer so the initials and
+ * the prose can never disagree about who shared the cycle.
+ */
+export function chapterCoParticipants(ctx: SimulationContext, digest: CycleDigest, actorId: string): string[] {
+  const others = new Set<string>();
+  for (const event of cycleEventsFor(ctx, digest, actorId)) {
+    for (const id of getInvolvedIds(event)) if (id !== actorId) others.add(id);
+  }
+  return [...others];
+}
+
 // ---------------------------------------------------------------------------
 // Fragment pools (narrative-voice.md grammar conventions: subject + beat + colour)
 // ---------------------------------------------------------------------------

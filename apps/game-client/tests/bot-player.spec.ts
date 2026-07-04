@@ -102,33 +102,29 @@ async function scanPage(page: Page, tab: string): Promise<UiIssue[]> {
 // Bot player test
 // ---------------------------------------------------------------------------
 
-test('bot player: 8s at 20×, scan the shell for UI precision and bad values', async ({ page }) => {
+test('bot player: proceed through cycles, scan the shell for UI precision and bad values', async ({ page }) => {
   await page.goto('/');
-
-  // Start at 20× so we accumulate diverse state quickly
-  await page.locator('.speed-btn', { hasText: '20×' }).click();
 
   const allIssues: UiIssue[] = [];
 
   async function visit(label: string, navigate: () => Promise<void>): Promise<void> {
     await navigate();
-    await page.waitForTimeout(250);
+    await page.waitForTimeout(150);
     const issues = await scanPage(page, label);
     allIssues.push(...issues);
   }
 
-  // Accumulate 3 seconds of ticks before first scan
-  await page.waitForTimeout(3000);
+  // Turn-paced: advance several cycles to accumulate diverse state (mood, spreads, raw-log rows).
+  const proceedBtn = page.locator('.proceed-btn');
+  for (let i = 0; i < 6; i++) await proceedBtn.click();
 
-  // The event feed is always in view — wait for at least one row, then scan.
+  // The reader shows the spread stack — expand every raw log so ledger rows are scanned too.
   await visit('shell', async () => {
-    await page.waitForFunction(
-      () => document.querySelectorAll('.event-row').length >= 1,
-      { timeout: 8_000 },
-    );
+    await expect(page.locator('.cycle-spread').last()).toBeVisible();
+    for (const t of await page.locator('.raw-log-toggle').all()) await t.click();
   });
 
-  // Roster dock is persistent — open a character's detail in the right panel.
+  // Roster dock is persistent — open a character's detail drawer.
   await visit('character-detail', async () => {
     const card = page.locator('.roster-dock .card').first();
     if (await card.count() > 0) await card.click();
@@ -142,8 +138,8 @@ test('bot player: 8s at 20×, scan the shell for UI precision and bad values', a
     });
   }
 
-  // Let state evolve another 4s then re-scan (mood and DI will have shifted)
-  await page.waitForTimeout(4000);
+  // Advance more cycles then re-scan (mood will have shifted).
+  for (let i = 0; i < 4; i++) await proceedBtn.click();
 
   await visit('shell-late', async () => {
     const card = page.locator('.roster-dock .card').first();

@@ -1,32 +1,40 @@
 <script lang="ts">
   import {
     simulationStore,
-    setSpeed,
+    proceed,
+    focusChapter,
     selectAdventurer,
     doDispatch,
-    loop,
   } from './lib/simulationStore.svelte';
   import RosterDock from './lib/components/RosterDock.svelte';
   import EventFeed from './lib/components/EventFeed.svelte';
   import CharacterDetail from './lib/components/CharacterDetail.svelte';
   import NpcDetail from './lib/components/NpcDetail.svelte';
   import ChoiceCard from './lib/components/ChoiceCard.svelte';
-  import { onMount, onDestroy } from 'svelte';
   import { slide } from 'svelte/transition';
   import { FEATURES } from './lib/featureFlags';
-  import { renderThought, type DecisionMoment } from '@ugs/core';
-
-  onMount(() => {
-    loop.start();
-  });
-
-  onDestroy(() => {
-    loop.stop();
-  });
+  import { renderThought, cycleOf, type Cycle, type DecisionMoment } from '@ugs/core';
 
   const ctx = $derived(simulationStore.ctx);
-  const speed = $derived(simulationStore.speed);
   const selectedId = $derived(simulationStore.selectedAdventurerId);
+
+  const CYCLE_LABEL: Record<Cycle, string> = { MORNING: 'Morning', AFTERNOON: 'Afternoon', NIGHT: 'Night' };
+
+  // The date reads as the cycle we're poised on, not a wall-clock hour (app-shell.md §"Top bar").
+  const dateLabel = $derived(`Day ${ctx.worldTime.day} · ${CYCLE_LABEL[ctx.worldTime.cycle]}`);
+
+  // The interim Proceed button (p15d) names where the *next* cycle lands. p15e formalises the
+  // top bar (removes the deprecated speed API entirely and owns the final control styling).
+  const nextLabel = $derived.by(() => {
+    const { day, hour } = ctx.worldTime;
+    const nextHour = hour + 8;
+    if (nextHour >= 24) return `Proceed to Day ${day + 1}`;
+    return `Proceed to ${CYCLE_LABEL[cycleOf(nextHour)]}`;
+  });
+
+  function handleProceed() {
+    proceed();
+  }
 
   const hasPendingMoment = $derived(FEATURES.divineIntervention && ctx.pendingDecisions.length > 0);
   const worldName = $derived(
@@ -56,10 +64,6 @@
     _prevDI = current;
   });
 
-  function handleSpeedClick(s: 1 | 5 | 20 | 'paused') {
-    setSpeed(s);
-  }
-
   // Resolve a decision moment's subjectId (comma-joined actor ids) to named current
   // thoughts (thought-system.md — decision-card surface). Pure on-demand renders;
   // the auto-pause freezes the tick, so the text is stable while the card is up.
@@ -82,9 +86,7 @@
   <!-- Top bar -->
   <header class="topbar">
     <div class="world-name">{worldName}</div>
-    <div class="world-time">
-      Day {ctx.worldTime.day}, {String(ctx.worldTime.hour).padStart(2,'0')}:00
-    </div>
+    <div class="world-time">{dateLabel}</div>
 
     <!-- DI Meter -->
     {#if FEATURES.divineIntervention}
@@ -102,29 +104,8 @@
       </div>
     {/if}
 
-    <!-- Speed controls -->
-    <div class="speed-controls">
-      <button
-        class="speed-btn"
-        class:active={speed === 'paused'}
-        onclick={() => handleSpeedClick('paused')}
-      >⏸</button>
-      <button
-        class="speed-btn"
-        class:active={speed === 1}
-        onclick={() => handleSpeedClick(1)}
-      >1×</button>
-      <button
-        class="speed-btn"
-        class:active={speed === 5}
-        onclick={() => handleSpeedClick(5)}
-      >5×</button>
-      <button
-        class="speed-btn"
-        class:active={speed === 20}
-        onclick={() => handleSpeedClick(20)}
-      >20×</button>
-    </div>
+    <!-- Proceed — the sole tempo control (turn-paced world halts between cycles). -->
+    <button class="proceed-btn" onclick={handleProceed}>{nextLabel} ›</button>
   </header>
 
   <div class="content">
@@ -132,8 +113,10 @@
     <main class="main-panel">
       <EventFeed
         {ctx}
-        daySummaries={simulationStore.daySummaries}
+        cycleReads={simulationStore.cycleReadsHistory}
+        chapterFocus={simulationStore.chapterFocus}
         onSelectAdventurer={(id) => { selectAdventurer(id); }}
+        onFocusChapter={(id) => focusChapter(id)}
       />
     </main>
 
@@ -199,7 +182,7 @@
     <RosterDock
       {ctx}
       selectedId={selectedId}
-      onSelect={(id) => selectAdventurer(id)}
+      onSelect={(id) => { selectAdventurer(id); if (id) focusChapter(id); }}
     />
   </div>
 </div>
@@ -240,13 +223,14 @@
   .di-delta-pos { color: #4caf50; }
   .di-delta-neg { color: #ef5350; }
 
-  .speed-controls { display: flex; gap: 4px; }
-  .speed-btn {
-    padding: 4px 10px; background: #2e2a3a; border: 1px solid #44405a;
-    color: #ccc; cursor: pointer; border-radius: 4px; font-size: 12px;
+  .proceed-btn {
+    margin-left: auto; padding: 7px 18px;
+    background: #5b4fcf; border: 1px solid #7b6fe8; border-radius: 6px;
+    color: #fff; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600;
+    letter-spacing: 0.02em; transition: background 0.15s, transform 0.05s;
   }
-  .speed-btn:hover { background: #3e3a4a; }
-  .speed-btn.active { background: #5b4fcf; border-color: #7b6fe8; color: #fff; }
+  .proceed-btn:hover { background: #6b5fe0; }
+  .proceed-btn:active { transform: translateY(1px); }
 
   /* Layout — feed + right panel above, roster dock pinned below */
   .content { display: flex; flex: 1; overflow: hidden; min-height: 0; }

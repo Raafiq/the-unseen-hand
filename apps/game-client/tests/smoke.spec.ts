@@ -33,23 +33,37 @@ test.describe('App shell', () => {
   });
 });
 
-test('simulation produces events within 5s', async ({ page }) => {
+// The world is turn-paced: it halts between cycles and advances one cycle per Proceed
+// (world-clock.md). Click Proceed n times to compute n cycles.
+async function proceed(page: import('@playwright/test').Page, times = 1): Promise<void> {
+  for (let i = 0; i < times; i++) await page.locator('.proceed-btn').click();
+}
+
+// Open every cycle spread's "Raw log" drill-down so the chronological rows are in the DOM.
+async function openAllRawLogs(page: import('@playwright/test').Page): Promise<void> {
+  const toggles = await page.locator('.raw-log-toggle').all();
+  for (const t of toggles) await t.click();
+}
+
+test('Proceed computes a cycle and renders its spread', async ({ page }) => {
   await page.goto('/');
-  // Run at 20× so events accumulate quickly. The feed is always in view — no tab to open.
-  await page.locator('.speed-btn', { hasText: '20×' }).click();
-  // Wait for at least 3 event rows to appear
-  await page.waitForFunction(
-    () => document.querySelectorAll('.event-row').length >= 3,
-    { timeout: 8_000 },
-  );
-  const count = await page.locator('.event-row').count();
-  expect(count).toBeGreaterThanOrEqual(3);
+  // Before the first Proceed the reader rests on an empty state — no cycle computed yet.
+  await expect(page.locator('.reader-empty')).toBeVisible();
+  await expect(page.locator('.cycle-spread')).toHaveCount(0);
+
+  await proceed(page);
+
+  // The just-computed cycle appears as a spread: header + establishing overview.
+  const spread = page.locator('.cycle-spread').last();
+  await expect(spread).toBeVisible();
+  await expect(spread.locator('.spread-header')).toHaveText('Day 0 · Afternoon');
+  await expect(spread.locator('.cycle-overview')).not.toBeEmpty();
 });
 
-test('hidden-feature event kinds never appear in the feed', async ({ page }) => {
-  // Regression: quest/world/divine events were still surfacing in the feed even
-  // though their features are hidden. The feed (chips + rows) must drop any
-  // kind whose owning feature is off. Labels come from EventFeed's KIND_LABELS.
+test('hidden-feature event kinds never appear in the raw log', async ({ page }) => {
+  // Regression: quest/world/divine events were still surfacing even though their
+  // features are hidden. The raw log (chips + rows) must drop any kind whose owning
+  // feature is off. Labels come from EventFeed's KIND_LABELS.
   const hiddenLabels = [
     ...(FEATURES.quests ? [] : ['Quest', 'Combat']),
     ...(FEATURES.world ? [] : ['World']),
@@ -58,13 +72,9 @@ test('hidden-feature event kinds never appear in the feed', async ({ page }) => 
   test.skip(hiddenLabels.length === 0, 'No features hidden');
 
   await page.goto('/');
-  await page.locator('.speed-btn', { hasText: '20×' }).click();
-
-  // Accumulate a healthy sample of events across many kinds.
-  await page.waitForFunction(
-    () => document.querySelectorAll('.event-row').length >= 5,
-    { timeout: 8_000 },
-  );
+  // A few cycles accumulate a healthy sample across many kinds (world+divine fire early).
+  await proceed(page, 4);
+  await openAllRawLogs(page);
 
   for (const label of hiddenLabels) {
     // No filter chip for a hidden kind.
@@ -78,30 +88,29 @@ test('hidden-feature event kinds never appear in the feed', async ({ page }) => 
   }
 });
 
-test('enabled-feature event kinds do surface in the feed', async ({ page }) => {
-  // Positive counterpart to the hidden-feature test: an enabled autonomous feature
-  // must actually render its events. Regression guard for the QUEST_SUCCESS-buff-with-
-  // no-visible-quest leak — the sim runs quests autonomously, so with the flag on a
-  // Quest event must appear rather than only its buff. Labels come from KIND_LABELS.
+test('enabled-feature event kinds do surface in the raw log', async ({ page }) => {
+  // Positive counterpart: an enabled autonomous feature must actually render its events.
+  // Regression guard for the QUEST_SUCCESS-buff-with-no-visible-quest leak — the sim runs
+  // quests autonomously, so with the flag on a Quest event must appear rather than only its
+  // buff. Quests resolve within the first few cycles for the default seed.
   test.skip(!FEATURES.quests, 'Quests hidden');
 
   await page.goto('/');
-  await page.locator('.speed-btn', { hasText: '20×' }).click();
+  await proceed(page, 4);
+  await openAllRawLogs(page);
 
-  // The quest board is seeded at game start and party selection runs on day ticks,
-  // so a Quest event fires within the first simulated day.
   await expect(
     page.locator('.event-row .type-tag', { hasText: /^Quest$/ }).first(),
-  ).toBeVisible({ timeout: 8_000 });
+  ).toBeVisible();
 });
 
-test('speed control active class changes on click', async ({ page }) => {
+test('Proceed advances the in-game date across cycles', async ({ page }) => {
   await page.goto('/');
-  const btn5x = page.locator('.speed-btn', { hasText: '5×' });
-  await btn5x.click();
-  await expect(btn5x).toHaveClass(/active/);
-  // Previous button (1×) should no longer be active
-  await expect(page.locator('.speed-btn', { hasText: '1×' })).not.toHaveClass(/active/);
+  await expect(page.locator('.world-time')).toHaveText('Day 0 · Afternoon');
+  await proceed(page); // Afternoon → Night
+  await expect(page.locator('.world-time')).toHaveText('Day 0 · Night');
+  await proceed(page); // Night → next day Morning
+  await expect(page.locator('.world-time')).toHaveText('Day 1 · Morning');
 });
 
 test('DI meter bar has non-zero width', async ({ page }) => {

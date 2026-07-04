@@ -10,8 +10,13 @@ import { test, expect } from '@playwright/test';
  *   a full day has passed and the narrator resolves.
  *
  * Narrator fires at hour === 0 && day > 0. At 20× speed day 1 arrives in ~2-3s.
+ *
+ * SKIPPED for p15d: the cycle-reader redesign replaced the per-day `.day-summary` block with the
+ * per-cycle overview (behaviors/cycle-narrative.md). The reader currently renders the deterministic
+ * *template* overview; the LLM overview tier (this async, mocked path) is p15c's scope. Re-enable
+ * and retarget this at the LLM cycle overview when p15c lands.
  */
-test('DaySummaryBlock renders after narrator mock response', async ({ page }) => {
+test.skip('DaySummaryBlock renders after narrator mock response', async ({ page }) => {
   // Inject fake key before any app scripts run
   await page.addInitScript(() => {
     (window as any).__e2eNarratorKey = 'e2e-test-key';

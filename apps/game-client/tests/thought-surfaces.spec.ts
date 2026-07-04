@@ -62,11 +62,11 @@ test('choice card lists the subject name and thought', async ({ page }) => {
   expect(thoughtText).not.toMatch(/\{[a-z]+\}/i);
 });
 
-test('inner voice is stable across two immediate reads while paused', async ({ page }) => {
+test('inner voice is stable across two immediate reads while the world is halted', async ({ page }) => {
   await page.goto('/');
 
-  // Pause the loop so the tick — and therefore the derived stream — is frozen.
-  await page.locator('.speed-btn', { hasText: '⏸' }).click();
+  // The turn-paced world is halted between cycles by default — no Proceed here, so the tick
+  // (and therefore the derived thought stream) is frozen. No pause control needed.
 
   const card = page.locator('.roster-dock .card').first();
   await expect(card).toBeVisible({ timeout: 12_000 });

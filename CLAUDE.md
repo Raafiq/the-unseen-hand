@@ -20,6 +20,9 @@ The **specops** skill carries the full methodology — invoke it (the skill trig
   details each mode.
 - **A spec change ripples to its plans.** After editing a spec, review the plans that
   implement it (`grep -l '<spec-path>' plans/*.md`) and offer to update them.
+- **Lavish design artifacts are tracked here.** `.lavish/*.html` are committed as durable
+  design records (see the existing set). When a Lavish settles a spec/plan decision, commit
+  the artifact alongside the change it justifies.
 
 Query the DAG:
 

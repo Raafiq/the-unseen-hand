@@ -64,6 +64,15 @@ base path: `import img from './x.webp'`, or a build-time manifest via
 (see `src/lib/portraits.ts`). Assets live under `src/lib/assets/`, not `public/`, so
 the module graph owns their URLs and hashes them for cache-busting.
 
+**Adding a portrait has a test consequence.** `portraits.ts` auto-globs every
+`assets/portraits/**/*.webp`, so dropping in a new `npcs/<slug>.webp` (or
+`adventurers/<slug>.webp`) silently flips that character from circle-fallback to
+image — and `tests/character-portraits.spec.ts` hand-enumerates who has art vs. who
+falls back. Adding art for a character the spec used as its *no-art* example breaks
+it. When you add a portrait: retarget the spec's fallback assertion to a still-art-less
+notable NPC, and re-run `test:e2e` (the glob means nothing at the asset site flags the
+coupling).
+
 ### UI display rule — enum labels use typed Records, not string replace
 
 When an enum value needs a human-readable label in the UI, define a

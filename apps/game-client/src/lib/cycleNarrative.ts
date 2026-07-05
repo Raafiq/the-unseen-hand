@@ -72,11 +72,25 @@ export function isSignificantForChapter(event: SimulationEvent, actorId: string)
 
 /** The significant events for `actorId` within the digest's cycle window, chronological.
  *  Window is `(fromTick, toTick]`: a PROCEED advances then emits, so a cycle's events carry
- *  ticks `fromTick+1 .. toTick`; `fromTick` itself belongs to the prior cycle's boundary. */
-function cycleEventsFor(ctx: SimulationContext, digest: CycleDigest, actorId: string): SimulationEvent[] {
+ *  ticks `fromTick+1 .. toTick`; `fromTick` itself belongs to the prior cycle's boundary.
+ *
+ *  Exported so the LLM tier (cycleNarrator.ts) narrates *exactly* the events a chapter is
+ *  composed from — the prompt and the template passage can never disagree about the cycle. */
+export function chapterEvents(ctx: SimulationContext, digest: CycleDigest, actorId: string): SimulationEvent[] {
   return ctx.eventLog
     .filter(e => e.tick > digest.fromTick && e.tick <= digest.toTick)
     .filter(e => isSignificantForChapter(e, actorId))
+    .sort((a, b) => a.tick - b.tick);
+}
+
+/** Every non-hidden event in the cycle window, chronological — the guild-level substrate the
+ *  LLM cycle overview establishes (cycle-narrative.md §"cycle overview"). Mirrors the raw log's
+ *  visibility gate so the overview never frames a kind the feed hides. */
+export function cycleOverviewEvents(ctx: SimulationContext, digest: CycleDigest): SimulationEvent[] {
+  const hidden = hiddenEventKinds();
+  return ctx.eventLog
+    .filter(e => e.tick > digest.fromTick && e.tick <= digest.toTick)
+    .filter(e => !hidden.has(e.kind))
     .sort((a, b) => a.tick - b.tick);
 }
 
@@ -89,7 +103,7 @@ function cycleEventsFor(ctx: SimulationContext, digest: CycleDigest, actorId: st
  */
 export function chapterCoParticipants(ctx: SimulationContext, digest: CycleDigest, actorId: string): string[] {
   const others = new Set<string>();
-  for (const event of cycleEventsFor(ctx, digest, actorId)) {
+  for (const event of chapterEvents(ctx, digest, actorId)) {
     for (const id of getInvolvedIds(event)) if (id !== actorId) others.add(id);
   }
   return [...others];
@@ -246,7 +260,7 @@ export function composeChapter(
 ): CycleChapter | null {
   const adv = ctx.adventurers.get(actorId);
   if (!adv) return null;
-  const events = cycleEventsFor(ctx, digest, actorId);
+  const events = chapterEvents(ctx, digest, actorId);
   if (events.length === 0) return null;
 
   // Derived read-only stream — never ctx.rng (thoughtGrammar.ts:476 pattern). Keyed on

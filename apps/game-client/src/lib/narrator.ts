@@ -1,32 +1,37 @@
 /**
- * Client-side narrator — calls Claude API to produce a day-summary paragraph.
- * Returns null if no API key is set, if the call errors, or if it times out.
- * Never throws; never blocks the simulation tick loop.
+ * Client-side narrator — the low-level Claude client for the LLM set-pieces.
+ * Every call returns null if no API key is set, if the call errors, or if it times out;
+ * it never throws and never blocks the turn. The per-cycle overview + chapter set-pieces
+ * (cycleNarrator.ts) are the only callers.
  *
- * Spec: specs/behaviors/llm-narrator.md
+ * Spec: specs/behaviors/llm-narrator.md, specs/behaviors/cycle-narrative.md (LLM tier)
  */
-import { getDayEvents, buildNarratorPrompt } from '@ugs/core';
-import type { SimulationContext } from '@ugs/core';
-import { hiddenEventKinds } from './featureFlags.js';
+import type { NarratorPrompt } from '@ugs/core';
 
 const TIMEOUT_MS = 10_000;
 const MODEL = 'claude-haiku-4-5-20251001';
 const MAX_TOKENS = 200;
 
-export async function fetchDaySummary(
-  day: number,
-  ctx: SimulationContext,
-): Promise<string | null> {
-  const apiKey = ((import.meta as any).env?.VITE_CLAUDE_API_KEY as string | undefined)
+/**
+ * Resolve the Claude API key: the Vite build-time env var, or an e2e-injected window key
+ * (import.meta.env.VITE_CLAUDE_API_KEY is undefined in the built output, so the window
+ * fallback is what the narrator e2e mocks against).
+ */
+export function resolveNarratorApiKey(): string | undefined {
+  return ((import.meta as any).env?.VITE_CLAUDE_API_KEY as string | undefined)
     || (typeof window !== 'undefined' ? (window as any).__e2eNarratorKey as string | undefined : undefined);
-  if (!apiKey) return null;
+}
 
-  // Keep the summary prose on-topic: drop event kinds for hidden features so the
-  // narrator doesn't recap quests/divine acts/world events the player can't see.
-  const hidden = hiddenEventKinds();
-  const events = getDayEvents(ctx.eventLog, day).filter(e => !hidden.has(e.kind));
-  const { systemPrompt, userPrompt } = buildNarratorPrompt(day, events, ctx);
-
+/**
+ * Fire one narrator set-piece prompt at the Claude API. Returns the prose on success, or null
+ * on API error / >10s timeout / malformed response — degraded mode is silent, the caller keeps
+ * its template passage. Never throws.
+ */
+export async function callNarrator(
+  prompt: NarratorPrompt,
+  apiKey: string,
+  maxTokens: number = MAX_TOKENS,
+): Promise<string | null> {
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -38,9 +43,9 @@ export async function fetchDaySummary(
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: MAX_TOKENS,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
+        max_tokens: maxTokens,
+        system: prompt.systemPrompt,
+        messages: [{ role: 'user', content: prompt.userPrompt }],
       }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -54,7 +59,7 @@ export async function fetchDaySummary(
     const text = data.content?.find(c => c.type === 'text')?.text?.trim();
     return text ?? null;
   } catch (err) {
-    if ((err as Error).name !== 'AbortError') {
+    if ((err as Error).name !== 'AbortError' && (err as Error).name !== 'TimeoutError') {
       console.warn('[narrator] fetch error:', err);
     }
     return null;

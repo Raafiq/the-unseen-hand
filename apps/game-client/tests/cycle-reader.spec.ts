@@ -42,14 +42,14 @@ test('a Proceed renders the cycle spread: header, overview, and a chapter per ev
 
 test('a cycle with no meaningful events for a character shows no chapter card (no placeholder)', async ({ page }) => {
   await page.goto('/');
-  await proceed(page, 2); // cycle 2 = Day 0 · Night: nothing meaningful for Reiko
+  await proceed(page, 4); // Day 1 · Afternoon is the first cycle with nothing meaningful for Reiko
 
-  const night = page.locator('.cycle-spread').last();
-  await expect(night.locator('.spread-header')).toHaveText('Day 0 · Night');
+  const quiet = page.locator('.cycle-spread').last();
+  await expect(quiet.locator('.spread-header')).toHaveText('Day 1 · Afternoon');
   // Overview still frames the cycle, but there is no chapter card — a quiet marker, not a filler chapter.
-  await expect(night.locator('.cycle-overview')).toBeVisible();
-  await expect(night.locator('.chapter-card')).toHaveCount(0);
-  await expect(night.locator('.spread-quiet')).toBeVisible();
+  await expect(quiet.locator('.cycle-overview')).toBeVisible();
+  await expect(quiet.locator('.chapter-card')).toHaveCount(0);
+  await expect(quiet.locator('.spread-quiet')).toBeVisible();
 });
 
 test('Raw log toggle reveals chronological rows; kind filters narrow them; All resets', async ({ page }) => {

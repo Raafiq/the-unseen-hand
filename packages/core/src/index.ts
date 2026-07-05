@@ -6,7 +6,6 @@ export { createSimulationContext } from './world/SimulationContext.js';
 export type { SimulationContext } from './world/SimulationContext.js';
 export { isNpc, makeNpcId, NPC_ID_PREFIX } from './world/actors.js';
 export { WorldClock } from './world/WorldClock.js';
-export type { SpeedMultiplier } from './world/WorldClock.js';
 export { cycleOf } from './world/WorldTime.js';
 export { SimulationLoop } from './world/SimulationLoop.js';
 export type { TickSubscriber } from './world/SimulationLoop.js';
@@ -62,7 +61,12 @@ export {
 export { emitEvent } from './events/eventBus.js';
 
 // LLM Narrator (pure helpers; no I/O)
-export { getDayEvents, buildNarratorPrompt } from './events/LLMNarrator.js';
+export {
+  getDayEvents,
+  buildNarratorPrompt,
+  buildCycleOverviewPrompt,
+  buildCycleChapterPrompt,
+} from './events/LLMNarrator.js';
 export type { NarratorPrompt } from './events/LLMNarrator.js';
 
 // Social events + departure

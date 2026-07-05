@@ -15,9 +15,9 @@ import {
   type SimulationEvent,
   type CycleDigest,
 } from '@ugs/core';
-import { fetchDaySummary } from './narrator.js';
 import { composeCycleReads, type CycleReads } from './cycleNarrative.js';
-import { FEATURES, hiddenEventKinds } from './featureFlags.js';
+import { enrichCycleReads, patchCycleReads } from './cycleNarrator.js';
+import { hiddenEventKinds } from './featureFlags.js';
 
 // Import to trigger registration
 import '@ugs/core';
@@ -100,12 +100,9 @@ export const loop = new SimulationLoop(initialCtx);
 
 export const simulationStore = $state({
   ctx: initialCtx as SimulationContext,
-  speed: 1 as 1 | 5 | 20 | 'paused',
-  speedBeforePause: 1 as 1 | 5 | 20, // speed to restore after decision pause
   selectedAdventurerId: null as string | null,
   activeTab: 'roster' as 'roster' | 'quests' | 'world' | 'events',
   eventsLastReadTick: -1, // tick when Events tab was last opened; drives unread badge
-  daySummaries: new Map<number, string>(), // day → narrator prose; populated async
   // The per-character reads (overview + chapters) for the most recently computed cycle.
   // Populated by recordCycleReads() after a PROCEED; the reader UI (p15d) consumes it.
   // null until the first cycle is composed. Template tier now; p15c enriches with LLM prose.
@@ -123,33 +120,12 @@ export const simulationStore = $state({
   chapterFocus: null as { actorId: string; seq: number } | null,
 });
 
-// Register a render observer at the end of the subscriber chain.
-// Also fires the async narrator when a new day begins (hour === 0, day > 0).
-let lastNarratorDay = -1;
+// Register a render observer at the end of the subscriber chain. The world is turn-paced
+// (world-clock.md): it only advances inside a synchronous `proceed()`, so decision moments that
+// arise during a cycle are naturally first seen at the boundary when this fires — no auto-pause
+// is needed or possible (there is no running clock to pause).
 loop.register((ctx) => {
-  const prevPendingCount = simulationStore.ctx.pendingDecisions.length;
   simulationStore.ctx = ctx;
-
-  // Auto-pause when a new decision moment appears so the player can act on it.
-  // Skipped when Divine Intervention is hidden — the ChoiceCard never renders,
-  // so pausing here would freeze the loop with no way to resume.
-  if (FEATURES.divineIntervention && ctx.pendingDecisions.length > prevPendingCount && simulationStore.speed !== 'paused') {
-    simulationStore.speedBeforePause = simulationStore.speed;
-    setSpeed('paused');
-  }
-
-  const { day, hour } = ctx.worldTime;
-  if (hour === 0 && day > 0 && day !== lastNarratorDay) {
-    lastNarratorDay = day;
-    const prevDay = day - 1;
-    fetchDaySummary(prevDay, ctx).then(text => {
-      if (text) {
-        // Replace map to trigger Svelte reactivity
-        simulationStore.daySummaries = new Map(simulationStore.daySummaries).set(prevDay, text);
-      }
-    });
-  }
-
   return ctx;
 });
 
@@ -162,23 +138,9 @@ export function doDispatch(cmd: DispatchCommand): boolean {
   if (result.ok) {
     simulationStore.ctx = result.ctx;
     loop.setContext(result.ctx);
-    // Resume the loop when the last pending decision is resolved
-    if (cmd.type === 'CHOOSE_OPTION' && result.ctx.pendingDecisions.length === 0 && simulationStore.speed === 'paused') {
-      setSpeed(simulationStore.speedBeforePause);
-    }
     return true;
   }
   return false;
-}
-
-export function setSpeed(speed: 1 | 5 | 20 | 'paused'): void {
-  simulationStore.speed = speed;
-  if (speed === 'paused') {
-    loop.pause();
-  } else {
-    loop.setSpeed(speed);
-    loop.resume();
-  }
 }
 
 export function selectAdventurer(id: string | null): void {
@@ -200,14 +162,41 @@ export function recordCycleReads(digest: CycleDigest): void {
 }
 
 /**
+ * Replace-on-arrival: patch the cycle at `fromTick` with an LLM-resolved passage, reassigning
+ * the history/current-reads so Svelte re-renders the swapped prose in place (cycleNarrator.ts
+ * keeps the spread + chapter keys stable, so no reflow). Additive — the template passage stands
+ * until (and whenever) the LLM is absent or errors.
+ */
+function applyCycleEnrichment(fromTick: number, patch: { overview?: string; chapter?: { actorId: string; text: string } }): void {
+  simulationStore.cycleReadsHistory = patchCycleReads(simulationStore.cycleReadsHistory, fromTick, patch);
+  if (simulationStore.cycleChapters?.digest.fromTick === fromTick) {
+    // Keep the "current cycle" pointer in sync with its enriched entry in history.
+    simulationStore.cycleChapters =
+      simulationStore.cycleReadsHistory.find(r => r.digest.fromTick === fromTick) ?? simulationStore.cycleChapters;
+  }
+}
+
+/**
  * PROCEED — advance exactly one cycle, then compose and record its reads. This is the sole
  * tempo control in the turn-paced model (world-clock.md): the loop computes 8 ticks synchronously
  * and halts, and the reader moves to the new cycle. Returns the digest for the cycle just read.
+ *
+ * After recording the deterministic template reads, it fires the bounded LLM set-piece
+ * (cycleNarrator.ts) — fire-and-forget, never awaited, so it never blocks the turn; each resolved
+ * passage swaps into the reader as it arrives, and a missing key / error leaves the template.
  */
 export function proceed(): CycleDigest {
   const digest = loop.proceed();
   simulationStore.ctx = loop.context; // authoritative post-cycle context
   recordCycleReads(digest);
+
+  const reads = simulationStore.cycleChapters;
+  if (reads) {
+    void enrichCycleReads(reads, simulationStore.ctx, {
+      onOverview: (fromTick, text) => applyCycleEnrichment(fromTick, { overview: text }),
+      onChapter: (fromTick, actorId, text) => applyCycleEnrichment(fromTick, { chapter: { actorId, text } }),
+    });
+  }
   return digest;
 }
 

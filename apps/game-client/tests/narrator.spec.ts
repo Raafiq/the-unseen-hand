@@ -1,46 +1,46 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Verifies the narrator path end-to-end:
- * - page.addInitScript injects a fake key into window.__e2eNarratorKey so the
- *   narrator's apiKey guard passes (import.meta.env.VITE_CLAUDE_API_KEY is
- *   undefined in the built output; the fallback survives Vite compilation).
- * - page.route intercepts the Anthropic API fetch and returns mocked prose.
- * - DaySummaryBlock (.day-summary) appears in the always-visible event feed once
- *   a full day has passed and the narrator resolves.
- *
- * Narrator fires at hour === 0 && day > 0. At 20× speed day 1 arrives in ~2-3s.
- *
- * SKIPPED for p15d: the cycle-reader redesign replaced the per-day `.day-summary` block with the
- * per-cycle overview (behaviors/cycle-narrative.md). The reader currently renders the deterministic
- * *template* overview; the LLM overview tier (this async, mocked path) is p15c's scope. Re-enable
- * and retarget this at the LLM cycle overview when p15c lands.
+ * Verifies the LLM cycle set-piece end-to-end (specs/behaviors/cycle-narrative.md §"LLM tier",
+ * specs/behaviors/llm-narrator.md — retargeted from the former per-day summary in p15c):
+ * - page.addInitScript injects a fake key into window.__e2eNarratorKey so the narrator's apiKey
+ *   guard passes (import.meta.env.VITE_CLAUDE_API_KEY is undefined in the built output; the
+ *   window fallback survives Vite compilation).
+ * - page.route intercepts the Anthropic API fetch and returns mocked prose, distinguishing the
+ *   cycle-overview prompt from a per-character chapter prompt by the prompt body.
+ * - A single Proceed composes the cycle; the deterministic *template* overview + chapter render
+ *   immediately, then the mocked LLM passages replace them in place (replace-on-arrival) at the
+ *   same `.cycle-overview` / `.chapter-prose` surfaces — keys stable, no reflow.
  */
-test.skip('DaySummaryBlock renders after narrator mock response', async ({ page }) => {
-  // Inject fake key before any app scripts run
+
+const OVERVIEW_PROSE = 'Fate\'s ledger marks a hollow reckoning over Thornvale.';
+const CHAPTER_PROSE = 'She carries the weight of the hour like a stone she cannot set down.';
+
+test('the LLM cycle overview and chapter replace the template passages after a Proceed', async ({ page }) => {
   await page.addInitScript(() => {
     (window as any).__e2eNarratorKey = 'e2e-test-key';
   });
 
-  // Intercept the Anthropic API call and return mock prose
+  // Return the overview prose for the overview prompt (asks to "establish" the guild's cycle) and
+  // the chapter prose for a per-character prompt (asks to tell "this one character's story").
   await page.route('https://api.anthropic.com/**', async route => {
+    const body = route.request().postDataJSON() as { system?: string };
+    const isChapter = /story of the cycle/i.test(body?.system ?? '');
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({
-        content: [{ type: 'text', text: 'The guild stirred as dawn broke over Thornvale.' }],
-      }),
+      body: JSON.stringify({ content: [{ type: 'text', text: isChapter ? CHAPTER_PROSE : OVERVIEW_PROSE }] }),
     });
   });
 
   await page.goto('/');
 
-  // Speed up so day 1 arrives quickly. The event feed is always in view — no tab to open.
-  await page.locator('.speed-btn', { hasText: '20×' }).click();
+  // Advance one cycle (Day 0 · Afternoon) — Reiko gets a chapter, so overview + chapter both fire.
+  await page.locator('.proceed-btn').click();
 
-  // DaySummaryBlock must appear once the narrator resolves
-  await expect(page.locator('.day-summary')).toBeVisible({ timeout: 12_000 });
-
-  // Prose must contain the mocked text
-  await expect(page.locator('.summary-prose')).toContainText('guild');
+  const spread = page.locator('.cycle-spread').last();
+  // The LLM overview replaces the template overview in place.
+  await expect(spread.locator('.cycle-overview')).toContainText('reckoning', { timeout: 12_000 });
+  // The LLM chapter replaces the template chapter prose in place.
+  await expect(spread.locator('.chapter-card .chapter-prose')).toContainText('stone she cannot set down', { timeout: 12_000 });
 });

@@ -68,14 +68,14 @@ pnpm build                                     # both packages green (Pixi chunk
   or pause control".
 - Core deprecated-API tests removed (`world-clock.test.ts`, `simulation-loop.test.ts`).
 
-## Open questions raised with the user (unanswered — pick up here)
+## Open questions (all resolved this session)
 
-1. **Top-bar clock vs. spread wording.** Clock shows the cycle *poised on* (`ctx.worldTime.cycle`, e.g.
-   "Day 0 · Night") via `App.svelte` `dateLabel`; the newest spread header shows the cycle *just read*
-   ("Day 0 · Afternoon"). Kept as-is: `app-shell.md:25` formula is `Day {worldTime.day} · {cycle}` AND
-   the clock must visibly advance each PROCEED ("just read" wouldn't on the mid-cycle start). But that
-   spec line also glosses it "the cycle just read" — mild self-contradiction. **User may want it
-   reconciled** (offer a Lavish for the fork) or a one-line `app-shell.md` clarification.
+1. **Top-bar clock vs. spread wording — RESOLVED (Option B).** The clock shows the cycle *poised on*
+   (`ctx.worldTime.cycle`) while the newest spread header shows the cycle *just read* (`digest.cycle`),
+   one behind. Settled with the user via a Lavish review (`.lavish/clock-wording-fork.html`): **keep the
+   code** (the clock is a clock - it says where the world *is* and must advance each PROCEED) and
+   **reword the spec** (`specs/screens/app-shell.md:25`) to describe the date as the cycle poised on,
+   explicitly one ahead of the spread. No code change. p15e's plan follow-up marked RESOLVED.
 2. **HANDOFF refresh** — this doc (done).
 
 ## Gotchas & dead ends

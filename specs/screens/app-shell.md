@@ -22,7 +22,7 @@ From `simulationStore`:
 
 Fixed at top. Contains:
 - **World name**: scenario title if `scenario !== null`, else "Sandbox" in italic.
-- **In-game date**: formatted as "Day {worldTime.day} · {Morning|Afternoon|Night}" — e.g. "Day 12 · Afternoon". The cycle just read, not a wall-clock hour.
+- **In-game date**: formatted as "Day {worldTime.day} · {Morning|Afternoon|Night}" - e.g. "Day 12 · Afternoon". This is the cycle the world is *poised on* (`worldTime.cycle`), the one the next **Proceed** will read - not a wall-clock hour. It deliberately reads one cycle ahead of the newest spread header (which names the cycle *just read*, `digest.cycle`): the clock says where the world **is**, so it advances on every Proceed, while the spread names the page you are on.
 - **DI meter** (see `components/DIMetrComponent`): prominent bar showing current / 100. Includes recent deltas (see `screens/app-shell.md#di-meter`).
 - **Proceed control**: a single prominent **Proceed** button that dispatches `PROCEED`, computing the next cycle and advancing the reader to it (`behaviors/world-clock.md`, `screens/event-feed.md`). Its label names where you are headed — "Proceed to Afternoon", "Proceed to Night", "Proceed to Day {n+1}". There are no speed multipliers and no pause control — the world is always halted between cycles by design, so "paused" is not a state to enter or indicate.
 

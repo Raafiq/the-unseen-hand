@@ -20,8 +20,8 @@ issues: []
 - **Top bar rewrite**: replace Pause / 1× / 5× / 20× with one prominent **Proceed** button that
   dispatches `PROCEED` and advances the reader to the new cycle; label names the destination
   ("Proceed to Afternoon", "Proceed to Night", "Proceed to Day {n+1}").
-- **Clock display**: "Day {day} · {Morning|Afternoon|Night}" (the cycle just read), replacing the
-  "Day 12, 14:00" hour format.
+- **Clock display**: "Day {day} · {Morning|Afternoon|Night}" (the cycle the world is *poised on*,
+  `worldTime.cycle`), replacing the "Day 12, 14:00" hour format.
 - **Remove the retired speed API + store wiring**: delete `setSpeed/pause/resume/currentSpeed`
   (deprecated in P15a) and the speed store field; **delete the auto-pause / speed-restore logic**
   and update the obsolete guardrail in `apps/game-client/CLAUDE.md` (auto-pause speed restore) so it
@@ -128,12 +128,13 @@ confirms a clean top bar (single Proceed button, no speed row, no layout gap).
   e2e assertions are flag-skipped. They will run when DI re-enables; until then the boundary-surfacing
   and non-gating behavior is covered only by code review + the injected `?e2e=decision` seam. Flagged
   as a plan risk and confirmed to still be the known flag-gated situation, not a regression.
-- **Top-bar clock vs. spread header wording.** The clock shows `worldTime.cycle` (the cycle the world
-  is *poised on* — e.g. "Day 0 · Night") while the newest spread header shows the cycle *just read*
-  ("Day 0 · Afternoon"). This follows `app-shell.md §"Top bar"`'s explicit `Day {worldTime.day} ·
-  {cycle}` formula, but that line also glosses it as "the cycle just read", which reads as a mild
-  self-contradiction. Left as-is (formula is authoritative and the clock must visibly advance each
-  `PROCEED`, which "just read" would not on the mid-cycle start); worth a one-line spec clarification.
+- **Top-bar clock vs. spread header wording. [RESOLVED 2026-07-05]** The clock shows `worldTime.cycle`
+  (the cycle the world is *poised on* - e.g. "Day 0 · Night") while the newest spread header shows the
+  cycle *just read* ("Day 0 · Afternoon"). `app-shell.md §"Top bar"`'s `Day {worldTime.day} · {cycle}`
+  formula was authoritative, but its gloss "the cycle just read" contradicted it. Settled via a Lavish
+  review (`.lavish/clock-wording-fork.html`) as **Option B**: keep the code (the clock is a clock - it
+  says where the world *is* and must advance each `PROCEED`), and reword `app-shell.md:25` to describe
+  it as the cycle poised on, explicitly one ahead of the spread header. No code change.
 - **`WorldClock` is now used only by its own test.** `SimulationLoop` advances time itself, so
   `WorldClock` is a retained primitive (`step`/`onTick`/`worldTime`) exercised only by
   `world-clock.test.ts`. Kept because `world-clock.md` lists it as a module; a future cleanup could

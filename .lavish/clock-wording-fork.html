@@ -1,0 +1,408 @@
+<style>
+  * , *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0f12; --panel: #15131c; --panel-2: #131218; --topbar: #1a1820;
+    --border: #2e2a3a; --border-soft: #2a2634;
+    --ink: #e0d8cc; --muted: #888; --purple: #c9b8ff; --purple-mid: #7b6fe8;
+    --purple-fill: #5b4fcf; --spread: #8a7fb0; --overview: #c3bcd6;
+    --green: #4caf50; --amber: #ff9800; --red: #ef5350;
+    --good: #6ec07a; --bad: #e0685f; --warn: #d9a441;
+  }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 14px; line-height: 1.55;
+    padding: 32px 20px 80px;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; }
+
+  .doc-head { margin-bottom: 8px; }
+  .eyebrow {
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--purple-mid); font-variant: small-caps; margin-bottom: 6px;
+  }
+  h1 { font-size: 27px; font-weight: 700; color: var(--purple); line-height: 1.2; letter-spacing: 0.01em; }
+  .sub { color: var(--muted); font-size: 14.5px; margin-top: 10px; max-width: 760px; }
+  .sub b { color: var(--ink); font-weight: 700; }
+
+  section { margin-top: 40px; }
+  .sec-label {
+    font-size: 12px; font-variant: small-caps; letter-spacing: 0.14em;
+    color: var(--spread); border-bottom: 1px solid var(--border-soft);
+    padding-bottom: 8px; margin-bottom: 18px; display: flex; align-items: baseline; gap: 10px;
+  }
+  .sec-label .n {
+    font-family: 'Georgia', serif; font-size: 12px; color: var(--purple-mid);
+    border: 1px solid var(--border); border-radius: 50%;
+    width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  p.lead { color: #b7afc4; margin-bottom: 14px; max-width: 820px; }
+  p.lead b { color: var(--ink); }
+  .k { color: var(--purple); font-family: 'Georgia', serif; font-style: italic; }
+  code { font-family: 'SF Mono', 'Consolas', monospace; font-size: 12.5px; color: #d3c8e6; background: #1d1a27; padding: 1px 5px; border-radius: 4px; }
+
+  /* three-reference callout */
+  .refs { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+  .ref {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 15px 16px; min-width: 0; position: relative;
+  }
+  .ref-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+  .ref h4 { font-size: 13px; color: var(--ink); min-width: 0; }
+  .ref .src { font-size: 11px; color: var(--muted); font-family: monospace; word-break: break-word; }
+  .ref .desc { font-size: 12.5px; color: #a99fbf; margin-top: 9px; }
+  .ref .pos {
+    font-size: 10px; font-variant: small-caps; flex-shrink: 0;
+    padding: 2px 8px; border-radius: 10px; white-space: nowrap;
+  }
+  .pos.behind { background: #2a1f14; color: var(--warn); border: 1px solid #4a3820; }
+  .pos.here   { background: #1a2440; color: #7fa8e8; border: 1px solid #2e4270; }
+  .pos.ahead  { background: #14231a; color: var(--good); border: 1px solid #26402e; }
+  .axis {
+    margin: 16px 0 4px; display: flex; align-items: center; gap: 12px;
+    font-size: 12px; color: var(--muted); font-variant: small-caps; letter-spacing: 0.06em;
+  }
+  .axis .line { flex: 1; height: 1px; background: linear-gradient(90deg, var(--warn), var(--purple-mid), var(--good)); opacity: 0.6; }
+
+  /* shell mock */
+  .mock-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 20px; }
+  @media (max-width: 900px) { .mock-grid { grid-template-columns: minmax(0,1fr); } }
+  @media (max-width: 720px) { .refs { grid-template-columns: minmax(0,1fr); } }
+  .mock {
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    background: var(--bg); min-width: 0;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+  }
+  .mock.rec { border-color: var(--purple-mid); box-shadow: 0 0 0 1px var(--purple-mid), 0 8px 30px rgba(0,0,0,0.4); }
+  .mock-tag {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 9px 14px; font-size: 12px; font-variant: small-caps; letter-spacing: 0.08em;
+    background: #17141f; border-bottom: 1px solid var(--border);
+  }
+  .mock-tag .opt { color: var(--purple); font-weight: 700; }
+  .mock-tag .badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; letter-spacing: 0.05em; }
+  .badge.cur { background: #201d2c; color: #b7abe0; border: 1px solid #3a3550; }
+  .badge.recb { background: #1f2a1a; color: var(--good); border: 1px solid #2e4a26; }
+
+  /* faux top bar */
+  .topbar {
+    display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap;
+    padding: 8px 14px; background: var(--topbar); border-bottom: 1px solid var(--border);
+  }
+  .tb-name { font-weight: bold; font-size: 13px; color: var(--purple); flex-shrink: 0; }
+  .tb-time { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .tb-time.match { color: var(--good); }
+  .tb-time.mismatch { color: var(--warn); }
+  .tb-di { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; min-width: 24px; }
+  .tb-di > i { display: block; height: 100%; width: 62%; background: var(--green); }
+  .tb-btn {
+    padding: 6px 12px; background: var(--purple-fill); border: 1px solid var(--purple-mid);
+    border-radius: 6px; color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; flex-shrink: 0;
+  }
+  /* faux spread */
+  .spread { padding: 16px 16px 18px; }
+  .spread-header {
+    font-size: 12px; font-variant: small-caps; letter-spacing: 0.1em;
+    color: var(--spread); padding-bottom: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-soft);
+  }
+  .overview {
+    background: #171521; border-left: 3px solid var(--purple-mid);
+    padding: 10px 12px; border-radius: 0 6px 6px 0;
+    font-size: 12.5px; line-height: 1.55; color: var(--overview); font-style: italic;
+  }
+  .mock-note { font-size: 11.5px; color: var(--muted); padding: 0 14px 12px; }
+  .mock-note b.m { color: var(--warn); font-weight: 700; }
+  .mock-note b.g { color: var(--good); font-weight: 700; }
+
+  /* progression table */
+  .tbl-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 13px; }
+  thead th {
+    text-align: left; padding: 10px 14px; background: #17141f; color: var(--spread);
+    font-variant: small-caps; letter-spacing: 0.06em; font-weight: 400; border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody td { padding: 9px 14px; border-bottom: 1px solid #201d28; color: #b7afc4; vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  td.state { color: var(--muted); font-style: italic; white-space: nowrap; }
+  td .cyc { color: var(--ink); }
+  .col-a { background: rgba(78,175,80,0.05); }
+  .col-b { background: rgba(123,111,232,0.06); }
+  th.col-a { color: var(--good); } th.col-b { color: var(--purple); }
+  .diff { color: var(--warn); font-weight: 700; }
+
+  /* option cards */
+  .opts { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
+  @media (max-width: 820px) { .opts { grid-template-columns: minmax(0,1fr); } }
+  .opt-card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 17px; min-width: 0; display: flex; flex-direction: column; gap: 0;
+  }
+  .opt-card.rec { border-color: var(--purple-mid); box-shadow: 0 0 0 1px rgba(123,111,232,0.5); }
+  .opt-card .oc-head { display: flex; align-items: center; gap: 9px; margin-bottom: 4px; }
+  .opt-card .letter {
+    width: 26px; height: 26px; border-radius: 6px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; background: #201d2c; color: var(--purple); border: 1px solid var(--border);
+  }
+  .opt-card.rec .letter { background: var(--purple-fill); color: #fff; border-color: var(--purple-mid); }
+  .opt-card h3 { font-size: 15px; color: var(--ink); }
+  .opt-card .tagline { font-size: 12.5px; color: #a99fbf; margin: 8px 0 14px; }
+  .opt-row { display: flex; gap: 8px; font-size: 12.5px; margin-top: 10px; }
+  .opt-row .lab {
+    flex-shrink: 0; width: 54px; font-variant: small-caps; letter-spacing: 0.04em; font-size: 11px;
+    padding-top: 1px;
+  }
+  .lab.change { color: #7fa8e8; } .lab.cost { color: var(--warn); }
+  .opt-row .val { color: #b7afc4; min-width: 0; }
+  .opt-row .val code { font-size: 11.5px; }
+  .rec-flag {
+    margin-top: 15px; font-size: 11px; font-variant: small-caps; letter-spacing: 0.06em;
+    color: var(--good); display: flex; align-items: center; gap: 6px;
+  }
+  .rec-flag::before { content: '★'; }
+
+  /* recommendation */
+  .rec-box {
+    background: linear-gradient(180deg, #191527, #15131c); border: 1px solid var(--purple-mid);
+    border-radius: 10px; padding: 20px 22px;
+  }
+  .rec-box h3 { color: var(--purple); font-size: 16px; margin-bottom: 10px; }
+  .rec-box p { color: #c3bcd6; font-size: 13.5px; max-width: 840px; }
+  .rec-box p + p { margin-top: 10px; }
+
+  /* decision form */
+  .decide { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 22px; }
+  .decide h3 { font-size: 16px; color: var(--ink); margin-bottom: 6px; }
+  .decide .hint { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; }
+  .choice { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  label.pick {
+    display: flex; gap: 12px; align-items: flex-start; cursor: pointer;
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 13px 15px; transition: border-color 0.15s, background 0.15s;
+  }
+  label.pick:hover { border-color: var(--purple-mid); }
+  label.pick input { margin-top: 3px; accent-color: var(--purple-fill); width: 15px; height: 15px; flex-shrink: 0; }
+  label.pick .pt { min-width: 0; }
+  label.pick .pt b { color: var(--ink); font-size: 13.5px; }
+  label.pick .pt b .mini { color: var(--good); font-variant: small-caps; font-size: 11px; letter-spacing: 0.05em; margin-left: 6px; }
+  label.pick .pt span { display: block; color: #a99fbf; font-size: 12px; margin-top: 3px; }
+  textarea {
+    width: 100%; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--ink); font-family: inherit; font-size: 13px; padding: 11px 13px; resize: vertical; min-height: 64px;
+    margin-bottom: 16px;
+  }
+  textarea:focus { outline: none; border-color: var(--purple-mid); }
+  button.submit {
+    padding: 11px 22px; background: var(--purple-fill); border: 1px solid var(--purple-mid);
+    border-radius: 7px; color: #fff; font-family: inherit; font-size: 13.5px; font-weight: 700;
+    letter-spacing: 0.02em; cursor: pointer; transition: background 0.15s;
+  }
+  button.submit:hover { background: #6b5fe0; }
+  .sent-note { font-size: 12px; color: var(--good); margin-top: 12px; min-height: 16px; font-variant: small-caps; letter-spacing: 0.05em; }
+</style>
+
+<div class="wrap">
+  <div class="doc-head">
+    <div class="eyebrow">Phase 15 · open question #1 · app-shell.md</div>
+    <h1>The top-bar clock and the spread header show different dates</h1>
+    <p class="sub">
+      After every <span class="k">Proceed</span>, the top-bar clock and the cycle spread you're reading disagree by one cycle.
+      The spec (<code>app-shell.md:25</code>) says the clock is <b>"the cycle just read"</b> - but the code shows
+      <b>the cycle you're poised on</b>. One of them is wrong. This is a wording fork, not a bug in the sim.
+    </p>
+  </div>
+
+  <!-- SECTION 1 -->
+  <section>
+    <div class="sec-label"><span class="n">1</span> Why they can't both be right</div>
+    <p class="lead">
+      At any rest state the shell names a cycle in <b>three</b> places. Two of them are <b>inherently one cycle apart</b> -
+      the spread reports what you <b>just read</b>; the button names where the next Proceed <b>lands</b>. The clock sits
+      between them and can cheaply match only one neighbour. So the real question is: <b>which neighbour should the clock agree with?</b>
+    </p>
+    <div class="refs">
+      <div class="ref">
+        <div class="ref-top"><h4>Spread header</h4><span class="pos behind">1 behind</span></div>
+        <div class="src">digest.cycle</div>
+        <div class="desc">The page you're reading - the cycle whose events were just composed.</div>
+      </div>
+      <div class="ref">
+        <div class="ref-top"><h4>Top-bar clock</h4><span class="pos here">the clock</span></div>
+        <div class="src">ctx.worldTime.cycle</div>
+        <div class="desc">Currently the cycle the world is <i>poised on</i>. The spec gloss disagrees with this.</div>
+      </div>
+      <div class="ref">
+        <div class="ref-top"><h4>Proceed button</h4><span class="pos ahead">1 ahead</span></div>
+        <div class="src">nextLabel (+8h)</div>
+        <div class="desc">Names where the next Proceed lands - e.g. "Proceed to Day 1".</div>
+      </div>
+    </div>
+    <div class="axis"><span>just read</span><span class="line"></span><span>where the world is headed</span></div>
+  </section>
+
+  <!-- SECTION 2 -->
+  <section>
+    <div class="sec-label"><span class="n">2</span> The same moment, rendered both ways</div>
+    <p class="lead">
+      Rest state right after the <b>first Proceed</b> (you've just read Day 0 · Afternoon; the world has advanced into Night).
+      Watch the top-bar clock against the spread header directly beneath it.
+    </p>
+    <div class="mock-grid">
+      <!-- Option A mock -->
+      <div class="mock">
+        <div class="mock-tag"><span><span class="opt">Option A</span> · clock = cycle just read</span></div>
+        <div class="topbar">
+          <span class="tb-name">The Failing Guild</span>
+          <span class="tb-time match">Day 0 · Afternoon</span>
+          <span class="tb-di"><i></i></span>
+          <span class="tb-btn">Proceed to Day 1 ›</span>
+        </div>
+        <div class="spread">
+          <div class="spread-header">Day 0 · Afternoon</div>
+          <div class="overview">Reiko took the west road alone, the morning's argument still souring the air behind her&hellip;</div>
+        </div>
+        <div class="mock-note">Clock <b class="g">matches</b> the page. But it disagrees with the button ("Proceed to Day 1") and lags the world's true position.</div>
+      </div>
+      <!-- Option B mock -->
+      <div class="mock rec">
+        <div class="mock-tag"><span><span class="opt">Option B</span> · clock = cycle poised on</span><span class="badge cur">current code</span></div>
+        <div class="topbar">
+          <span class="tb-name">The Failing Guild</span>
+          <span class="tb-time mismatch">Day 0 · Night</span>
+          <span class="tb-di"><i></i></span>
+          <span class="tb-btn">Proceed to Day 1 ›</span>
+        </div>
+        <div class="spread">
+          <div class="spread-header">Day 0 · Afternoon</div>
+          <div class="overview">Reiko took the west road alone, the morning's argument still souring the air behind her&hellip;</div>
+        </div>
+        <div class="mock-note">Clock <b class="m">differs</b> from the page. But it agrees with the button's trajectory and ticks forward on every Proceed.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 3 -->
+  <section>
+    <div class="sec-label"><span class="n">3</span> Exact strings across the first Proceeds</div>
+    <p class="lead">World starts at <b>Day 0, hour 9 (Afternoon)</b>; each Proceed advances one 8-hour cycle. The <span class="diff">amber</span> column is where the clock and the spread differ.</p>
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>After</th>
+            <th>Spread header (the page)</th>
+            <th class="col-a">Option A clock<br><small>= just read</small></th>
+            <th class="col-b">Option B clock<br><small>= poised on · current</small></th>
+            <th>Proceed button</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="state">start</td>
+            <td><i>(empty)</i></td>
+            <td class="col-a"><span class="cyc">Day 0 · Afternoon</span></td>
+            <td class="col-b"><span class="cyc">Day 0 · Afternoon</span></td>
+            <td>Proceed to Night</td>
+          </tr>
+          <tr>
+            <td class="state">Proceed 1</td>
+            <td><span class="cyc">Day 0 · Afternoon</span></td>
+            <td class="col-a"><span class="cyc">Day 0 · Afternoon</span></td>
+            <td class="col-b"><span class="diff">Day 0 · Night</span></td>
+            <td>Proceed to Day 1</td>
+          </tr>
+          <tr>
+            <td class="state">Proceed 2</td>
+            <td><span class="cyc">Day 0 · Night</span></td>
+            <td class="col-a"><span class="cyc">Day 0 · Night</span></td>
+            <td class="col-b"><span class="diff">Day 1 · Morning</span></td>
+            <td>Proceed to Afternoon</td>
+          </tr>
+          <tr>
+            <td class="state">Proceed 3</td>
+            <td><span class="cyc">Day 1 · Morning</span></td>
+            <td class="col-a"><span class="cyc">Day 1 · Morning</span></td>
+            <td class="col-b"><span class="diff">Day 1 · Afternoon</span></td>
+            <td>Proceed to Night</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SECTION 4 -->
+  <section>
+    <div class="sec-label"><span class="n">4</span> The three ways to settle it</div>
+    <div class="opts">
+      <div class="opt-card">
+        <div class="oc-head"><span class="letter">A</span><h3>Align code to the gloss</h3></div>
+        <div class="tagline">Clock shows the cycle just read - top bar always equals the page.</div>
+        <div class="opt-row"><span class="lab change">change</span><span class="val"><code>dateLabel</code> &rarr; newest <code>digest.cycle</code>, with a fallback to the start cycle before the first Proceed. No spec change.</span></div>
+        <div class="opt-row"><span class="lab cost">cost</span><span class="val">Clock disagrees with the Proceed button, and <b>stalls</b> on one date until the next Proceed resolves - a clock that doesn't tick.</span></div>
+      </div>
+      <div class="opt-card rec">
+        <div class="oc-head"><span class="letter">B</span><h3>Keep code, fix the spec</h3></div>
+        <div class="tagline">Clock shows where the world is - the cycle the next Proceed reads.</div>
+        <div class="opt-row"><span class="lab change">change</span><span class="val">Reword <code>app-shell.md:25</code>: "the cycle just read" &rarr; "the cycle you're poised on". No code change.</span></div>
+        <div class="opt-row"><span class="lab cost">cost</span><span class="val">Clock differs from the spread header by one cycle - but the spread already carries that date.</span></div>
+        <div class="rec-flag">Recommended</div>
+      </div>
+      <div class="opt-card">
+        <div class="oc-head"><span class="letter">C</span><h3>Disambiguate in the UI</h3></div>
+        <div class="tagline">Relabel roles so it stops reading as a contradiction - pick neither side.</div>
+        <div class="opt-row"><span class="lab change">change</span><span class="val">Prefix the labels, e.g. clock <code>Now · Day 1 · Morning</code> vs spread <code>Read · Day 0 · Night</code>. Touches UI copy + spec.</span></div>
+        <div class="opt-row"><span class="lab cost">cost</span><span class="val">Most work; adds visual chrome to two surfaces to solve what may be a one-line wording issue.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 5 -->
+  <section>
+    <div class="sec-label"><span class="n">5</span> My recommendation</div>
+    <div class="rec-box">
+      <h3>Option B - keep the code, fix the spec wording</h3>
+      <p>
+        The top bar is a <b>clock</b>: its job is to say where the world <b>is</b>, and it's the one element that visibly ticks
+        forward on every Proceed. Option A's clock stalls on the same date until you Proceed again, which reads as a broken clock.
+      </p>
+      <p>
+        The spread header already carries the "what you just read" date, so making the clock echo it is redundant - two labels
+        saying the same thing. That leaves Option B a <b>one-line spec wording fix</b> with zero code churn. Option C solves a
+        contradiction that mostly disappears once the spec stops claiming the clock is "the cycle just read".
+      </p>
+    </div>
+  </section>
+
+  <!-- DECISION -->
+  <section>
+    <div class="sec-label"><span class="n">✓</span> Your call</div>
+    <div class="decide">
+      <h3>Which way should the clock go?</h3>
+      <p class="hint">Pick one and (optionally) add a note. Submitting queues the instruction back to me.</p>
+      <form data-lavish-question="clock-fork" onsubmit="event.preventDefault();
+        var choice = new FormData(event.currentTarget).get('fork');
+        var note = (document.getElementById('fork-note').value || '').trim();
+        if (!choice) return;
+        var map = {
+          'A':'Option A - change dateLabel so the clock shows the cycle just read (matches the spread), plus a start-cycle fallback.',
+          'B':'Option B - keep the code; reword app-shell.md:25 from \'the cycle just read\' to \'the cycle you are poised on\'.',
+          'C':'Option C - disambiguate in the UI: prefix the clock (Now ·) and the spread header (Read ·), and update the spec.'
+        };
+        var msg = 'Settle the clock-wording fork: ' + map[choice] + (note ? ' Note: ' + note : '');
+        window.lavish.queuePrompt(msg, { tag: 'decision', text: 'Clock fork: Option ' + choice, data: { question: 'clock-fork', answer: choice, note: note } });
+        document.getElementById('fork-sent').textContent = 'Queued Option ' + choice + ' - press Send to Agent to deliver.';
+      ">
+        <div class="choice">
+          <label class="pick"><input type="radio" name="fork" value="A"><span class="pt"><b>Option A</b> - clock = cycle just read<span>Code change; top bar matches the page. Clock stalls between Proceeds.</span></span></label>
+          <label class="pick"><input type="radio" name="fork" value="B" checked><span class="pt"><b>Option B<span class="mini">recommended</span></b><span>Spec wording fix; clock stays where the world is. Zero code churn.</span></span></label>
+          <label class="pick"><input type="radio" name="fork" value="C"><span class="pt"><b>Option C</b> - disambiguate in the UI<span>Prefix both labels (Now · / Read ·). Most work, touches UI + spec.</span></span></label>
+        </div>
+        <textarea id="fork-note" placeholder="Optional: anything to adjust - wording, a different framing, or 'build it and show me'."></textarea>
+        <button type="submit" class="submit">Queue this answer</button>
+        <div id="fork-sent" class="sent-note"></div>
+      </form>
+    </div>
+  </section>
+</div>

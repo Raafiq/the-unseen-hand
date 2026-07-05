@@ -8,7 +8,6 @@
  */
 import type { SimulationContext, CycleDigest } from './types.js';
 import { cycleOf } from './WorldTime.js';
-import { WorldClock, type SpeedMultiplier } from './WorldClock.js';
 import { moodSubscriber } from '../adventurers/mood.js';
 import { relationshipDecaySubscriber } from '../relationships/graph.js';
 import { socialPressureSubscriber } from '../events/socialResolver.js';
@@ -52,12 +51,9 @@ const TICKS_PER_CYCLE = 8;
 export class SimulationLoop {
   private _ctx: SimulationContext;
   private _subscribers: TickSubscriber[] = [];
-  private _clock: WorldClock;
 
   constructor(initialCtx: SimulationContext) {
     this._ctx = initialCtx;
-    this._clock = new WorldClock();
-    this._clock.onTick(() => this._tick());
     // Spec-mandated subscriber order (simulation-loop.md §Subscriber execution order)
     this._subscribers.push(
       moodSubscriber,            // slot 2: mood recalculation (day ticks only)
@@ -124,35 +120,6 @@ export class SimulationLoop {
     const fromTick = start.tick;
     for (let i = 0; i < TICKS_PER_CYCLE; i++) this._tick();
     return { fromTick, toTick: this._ctx.worldTime.tick, day: start.day, cycle: start.cycle };
-  }
-
-  // --- Deprecated real-time speed API: removed in p15e (top-bar Proceed rewrite). ---
-  // Kept as functioning shims so the current client keeps building and running until
-  // the UI switches to PROCEED. The engine's authoritative advance path is proceed().
-
-  /** @deprecated removed in p15e — the clock is command-driven; use proceed(). */
-  start(): void {
-    this._clock.start();
-  }
-
-  /** @deprecated removed in p15e — the clock is command-driven; use proceed(). */
-  stop(): void {
-    this._clock.stop();
-  }
-
-  /** @deprecated removed in p15e — the clock halts between cycles by default. */
-  pause(): void {
-    this._clock.pause();
-  }
-
-  /** @deprecated removed in p15e — the clock is command-driven; use proceed(). */
-  resume(): void {
-    this._clock.resume();
-  }
-
-  /** @deprecated removed in p15e — there are no speed multipliers in the turn-paced model. */
-  setSpeed(multiplier: SpeedMultiplier): void {
-    this._clock.setSpeed(multiplier);
   }
 
   private _tick(): void {

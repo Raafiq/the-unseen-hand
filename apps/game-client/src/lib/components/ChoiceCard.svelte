@@ -24,6 +24,16 @@
     return Math.max(0, moment.expiresAt - tick);
   }
 
+  // The world is turn-paced, so the countdown is expressed in ticks / cycles remaining, never
+  // wall-clock time (decision-moments.md §"Expiry windows"). One cycle is 8 ticks.
+  const TICKS_PER_CYCLE = 8;
+  function cyclesLabel(ticksLeft: number): string {
+    const cycles = ticksLeft / TICKS_PER_CYCLE;
+    const rounded = Math.round(cycles * 10) / 10;
+    const num = Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
+    return `${num} ${rounded === 1 ? 'cycle' : 'cycles'}`;
+  }
+
   function expiryClass(tl: number): string {
     return tl <= 3 ? 'expiry-red' : tl <= 12 ? 'expiry-amber' : 'expiry-normal';
   }
@@ -54,7 +64,7 @@
         </div>
       {/if}
       <div class="expiry {expiryClass(expiryTicksLeft(primary))}">
-        Expires in {expiryTicksLeft(primary)} ticks
+        Expires in {expiryTicksLeft(primary)} ticks · ~{cyclesLabel(expiryTicksLeft(primary))}
       </div>
 
       <div class="options">
@@ -88,7 +98,7 @@
             <span class="secondary-text">
               {moment.situationText.slice(0, 60)}{moment.situationText.length > 60 ? '…' : ''}
             </span>
-            <span class="secondary-expiry">{expiryTicksLeft(moment)}t</span>
+            <span class="secondary-expiry" title="{cyclesLabel(expiryTicksLeft(moment))} remaining">{expiryTicksLeft(moment)}t</span>
             <span class="secondary-focus">Tap to focus</span>
           </button>
         {/each}

@@ -25,30 +25,11 @@ describe('WorldClock', () => {
     expect(clock2.worldTime).toEqual(t1);
   });
 
-  it('pausing and resuming does not shift worldTime.tick', () => {
-    const clock = new WorldClock();
-    clock.step();
-    clock.step();
-    const tickBefore = clock.worldTime.tick;
-    clock.pause();
-    clock.resume();
-    expect(clock.worldTime.tick).toBe(tickBefore);
-  });
-
   it('step() does not use real-time intervals — callable synchronously', () => {
-    // If step() relied on setInterval it would not advance synchronously.
+    // The turn-paced clock has no setInterval; step() advances synchronously.
     const clock = new WorldClock();
     clock.step();
     expect(clock.worldTime.tick).toBe(1);
-  });
-
-  it('setSpeed changes the real-time interval rate (readable via currentSpeed)', () => {
-    const clock = new WorldClock();
-    expect(clock.currentSpeed).toBe(1);
-    clock.setSpeed(5);
-    expect(clock.currentSpeed).toBe(5);
-    clock.setSpeed(20);
-    expect(clock.currentSpeed).toBe(20);
   });
 
   it('tick listeners are called on each step', () => {

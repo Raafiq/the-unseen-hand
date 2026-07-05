@@ -134,11 +134,15 @@ through the harness, which owns the server itself and avoids both the port clash
 `@playwright/test` module-resolution gotcha (a standalone `.mjs` only resolves that import
 from inside `apps/game-client/`).
 
-### Store rule — auto-pause must save and restore speed
+### Store rule — the world is turn-paced; there is no speed or pause control
 
-When `simulationStore` auto-pauses the loop for a game-state condition (e.g. a new
-decision moment appears), it must:
-1. Save `simulationStore.speedBeforePause` before calling `setSpeed('paused')`
-2. Call `setSpeed(simulationStore.speedBeforePause)` when the condition clears
+The real-time speed model (`setSpeed`/`pause`/`resume`/`currentSpeed`, the auto-pause on a new
+decision moment, and `simulationStore.speed`/`speedBeforePause`) was **removed in p15e**
+(`behaviors/world-clock.md`). The world only advances inside a synchronous `proceed()` and is
+halted between cycles by default, so there is nothing to pause and no speed to restore.
 
-Failing to restore speed leaves the loop permanently paused after the player acts.
+- Advance the world only via `simulationStore.proceed()` (dispatches one `PROCEED` cycle). Never
+  reintroduce a running loop, an interval, or a `setSpeed`/`pause` shim.
+- Decision moments surface **at the cycle boundary** — they appear naturally when `proceed()`
+  returns and the store re-renders, and they do **not** gate `PROCEED` (the player may proceed and
+  let a moment ride toward its expiry). Do not add a gate or an auto-pause around them.

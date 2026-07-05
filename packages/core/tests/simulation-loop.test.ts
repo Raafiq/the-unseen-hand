@@ -52,7 +52,7 @@ describe('SimulationLoop', () => {
     expect(loop.context.divineInfluence).toBe(20);
   });
 
-  it('same seed + same commands replays identically after stop() / start()', () => {
+  it('same seed + same commands replays identically', () => {
     const seed = 'replay-test';
 
     const ctx1 = createSimulationContext(seed);
@@ -62,12 +62,10 @@ describe('SimulationLoop', () => {
     loop1.step();
     const snapshot1 = loop1.context.divineInfluence;
 
-    // Same setup, stop then start (reset)
+    // Same seed + same steps on a fresh loop reproduces the sequence byte-for-byte.
     const ctx2 = createSimulationContext(seed);
     const loop2 = new SimulationLoop(ctx2);
     loop2.register((c) => ({ ...c, divineInfluence: c.rng.next() * 100 }));
-    loop2.start();
-    loop2.stop();
     loop2.step();
     loop2.step();
     expect(loop2.context.divineInfluence).toBe(snapshot1);

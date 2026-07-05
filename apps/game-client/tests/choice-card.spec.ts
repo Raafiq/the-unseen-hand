@@ -26,12 +26,31 @@ test('ChoiceCard renders when a decision moment is pending', async ({ page }) =>
   expect(await options.count()).toBeGreaterThan(0);
 });
 
-test('ChoiceCard shows expiry countdown', async ({ page }) => {
+test('ChoiceCard shows the expiry countdown in ticks and cycles (never wall-clock)', async ({ page }) => {
   test.skip(!FEATURES.divineIntervention, 'Decision moments hidden with Divine Intervention');
   await page.goto('/?e2e=decision');
 
   await expect(page.locator('.primary-card')).toBeVisible({ timeout: 12_000 });
 
+  // Turn-paced world → the countdown reads in ticks / cycles remaining, not minutes (decision-moments.md).
   const expiry = page.locator('.primary-card .expiry');
   await expect(expiry).toContainText('ticks');
+  await expect(expiry).toContainText('cycle');
+});
+
+test('a boundary decision does not gate Proceed — the world advances and the moment rides on', async ({ page }) => {
+  test.skip(!FEATURES.divineIntervention, 'Decision moments hidden with Divine Intervention');
+  await page.goto('/?e2e=decision');
+
+  // The moment is surfaced at the boundary alongside the reads.
+  await expect(page.locator('.primary-card')).toBeVisible({ timeout: 12_000 });
+  const dateBefore = await page.locator('.world-time').textContent();
+
+  // Proceed is not gated by the pending decision (autonomy-of-outcomes): the world advances a cycle.
+  await page.locator('.proceed-btn').click();
+  await expect(page.locator('.world-time')).not.toHaveText(dateBefore ?? '');
+  await expect(page.locator('.cycle-spread').last()).toBeVisible();
+
+  // The unresolved moment rides on toward its expiry rather than blocking advancement.
+  await expect(page.locator('.primary-card')).toBeVisible();
 });

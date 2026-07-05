@@ -3,8 +3,8 @@ import { test, expect } from '@playwright/test';
 /**
  * Verifies character portrait resolution end-to-end (behaviors/character-portraits.md).
  *
- * Art exists for Reiko (adventurer), Brenna and Father Oswin (notable NPCs); no art exists for
- * Marsa or Captain Halden, which must fall back to the colored-initial circle. Driven on a plain
+ * Art exists for Reiko (adventurer), Brenna, Father Oswin and Marsa (notable NPCs); no art exists
+ * for Captain Halden, which must fall back to the colored-initial circle. Driven on a plain
  * `/` load so the real base-path asset URLs (Vite module-graph manifest) are exercised — no seam.
  */
 test('portraits render as images where art exists, circle fallback where it does not', async ({ page }) => {
@@ -37,12 +37,12 @@ test('portraits render as images where art exists, circle fallback where it does
   await drawer.locator('.rel-row', { hasText: 'Reiko' }).click();
   await expect(drawer.locator('.goal-name')).toBeVisible();
 
-  // Notable NPC WITHOUT art (Marsa) → colored-circle fallback: a div.portrait-lg with her
+  // Notable NPC WITHOUT art (Captain Halden) → colored-circle fallback: a div.portrait-lg with his
   // initial, and no <img> portrait present.
-  const marsaRow = drawer.locator('.rel-row', { hasText: 'Marsa' });
-  await expect(marsaRow).toBeVisible();
-  await marsaRow.click();
-  await expect(drawer.locator('.role-badge')).toHaveText('Innkeeper');
+  const haldenRow = drawer.locator('.rel-row', { hasText: 'Captain Halden' });
+  await expect(haldenRow).toBeVisible();
+  await haldenRow.click();
+  await expect(drawer.locator('.role-badge')).toHaveText('Guard Captain');
   await expect(drawer.locator('img.portrait-lg')).toHaveCount(0);
-  await expect(drawer.locator('div.portrait-lg')).toHaveText('M');
+  await expect(drawer.locator('div.portrait-lg')).toHaveText('C');
 });

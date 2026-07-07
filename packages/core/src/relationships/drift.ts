@@ -49,8 +49,10 @@ function causeLabel(kind: string): string {
 /**
  * Derive the drift indicator for an edge as of `now`. Trend is the net sum of history deltas in
  * the last `DRIFT_WINDOW_TICKS`: above `+TREND_EPS` is warming, below `−TREND_EPS` is cooling,
- * otherwise steady (the caller shows no glyph). `cause` is the label of the latest windowed entry,
- * or null when there is no movement in the window.
+ * otherwise steady (the caller shows no glyph). `cause` names the most recent entry **that moved the
+ * bond in the trend's own direction** — not the latest entry outright, or a net-warming edge whose
+ * last beat was a coldness would render a warming ▲ next to "a cooling silence" (the glyph and its
+ * label pointing opposite ways). `cause` is null only when the trend is steady.
  */
 export function computeEdgeDrift(edge: RelationshipEdge, now: number): EdgeDrift {
   const windowed = edge.history.filter(h => h.tick > now - DRIFT_WINDOW_TICKS);
@@ -58,6 +60,11 @@ export function computeEdgeDrift(edge: RelationshipEdge, now: number): EdgeDrift
 
   const net = windowed.reduce((sum, h) => sum + h.delta, 0);
   const direction: DriftDirection = net > TREND_EPS ? 'warming' : net < -TREND_EPS ? 'cooling' : 'steady';
-  const latest = windowed[windowed.length - 1]!;
-  return { direction, cause: causeLabel(latest.kind) };
+  if (direction === 'steady') return { direction, cause: null };
+
+  // Cause = the most recent entry whose delta agrees with the trend, so the label can never
+  // contradict the glyph. A trending edge (|net| > TREND_EPS) always has ≥1 same-signed entry.
+  const sign = direction === 'warming' ? 1 : -1;
+  const driver = [...windowed].reverse().find(h => Math.sign(h.delta) === sign) ?? windowed[windowed.length - 1]!;
+  return { direction, cause: causeLabel(driver.kind) };
 }

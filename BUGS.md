@@ -25,42 +25,61 @@
 Grounded in a recorded playthrough (`playtest/day5-transcript.json`); reproduce with
 `node playtest/record-playthrough.mjs`. Full write-up in `playtest/day5-report.md`.
 
+> **Fix status (this PR — clock + drift + narrative polish):** ✅ = fixed with tests;
+> ⏳ = deferred (needs a spec + plan per specops); ⓘ = re-examined, not a defect.
+> Fixed: **B101, B104, B105, B107, B108, B109, B111.** Deferred: **B102, B103, B106.**
+> Not a defect: **B110.** The committed `playtest/day5-transcript.json` is the *before*
+> evidence; the fixes are verified against a fresh build (console 404 gone, drift glyph
+> agrees with its cause, no "more than one of them" over a solo roster, etc.).
+
 ### High
 
-- **B101 — World clock opens mislabeled and every cycle is out of phase with its header.**
+- ✅ **B101 — World clock opens mislabeled and every cycle is out of phase with its header.**
   `scenario1.ts:138` `START_TICK=9` collides with `cycleOf`'s 0/8/16 partition (`world/WorldTime.ts`),
   so the game opens reading "Day 0 · Afternoon" at 09:00. `SimulationLoop.proceed()`
   (`world/SimulationLoop.ts:118`) computes a fixed 8 ticks from tick 9, putting cycle boundaries at
   hours 9/17/1, so each spread files a foreign-cycle event under the wrong header (hour-16 event under
   "Afternoon"; hour-02/09 events under "Morning"). Violates `world-clock.md`'s cycle-boundary invariant.
-- **B102 — Quest and near-death resolve off-page.** Quest picked up Day 1 h06; Reiko's near-death and
+  *Fixed:* `START_TICK = 8` (a cycle boundary), so PROCEED's fixed-8-tick window stays in phase with
+  the 0/8/16 partition. Header/hour mismatches drop from ~5 to the 1 accepted closing boundary tick
+  (an event on the cycle's last hour, per the inclusive-`toTick` digest convention `proceed.test.ts`
+  blesses; realigning that is a `world-clock.md` spec change, deferred).
+- ⏳ **B102 — Quest and near-death resolve off-page.** Quest picked up Day 1 h06; Reiko's near-death and
   first kill appear only in the character-detail history, never in any cycle prose or raw log. The four
   cycles she's on the quest are `quiet`/empty. (Partly flag-gating, partly a narration gap.)
-- **B103 — Treasury and Reputation change with no ledger event.** 50g→238g and rep 0→5 after the quest
-  reward, with no `rawRows` entry logging either — and both are scenario win-conditions.
+- ⏳ **B103 — Treasury and Reputation change with no ledger event.** 50g→238g and rep 0→5 after the quest
+  reward, with no `rawRows` entry logging either — and both are scenario win-conditions. *(New behavior —
+  emitting an economy ledger event needs a spec + plan; deferred.)*
 
 ### Medium
 
-- **B104 — Relationship drift glyph contradicts its cause.** `relationships/drift.ts` `computeEdgeDrift`
-  sets `direction` from the net window sum but `cause` from the latest event's kind, so a net-warming edge
-  whose last beat was cold renders ▲ (warming/green) next to "a cooling silence".
-- **B105 — "No one had a story worth telling this cycle" shown over a non-empty raw log.** The quiet
-  copy (`EventFeed.svelte:227`, gated on `sorted.length === 0`) fires on cycles whose raw ledger still
-  lists activity (steps 10/12/14).
-- **B106 — Pronoun inconsistency.** Reiko is "she/her" in her authored backstory but "they/their" in all
-  generated prose ("gathers their gear", "find their people").
-- **B107 — World-span ambient flavor glued onto unrelated lines, repeats within a cycle, bleeds onto the
-  away-quest.** `eventBus.ts:~637` appends span colour text to non-WORLD/non-COMBAT families but not
-  QUEST, so town ambience lands on a dungeon quest-return line; the same span line can repeat twice in a
-  cycle; and with the World map off these spans are never announced, only tinted.
-- **B108 — Cycle overview asserts plurality a one-adventurer guild can't have.** `cycleNarrative.ts:196`
-  "The day left its mark on more than one of them" is roster-blind; every spread has one chapter.
+- ✅ **B104 — Relationship drift glyph contradicts its cause.** `relationships/drift.ts` `computeEdgeDrift`
+  set `direction` from the net window sum but `cause` from the latest event's kind, so a net-warming edge
+  whose last beat was cold rendered ▲ (warming/green) next to "a cooling silence". *Fixed:* `cause` now names
+  the most recent entry whose delta agrees with the trend, so glyph and label can never point opposite ways.
+- ✅ **B105 — "No one had a story worth telling this cycle" shown over a non-empty raw log.** The quiet
+  copy (`EventFeed.svelte`, gated on `sorted.length === 0`) fired on cycles whose raw ledger still listed
+  activity. *Fixed:* the marker now reads "Only the everyday this cycle — chores, patrols, rest…" when the
+  cycle has routine events, and "The guild was still; nothing stirred…" only when it is genuinely empty.
+- ⏳ **B106 — Pronoun inconsistency.** Reiko is "she/her" in her authored backstory but "they/their" in all
+  generated prose ("gathers their gear", "find their people"). *(Needs a gender/pronoun field on the
+  adventurer data-model threaded through the templates — a spec change; deferred.)*
+- ✅ **B107 — World-span ambient flavor bleeds onto the away-quest.** `eventBus.ts` appended span colour
+  text to non-WORLD/non-COMBAT families but not QUEST, so town ambience landed on a dungeon quest-return
+  line. *Fixed:* QUEST joins WORLD/COMBAT in the span-tint exclusion (same away-from-town rationale).
+- ✅ **B108 — Cycle overview asserts plurality a one-adventurer guild can't have.** "The day left its mark
+  on more than one of them" was roster-blind. *Fixed:* plural-implying overview tails only enter the pool
+  when more than one character has a chapter this cycle.
 
 ### Low
 
-- **B109 — Console 404 on load (missing favicon).** `index.html` declares no `<link rel="icon">`, so the
-  browser's automatic `/favicon.ico` request 404s.
-- **B110 — Mood color/label disagree at the threshold.** `43/100 — NEUTRAL` shown with an orange
-  (warning) bar; green→orange flips around 48–50.
-- **B111 — Quest-return prose redundant/contradictory.** "The party trudges home… The party returns
-  triumphant…" with the quest title printed twice (Combat row + Quest row stitched without dedupe).
+- ✅ **B109 — Console 404 on load (missing favicon).** `index.html` declared no `<link rel="icon">`, so the
+  browser's automatic `/favicon.ico` request 404'd. *Fixed:* an inline SVG data-URI favicon (self-contained,
+  no network request).
+- ⓘ **B110 — Mood color/label at the threshold.** Re-examined: `moodColor` (`≥50 green, ≥25 orange, else
+  red`) tracks `moodThresholdLabel` (`≥50 CONTENT, ≥25 NEUTRAL, …`) exactly — NEUTRAL = amber is by design,
+  not a mismatch. No code change; a warmer NEUTRAL hue would be a palette-taste choice, not a defect.
+- ✅ **B111 — Quest-return prose redundant/contradictory.** "The party trudges home… The party returns
+  triumphant…" stitched a COMBAT:QUEST_RESOLVED travel line and a QUEST:COMPLETED outcome line for the same
+  quest. *Fixed:* the chapter composer drops the redundant COMBAT travel line from the prose when the QUEST
+  outcome is present (the raw log still shows both).

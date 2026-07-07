@@ -95,6 +95,54 @@ describe('chapter selection', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Quest-resolution dedup + roster-aware overview
+// ---------------------------------------------------------------------------
+
+function questEvent(id: string, tick: number, subtype: string, questId: string, party: string[], text: string): SimulationEvent {
+  return { id, tick, kind: 'QUEST', subtype, questId, partyIds: party, renderedText: text } as SimulationEvent;
+}
+function combatResolved(id: string, tick: number, questId: string, party: string[], text: string): SimulationEvent {
+  return { id, tick, kind: 'COMBAT', subtype: 'QUEST_RESOLVED', questId, involvedIds: party, renderedText: text } as SimulationEvent;
+}
+
+describe('quest-resolution dedup', () => {
+  it('drops the redundant COMBAT travel line from the prose when the QUEST outcome is present', () => {
+    const ctx = baseCtx();
+    ctx.eventLog = [
+      combatResolved('c1', 3, 'q1', ['s1-kara'], 'The party trudges home from “Descent”.'),
+      questEvent('q1e', 3, 'COMPLETED', 'q1', ['s1-kara'], 'The party returns triumphant from “Descent”.'),
+    ];
+    const chapter = composeChapter(ctx, MORNING_DIGEST, 's1-kara');
+    expect(chapter).not.toBeNull();
+    expect(chapter!.text).toContain('returns triumphant');
+    expect(chapter!.text).not.toContain('trudges home');
+  });
+
+  it('keeps the COMBAT line when no QUEST close for that quest shares the cycle', () => {
+    const ctx = baseCtx();
+    ctx.eventLog = [
+      combatResolved('c1', 3, 'q1', ['s1-kara'], 'The party trudges home from “Descent”.'),
+    ];
+    const chapter = composeChapter(ctx, MORNING_DIGEST, 's1-kara');
+    expect(chapter!.text).toContain('trudges home');
+  });
+});
+
+describe('roster-aware overview', () => {
+  it('never claims "more than one of them" when only one character has a chapter', () => {
+    // Scan many seeds so we exercise the full overview phrase pool, not one lucky pick.
+    for (let i = 0; i < 60; i++) {
+      const ctx = baseCtx(`solo-overview-${i}`);
+      ctx.adventurers.delete('s1-mira'); // single-adventurer guild
+      ctx.eventLog = [questEvent('q', 3, 'COMPLETED', 'q1', ['s1-kara'], 'Kara returns triumphant from “Descent”.')];
+      const reads = composeCycleReads(ctx, MORNING_DIGEST);
+      expect(reads.chapters).toHaveLength(1);
+      expect(reads.overview).not.toContain('more than one of them');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // POV shading
 // ---------------------------------------------------------------------------
 

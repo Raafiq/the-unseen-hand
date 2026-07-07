@@ -628,13 +628,17 @@ function compose(
     line += ' ' + fill(pick(colours, ctx), slots);
   }
   // Span tint: an active world span colours unrelated *guild-local* lines with the tinted
-  // region's ambient weather/mood. Two families are excluded:
+  // region's ambient weather/mood. Three families are excluded — all either narrate the span
+  // itself or happen away from the tinted guild-town region:
   //  - WORLD  — the span announcements themselves (a storm doesn't narrate itself as tinted);
   //  - COMBAT — the away-quest fight report happens out in a dungeon, not the guild-town region,
   //             so a live FESTIVAL's "laughter in the streets" must never bleed onto a combat
-  //             line ("The party trudges home from X. Lantern-light and laughter spill…").
+  //             line ("The party trudges home from X. Lantern-light and laughter spill…");
+  //  - QUEST  — quest departures/returns are the same away-from-town beat as COMBAT (they name the
+  //             dungeon: "The party returns triumphant from X"), so town ambience must not bleed
+  //             onto them either.
   // rng is only consumed when a span is live, so spanless feeds are unchanged.
-  if (!familyKey.startsWith('WORLD') && !familyKey.startsWith('COMBAT')) {
+  if (!familyKey.startsWith('WORLD') && !familyKey.startsWith('COMBAT') && !familyKey.startsWith('QUEST')) {
     const spanColours = activeSpanColours(ctx);
     if (spanColours.length > 0 && ctx.rng.next() < SPAN_TINT_CHANCE) {
       line += ' ' + pick(spanColours, ctx);

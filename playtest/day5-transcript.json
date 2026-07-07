@@ -1,0 +1,566 @@
+{
+  "scenario": {
+    "worldName": "The Failing Guild",
+    "openingWorldTime": "Day 0 · Afternoon",
+    "scenarioStatus": "You are the unseen hand. Watch. Reach in when it matters.\n\nSCENARIO STATUS\n○\nReiko survives through day 30\n○\nTreasury above 0 at day 30\nTreasury: 50g\nReputation: 0",
+    "filterChips": [],
+    "diMeterPresent": false,
+    "proceedLabel": "Proceed to Night ›"
+  },
+  "emptyState": "The guild waits between cycles.\n\nPress Proceed to let the next morning, afternoon, or night unfold.",
+  "cycles": [
+    {
+      "step": 1,
+      "proceededFrom": "Day 0 · Afternoon",
+      "nowPoisedOn": "Day 0 · Night",
+      "proceedLabel": "Proceed to Night ›",
+      "spread": {
+        "header": "Day 0 · Afternoon",
+        "overview": "Thornvale settled into its afternoon. It was not a quiet one.",
+        "quiet": null,
+        "chapters": [
+          {
+            "name": "Reiko",
+            "prose": "Reiko moved through the afternoon lightly. A gesture of care from Reiko warms Brenna's regard.",
+            "coParticipants": ""
+          }
+        ],
+        "rawRows": [
+          {
+            "time": "Day 0, hour 10",
+            "tag": "Activity",
+            "text": "Reiko begins hunting."
+          },
+          {
+            "time": "Day 0, hour 10",
+            "tag": "Bonds",
+            "text": "A gesture of care from Reiko warms Brenna's regard."
+          },
+          {
+            "time": "Day 0, hour 12",
+            "tag": "Thought",
+            "text": "Something has gone right, and Father Oswin lets it stay. Some wishes wear grooves from use. Father Oswin's: to go one year without digging a young grave."
+          },
+          {
+            "time": "Day 0, hour 16",
+            "tag": "Activity",
+            "text": "Reiko finishes hunting and begins gossiping."
+          }
+        ]
+      },
+      "roster": [
+        {
+          "name": "Reiko",
+          "badge": "Reiko Idle",
+          "moodWidth": "width: 50%; background: rgb(76, 175, 80);"
+        }
+      ]
+    },
+    {
+      "step": 2,
+      "proceededFrom": "Day 0 · Night",
+      "nowPoisedOn": "Day 1 · Morning",
+      "proceedLabel": "Proceed to Day 1 ›",
+      "spread": {
+        "header": "Day 0 · Night",
+        "overview": "Night drew in around the guild-hall. The day left its mark on more than one of them.",
+        "quiet": null,
+        "chapters": [
+          {
+            "name": "Reiko",
+            "prose": "Reiko let the night arrive without ceremony. Father Oswin quietly does Reiko a kindness, asking nothing in return. Sleep, when it came, came uneasily.",
+            "coParticipants": ""
+          }
+        ],
+        "rawRows": [
+          {
+            "time": "Day 0, hour 18",
+            "tag": "Activity",
+            "text": "Reiko sets aside gossiping and moves on to reading."
+          },
+          {
+            "time": "Day 0, hour 19",
+            "tag": "Thought",
+            "text": "Father Oswin hums an old tune under their breath. Father Oswin tallies small things: the weather, the bread, the way the light comes in. It would be good, Father Oswin thinks, if everyone came through this whole."
+          },
+          {
+            "time": "Day 0, hour 19",
+            "tag": "Bonds",
+            "text": "Father Oswin quietly does Reiko a kindness, asking nothing in return."
+          },
+          {
+            "time": "Day 0, hour 22",
+            "tag": "Activity",
+            "text": "Reiko finishes reading and begins brooding."
+          }
+        ]
+      },
+      "roster": [
+        {
+          "name": "Reiko",
+          "badge": "Reiko Idle",
+          "moodWidth": "width: 38%; background: rgb(255, 152, 0);"
+        }
+      ]
+    },
+    {
+      "step": 3,
+      "proceededFrom": "Day 1 · Morning",
+      "nowPoisedOn": "Day 1 · Afternoon",
+      "proceedLabel": "Proceed to Afternoon ›",
+      "spread": {
+        "header": "Day 1 · Morning",
+        "overview": "A new morning came to Thornvale. There was much to carry by its end.",
+        "quiet": null,
+        "chapters": [
+          {
+            "name": "Reiko",
+            "prose": "Reiko rose to an unremarkable morning. Word goes round: a band has taken up “Descent into the Weeping Caverns”. By midday it had folded into the day's work.",
+            "coParticipants": ""
+          }
+        ],
+        "rawRows": [
+          {
+            "time": "Day 1, hour 02",
+            "tag": "Activity",
+            "text": "Reiko finishes brooding and begins sleep."
+          },
+          {
+            "time": "Day 1, hour 06",
+            "tag": "Activity",
+            "text": "Reiko wakes, shakes off sleep, and gathers their gear for the quest."
+          },
+          {
+            "time": "Day 1, hour 06",
+            "tag": "Quest",
+            "text": "Word goes round: a band has taken up “Descent into the Weeping Caverns”."
+          }
+        ]
+      },
+      "roster": [
+        {
+          "name": "Reiko",
+          "badge": "Reiko On Quest",
+          "moodWidth": "width: 38%; background: rgb(255, 152, 0);"
+        }
+      ]
+    },
+    {
+      "step": 4,
+      "proceededFrom": "Day 1 · Afternoon",
+      "nowPoisedOn": "Day 1 · Night",
+      "proceedLabel": "Proceed to Night ›",
+      "spread": {
+        "header": "Day 1 · Afternoon",
+        "overview": "The afternoon wore on over the guild. It asked little of anyone.",
+        "quiet": "No one had a story worth telling this cycle.",
+        "chapters": [],
+        "rawRows": []
+      },
+      "roster": [
+        {
+          "name": "Reiko",
+          "badge": "Reiko On Quest",
+          "moodWidth": "width: 38%; background: rgb(255, 152, 0);"
+        }
+      ]
+    },
+    {
+      "step": 5,
+      "proceededFrom": "Day 1 · Night",
+      "nowPoisedOn": "Day 2 · Morning",
+      "proceedLabel": "Proceed to Day 2 ›",
+      "spread": {
+        "header": "Day 1 · Night",
+        "overview": "Darkness gathered over Thornvale. Little stirred, and the hours passed unremarked.",
+        "quiet": "No one had a story worth telling this cycle.",
+        "chapters": [],
+        "rawRows": []
+      },
+      "roster": [
+        {
+          "name": "Reiko",
+          "badge": "Reiko On Quest",
+          "moodWidth": "width: 37%; background: rgb(255, 152, 0);"
+        }
+      ]
+    },
+    {
+      "step": 6,
+      "proceededFrom": "Day 2 · Morning",
+      "nowPoisedOn": "Day 2 · Afternoon",
+      "proceedLabel": "Proceed to Afternoon ›",
+      "spread": {
+        "header": "Day 2 · Morning",
+        "overview": "A new morning came to Thornvale. Little stirred, and the hours passed unremarked.",
+        "quiet": "No one had a story worth telling this cycle.",
+        "chapters": [],
+        "rawRows": []
+      },
+      "roster": [
+        {
+          "name": "Reiko",
+          "badge": "Reiko On Quest",
+          "moodWidth": "width: 37%; background: rgb(255, 152, 0);"
+        }
+      ]
+    },
+    {
+      "step": 7,
+      "proceededFrom": "Day 2 · Afternoon",
+      "nowPoisedOn": "Day 2 · Night",
+      "proceedLabel": "Proceed to Night ›",
+      "spread": {
+        "header": "Day 2 · Afternoon",
+        "overview": "Thornvale settled into its afternoon. It asked little of anyone.",
+        "quiet": "No one had a story worth telling this cycle.",
+        "chapters": [],
+        "rawRows": []
+      },
+      "roster": [
+        {
+          "name": "Reiko",
+          "badge": "Reiko On Quest",
+          "moodWidth": "width: 37%; background: rgb(255, 152, 0);"
+        }
+      ]
+    },
+    {
+      "step": 8,
+      "proceededFrom": "Day 2 · Night",
+      "nowPoisedOn": "Day 3 · Morning",
+      "proceedLabel": "Proceed to Day 3 ›",
+      "spread": {
+        "header": "Day 2 · Night",
+        "overview": "Darkness gathered over Thornvale. The day left its mark on more than one of them.",
+        "quiet": null,
+        "chapters": [
+          {
+            "name": "Reiko",
+            "prose": "Reiko let the night arrive without ceremony. The party trudges home from “Descent into the Weeping Caverns”. The party returns triumphant from “Descent into the Weeping Caverns”. A pedlar's cry carries faintly from outside. The gate guard waves Reiko through with a bored nod.",
+            "coParticipants": ""
+          }
+        ],
+        "rawRows": [
+          {
+            "time": "Day 2, hour 18",
+            "tag": "Combat",
+            "text": "The party trudges home from “Descent into the Weeping Caverns”."
+          },
+          {
+            "time": "Day 2, hour 18",
+            "tag": "Quest",
+            "text": "The party returns triumphant from “Descent into the Weeping Caverns”. A pedlar's cry carries faintly from outside."
+          },
+          {
+            "time": "Day 2, hour 18",
+            "tag": "Activity",
+            "text": "Reiko takes up gossiping. A pedlar's cry carries faintly from outside."
+          },
+          {
+            "time": "Day 2, hour 20",
+            "tag": "Townsfolk",
+            "text": "The gate guard waves Reiko through with a bored nod."
+          },
+          {
+            "time": "Day 2, hour 21",
+            "tag": "Activity",
+            "text": "Reiko finishes gossiping and begins hunting. Market-day clamour drifts in from the square."
+          },
+          {
+            "time": "Day 2, hour 22",
+            "tag": "Activity",
+            "text": "Reiko sets aside hunting and moves on to sleep."
+          },
+          {
+            "time": "Day 2, hour 23",
+            "tag": "Thought",
+            "text": "Something has gone right, and Captain Halden lets it stay. Mostly, today, Captain Halden thinks about nothing at all — which is its own kind of thought."
+          }
+        ]
+      },
+      "roster": [
+        {
+          "name": "Reiko",
+          "badge": "Reiko Idle",
+          "moodWidth": "width: 48%; background: rgb(255, 152, 0);"
+        }
+      ]
+    },
+    {
+      "step": 9,
+      "proceededFrom": "Day 3 · Morning",
+      "nowPoisedOn": "Day 3 · Afternoon",
+      "proceedLabel": "Proceed to Afternoon ›",
+      "spread": {
+        "header": "Day 3 · Morning",
+        "overview": "Morning broke over the guild-hall. It was not a quiet one.",
+        "quiet": null,
+        "chapters": [
+          {
+            "name": "Reiko",
+            "prose": "The morning found Reiko going through the motions. Reiko kept Father Oswin at arm's length.",
+            "coParticipants": ""
+          }
+        ],
+        "rawRows": [
+          {
+            "time": "Day 3, hour 06",
+            "tag": "Activity",
+            "text": "Newly woken, Reiko sets to patrol."
+          },
+          {
+            "time": "Day 3, hour 07",
+            "tag": "Social",
+            "text": "Reiko turns away from Father Oswin without a word. The common room hums around them."
+          },
+          {
+            "time": "Day 3, hour 09",
+            "tag": "Activity",
+            "text": "Done with patrol, Reiko turns to sleep. A pedlar's cry carries faintly from outside."
+          }
+        ]
+      },
+      "roster": [
+        {
+          "name": "Reiko",
+          "badge": "Reiko Idle",
+          "moodWidth": "width: 48%; background: rgb(255, 152, 0);"
+        }
+      ]
+    },
+    {
+      "step": 10,
+      "proceededFrom": "Day 3 · Afternoon",
+      "nowPoisedOn": "Day 3 · Night",
+      "proceedLabel": "Proceed to Night ›",
+      "spread": {
+        "header": "Day 3 · Afternoon",
+        "overview": "The afternoon wore on over the guild. Little stirred, and the hours passed unremarked.",
+        "quiet": "No one had a story worth telling this cycle.",
+        "chapters": [],
+        "rawRows": [
+          {
+            "time": "Day 3, hour 16",
+            "tag": "Activity",
+            "text": "Reiko wakes from sleep and begins sparring."
+          }
+        ]
+      },
+      "roster": [
+        {
+          "name": "Reiko",
+          "badge": "Reiko Idle",
+          "moodWidth": "width: 48%; background: rgb(255, 152, 0);"
+        }
+      ]
+    },
+    {
+      "step": 11,
+      "proceededFrom": "Day 3 · Night",
+      "nowPoisedOn": "Day 4 · Morning",
+      "proceedLabel": "Proceed to Day 4 ›",
+      "spread": {
+        "header": "Day 3 · Night",
+        "overview": "Night drew in around the guild-hall. The day left its mark on more than one of them.",
+        "quiet": null,
+        "chapters": [
+          {
+            "name": "Reiko",
+            "prose": "Night found Reiko winding down. Reiko grew quiet around Marsa. Before long, Reiko let the distance to Captain Halden widen.",
+            "coParticipants": "C"
+          }
+        ],
+        "rawRows": [
+          {
+            "time": "Day 3, hour 18",
+            "tag": "Activity",
+            "text": "Reiko sets aside sparring and moves on to rest. A pedlar's cry carries faintly from outside."
+          },
+          {
+            "time": "Day 3, hour 18",
+            "tag": "Social",
+            "text": "Reiko turns away from Marsa without a word. Neither quite meets the other's eye."
+          },
+          {
+            "time": "Day 3, hour 20",
+            "tag": "Social",
+            "text": "Reiko and Captain Halden sit together saying nothing, a gulf between them."
+          },
+          {
+            "time": "Day 3, hour 23",
+            "tag": "Activity",
+            "text": "Done with rest, Reiko turns to sleep."
+          }
+        ]
+      },
+      "roster": [
+        {
+          "name": "Reiko",
+          "badge": "Reiko Idle",
+          "moodWidth": "width: 46%; background: rgb(255, 152, 0);"
+        }
+      ]
+    },
+    {
+      "step": 12,
+      "proceededFrom": "Day 4 · Morning",
+      "nowPoisedOn": "Day 4 · Afternoon",
+      "proceedLabel": "Proceed to Afternoon ›",
+      "spread": {
+        "header": "Day 4 · Morning",
+        "overview": "Morning broke over the guild-hall. It asked little of anyone.",
+        "quiet": "No one had a story worth telling this cycle.",
+        "chapters": [],
+        "rawRows": [
+          {
+            "time": "Day 4, hour 06",
+            "tag": "Activity",
+            "text": "Reiko wakes from sleep and begins rest."
+          },
+          {
+            "time": "Day 4, hour 07",
+            "tag": "Thought",
+            "text": "Marsa carries the day lightly, for once. Marsa would trade much, quietly, to see the common room loud and every bed spoken for."
+          }
+        ]
+      },
+      "roster": [
+        {
+          "name": "Reiko",
+          "badge": "Reiko Idle",
+          "moodWidth": "width: 46%; background: rgb(255, 152, 0);"
+        }
+      ]
+    },
+    {
+      "step": 13,
+      "proceededFrom": "Day 4 · Afternoon",
+      "nowPoisedOn": "Day 4 · Night",
+      "proceedLabel": "Proceed to Night ›",
+      "spread": {
+        "header": "Day 4 · Afternoon",
+        "overview": "The afternoon wore on over the guild. It was not a quiet one.",
+        "quiet": null,
+        "chapters": [
+          {
+            "name": "Reiko",
+            "prose": "The afternoon passed around Reiko without event. Reiko grew quiet around Brenna. And then the day tipped over into dusk.",
+            "coParticipants": ""
+          }
+        ],
+        "rawRows": [
+          {
+            "time": "Day 4, hour 11",
+            "tag": "Activity",
+            "text": "Reiko finishes rest and begins hunting. Every traveller comes in with another rumour of beasts."
+          },
+          {
+            "time": "Day 4, hour 13",
+            "tag": "Activity",
+            "text": "Reiko finishes hunting and begins training. Every traveller comes in with another rumour of beasts."
+          },
+          {
+            "time": "Day 4, hour 13",
+            "tag": "Social",
+            "text": "Reiko turns away from Brenna without a word."
+          },
+          {
+            "time": "Day 4, hour 14",
+            "tag": "Activity",
+            "text": "Reiko sets aside training and moves on to reading."
+          },
+          {
+            "time": "Day 4, hour 16",
+            "tag": "Thought",
+            "text": "Father Oswin hums an old tune under their breath. Father Oswin would trade much, quietly, to go one year without digging a young grave. Something with Reiko has cooled; Father Oswin cannot find the moment it happened."
+          },
+          {
+            "time": "Day 4, hour 17",
+            "tag": "Thought",
+            "text": "Something has gone right, and Captain Halden lets it stay. Some wishes wear grooves from use. Captain Halden's: one full season where the walls are never tested."
+          }
+        ]
+      },
+      "roster": [
+        {
+          "name": "Reiko",
+          "badge": "Reiko Idle",
+          "moodWidth": "width: 46%; background: rgb(255, 152, 0);"
+        }
+      ]
+    },
+    {
+      "step": 14,
+      "proceededFrom": "Day 4 · Night",
+      "nowPoisedOn": "Day 5 · Morning",
+      "proceedLabel": "Proceed to Day 5 ›",
+      "spread": {
+        "header": "Day 4 · Night",
+        "overview": "Darkness gathered over Thornvale. It asked little of anyone.",
+        "quiet": "No one had a story worth telling this cycle.",
+        "chapters": [],
+        "rawRows": [
+          {
+            "time": "Day 4, hour 20",
+            "tag": "Activity",
+            "text": "Done with reading, Reiko turns to training."
+          },
+          {
+            "time": "Day 4, hour 21",
+            "tag": "Activity",
+            "text": "Reiko sets aside training and moves on to patrol. The watch has been doubled on the walls."
+          },
+          {
+            "time": "Day 4, hour 22",
+            "tag": "Activity",
+            "text": "Reiko sets aside patrol and moves on to reading. Every traveller comes in with another rumour of beasts."
+          }
+        ]
+      },
+      "roster": [
+        {
+          "name": "Reiko",
+          "badge": "Reiko Idle",
+          "moodWidth": "width: 43%; background: rgb(255, 152, 0);"
+        }
+      ]
+    }
+  ],
+  "characterDetail": {
+    "name": "Reiko, age 34",
+    "backstory": "Veteran who lost her previous guild in a fire. She is all that is left.",
+    "innerVoice": "Reiko notices a lightness that wasn't there yesterday. An old memory surfaces in Reiko, nameless, and sinks again. Something with Brenna has cooled; Reiko cannot find the moment it happened.",
+    "activity": "Reading",
+    "moodScore": "43/100 — NEUTRAL",
+    "axes": [
+      "courage: 70",
+      "loyalty: 80",
+      "empathy: 50",
+      "greed: 20",
+      "ambition: 50"
+    ],
+    "relationships": [
+      "Brenna [townsfolk] Acquaintance ▲ a cooling silence",
+      "Father Oswin [townsfolk] Acquaintance ▲ a cooling silence",
+      "Marsa [townsfolk] Acquaintance",
+      "Captain Halden [townsfolk] Stranger"
+    ],
+    "history": [
+      "Day 2: Nearly died — but survived.",
+      "Day 2: First blood — came out on top."
+    ],
+    "goal": "Wants to find their people"
+  },
+  "errors": {
+    "console": [
+      {
+        "type": "error",
+        "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      }
+    ],
+    "page": []
+  },
+  "finalWorldTime": "Day 5 · Morning",
+  "totalProceeds": 14
+}

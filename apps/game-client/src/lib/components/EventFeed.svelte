@@ -124,6 +124,14 @@
       .sort((a, b) => a.tick - b.tick);
   }
 
+  // Did the cycle have any visible (non-hidden) events, ignoring the user's active filter? Drives
+  // the quiet-marker copy: a cycle with no story-worthy chapter but real routine activity in its
+  // raw log must not claim "no one had a story" — that reads as a contradiction against the ledger.
+  function cycleHasRoutine(reads: CycleReads): boolean {
+    const { fromTick, toTick } = reads.digest;
+    return ctx.eventLog.some(e => e.tick > fromTick && e.tick <= toTick && !HIDDEN_KINDS.has(e.kind));
+  }
+
   // ---------------------------------------------------------------------------
   // Chapter focus — scroll to + highlight a character's card (dock / co-participant)
   // ---------------------------------------------------------------------------
@@ -224,7 +232,11 @@
             </article>
           {/each}
           {#if sorted.length === 0}
-            <p class="spread-quiet">No one had a story worth telling this cycle.</p>
+            <p class="spread-quiet">
+              {cycleHasRoutine(reads)
+                ? 'Only the everyday this cycle — chores, patrols, rest. Nothing rose to a story.'
+                : 'The guild was still; nothing stirred this cycle.'}
+            </p>
           {/if}
         </div>
 

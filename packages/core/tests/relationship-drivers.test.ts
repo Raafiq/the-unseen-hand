@@ -251,6 +251,24 @@ describe('drift indicator derivation (computeEdgeDrift)', () => {
     expect(d.cause).toBe('a betrayal');
   });
 
+  it('cause agrees with the glyph: a net-warming edge whose latest beat was cooling still names a warming cause', async () => {
+    // Regression: `cause` used to be the latest entry outright, so this rendered a warming ▲ next to
+    // "a cooling silence" — glyph and label pointing opposite ways.
+    const { computeEdgeDrift } = await import('../src/relationships/drift.js');
+    const edge = hist([{ tick: 900, kind: 'KINDNESS', delta: 10 }, { tick: 960, kind: 'SILENT_DISTANCE', delta: -3 }]);
+    const d = computeEdgeDrift(edge, 1000); // net +7 → warming
+    expect(d.direction).toBe('warming');
+    expect(d.cause).toBe('an act of kindness'); // NOT 'a cooling silence'
+  });
+
+  it('cause agrees with the glyph in the cooling direction too', async () => {
+    const { computeEdgeDrift } = await import('../src/relationships/drift.js');
+    const edge = hist([{ tick: 900, kind: 'ARGUMENT', delta: -10 }, { tick: 960, kind: 'KINDNESS', delta: 3 }]);
+    const d = computeEdgeDrift(edge, 1000); // net −7 → cooling
+    expect(d.direction).toBe('cooling');
+    expect(d.cause).toBe('a quarrel'); // NOT 'an act of kindness'
+  });
+
   it('shows no glyph (steady) when the net drift is within ±TREND_EPS', async () => {
     const { computeEdgeDrift } = await import('../src/relationships/drift.js');
     const edge = hist([{ tick: 950, kind: 'SEPARATION_DECAY', delta: -1 }]); // a single stray ±1

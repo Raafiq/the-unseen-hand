@@ -135,7 +135,12 @@ export function createScenario1Context(seed = 'scenario-1'): SimulationContext {
   // edges, so this is the whole opening graph; the edges then evolve through the normal machinery.
   const relationships = seedFamiliarityEdges(adventurers, notableNpcs);
 
-  const START_TICK = 9; // Day 0, 09:00
+  // Day 0, 08:00 — the AFTERNOON cycle boundary. START_TICK must be a multiple of 8 (a
+  // cycle boundary per world-clock.md / proceed.test.ts): the fixed-8-tick PROCEED window
+  // only stays in phase with the 0/8/16 `cycleOf` partition when it starts on a boundary.
+  // At 9 (09:00) every cycle was shoved one hour past its bucket, so a spread's raw-log
+  // hours disagreed with its header (an hour-16 row under an "Afternoon" spread).
+  const START_TICK = 8;
 
   const ctx: SimulationContext = {
     ...base,

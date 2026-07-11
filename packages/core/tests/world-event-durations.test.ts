@@ -288,6 +288,28 @@ describe('consumer: narrative colour tint', () => {
     }
     expect(tinted(combatLines), 'combat never tinted').toBe(0);
   });
+
+  it('a live FESTIVAL span NEVER tints a QUEST departure/return line', () => {
+    // Same rationale as COMBAT: a QUEST:STARTED/COMPLETED names the dungeon ("The party returns
+    // triumphant from X"), so the guild-town festival's ambient must not bleed onto it.
+    const festive = withSpan(ctxWithRegions('festival-quest-tint'), { type: 'FESTIVAL', startedAt: 0, expiresAt: 9999 });
+    const FESTIVAL_MARKERS = ['festival', 'lantern', 'laughter', 'streets', 'crowd', 'music'];
+    const tinted = (lines: string[]) =>
+      lines.filter(l => FESTIVAL_MARKERS.some(m => l.toLowerCase().includes(m))).length;
+
+    // Sanity: the span is live and tints guild-local (SOCIAL) lines.
+    expect(tinted(emitSocialLines(festive, 80)), 'social tinted').toBeGreaterThan(0);
+
+    let c = festive;
+    const questLines: string[] = [];
+    for (let i = 0; i < 80; i++) {
+      c = emitEvent(c, { kind: 'QUEST', subtype: 'COMPLETED', questId: 'q1', partyIds: ['alice'] });
+      c = emitEvent(c, { kind: 'QUEST', subtype: 'STARTED', questId: 'q2', partyIds: ['alice'] });
+      questLines.push(c.eventLog[c.eventLog.length - 2]!.renderedText);
+      questLines.push(c.eventLog[c.eventLog.length - 1]!.renderedText);
+    }
+    expect(tinted(questLines), 'quest lines never tinted').toBe(0);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -83,6 +83,25 @@ export function chapterEvents(ctx: SimulationContext, digest: CycleDigest, actor
     .sort((a, b) => a.tick - b.tick);
 }
 
+/**
+ * A quest close emits two events for the same beat: a COMBAT:QUEST_RESOLVED travel line ("the party
+ * trudges home from X") and a QUEST:COMPLETED/FAILED outcome line ("the party returns triumphant from
+ * X"). Narrating both stitches a redundant, tonally-clashing pair into the chapter prose. Keep the
+ * QUEST outcome (it carries the win/loss) and drop the COMBAT travel line *from the prose only* —
+ * the raw log still lists both. Returns the input untouched when no quest closed this cycle.
+ */
+function dedupeQuestResolution(events: SimulationEvent[]): SimulationEvent[] {
+  // Discriminated-union narrowing works in an `if`/`&&` chain (not across `.filter().map()`).
+  const closedQuestIds = new Set<string>();
+  for (const e of events) {
+    if (e.kind === 'QUEST' && (e.subtype === 'COMPLETED' || e.subtype === 'FAILED')) closedQuestIds.add(e.questId);
+  }
+  if (closedQuestIds.size === 0) return events;
+  return events.filter(
+    e => !(e.kind === 'COMBAT' && e.subtype === 'QUEST_RESOLVED' && closedQuestIds.has(e.questId)),
+  );
+}
+
 /** Every non-hidden event in the cycle window, chronological — the guild-level substrate the
  *  LLM cycle overview establishes (cycle-narrative.md §"cycle overview"). Mirrors the raw log's
  *  visibility gate so the overview never frames a kind the feed hides. */
@@ -190,9 +209,14 @@ const OVERVIEW_OPEN: Record<Cycle, readonly string[]> = {
   AFTERNOON: ['The afternoon wore on over the guild.', 'Thornvale settled into its afternoon.'],
   NIGHT:     ['Night drew in around the guild-hall.', 'Darkness gathered over Thornvale.'],
 };
+// Singular-safe active tails — true whether one character or several had a story this cycle.
 const OVERVIEW_ACTIVE: readonly string[] = [
   'It was not a quiet one.',
   'There was much to carry by its end.',
+];
+// Plural-only active tails — used only when more than one character has a chapter, so the overview
+// never claims "more than one of them" over a single-adventurer spread (the guild has one member).
+const OVERVIEW_ACTIVE_MANY: readonly string[] = [
   'The day left its mark on more than one of them.',
 ];
 const OVERVIEW_QUIET: readonly string[] = [
@@ -260,7 +284,7 @@ export function composeChapter(
 ): CycleChapter | null {
   const adv = ctx.adventurers.get(actorId);
   if (!adv) return null;
-  const events = chapterEvents(ctx, digest, actorId);
+  const events = dedupeQuestResolution(chapterEvents(ctx, digest, actorId));
   if (events.length === 0) return null;
 
   // Derived read-only stream — never ctx.rng (thoughtGrammar.ts:476 pattern). Keyed on
@@ -290,10 +314,11 @@ export function composeCycleReads(ctx: SimulationContext, digest: CycleDigest): 
   }
 
   const overviewRng = new SeededRNG(`${ctx.worldSeed}:cycle-overview:${digest.fromTick}`);
-  const anyEvents = chapters.length > 0;
+  // Plural-implying tails only enter the pool when >1 character actually has a chapter.
+  const activeTail = chapters.length > 1 ? [...OVERVIEW_ACTIVE, ...OVERVIEW_ACTIVE_MANY] : OVERVIEW_ACTIVE;
   const overview = [
     pick(OVERVIEW_OPEN[digest.cycle], overviewRng),
-    pick(anyEvents ? OVERVIEW_ACTIVE : OVERVIEW_QUIET, overviewRng),
+    pick(chapters.length > 0 ? activeTail : OVERVIEW_QUIET, overviewRng),
   ].join(' ');
 
   return { digest, overview, chapters };
